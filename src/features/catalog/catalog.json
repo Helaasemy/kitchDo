@@ -1,0 +1,1521 @@
+{
+  "source": "docs/catalog/KitchDo_Home_and_Kitchen_Templates.md",
+  "categories": [
+    {
+      "key": "home",
+      "label": "Home",
+      "icon": "home-outline",
+      "featured": [
+        "H02",
+        "H03",
+        "H12",
+        "H14",
+        "H06",
+        "H18"
+      ],
+      "groups": [
+        {
+          "key": "home_cleaning",
+          "label": "Cleaning and tidying",
+          "icon": "sparkles-outline",
+          "presetIds": [
+            "H01",
+            "H02",
+            "H03",
+            "H06"
+          ]
+        },
+        {
+          "key": "home_laundry",
+          "label": "Laundry and linen",
+          "icon": "shirt-outline",
+          "presetIds": [
+            "H04",
+            "H05"
+          ]
+        },
+        {
+          "key": "home_meals",
+          "label": "Meal planning and shopping",
+          "icon": "basket-outline",
+          "presetIds": [
+            "H07",
+            "H12",
+            "H13",
+            "H14",
+            "H15"
+          ]
+        },
+        {
+          "key": "home_cooking",
+          "label": "Cooking",
+          "icon": "flame-outline",
+          "presetIds": [
+            "H16",
+            "H17"
+          ]
+        },
+        {
+          "key": "home_upkeep",
+          "label": "Appliances and upkeep",
+          "icon": "construct-outline",
+          "presetIds": [
+            "H08",
+            "H09",
+            "H10",
+            "H11"
+          ]
+        },
+        {
+          "key": "home_admin",
+          "label": "Paperwork and admin",
+          "icon": "document-text-outline",
+          "presetIds": [
+            "H18"
+          ]
+        },
+        {
+          "key": "home_occasions",
+          "label": "Moving and guests",
+          "icon": "home-outline",
+          "presetIds": [
+            "H20",
+            "H21"
+          ]
+        },
+        {
+          "key": "home_care",
+          "label": "Pets and plants",
+          "icon": "paw-outline",
+          "presetIds": [
+            "H19",
+            "H22"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "kitchen",
+      "label": "Kitchen",
+      "icon": "restaurant-outline",
+      "guidance": "For food businesses, adapt each checklist to the site's own procedures, equipment instructions, and applicable local guidance.",
+      "featured": [
+        "B01",
+        "B02",
+        "B03",
+        "B04",
+        "B08",
+        "B12"
+      ],
+      "groups": [
+        {
+          "key": "launch",
+          "label": "Launch and setup",
+          "icon": "rocket-outline",
+          "presetIds": [
+            "B01"
+          ]
+        },
+        {
+          "key": "shifts",
+          "label": "Opening and closing shifts",
+          "icon": "time-outline",
+          "presetIds": [
+            "B02",
+            "B03",
+            "B16",
+            "B17",
+            "B18"
+          ]
+        },
+        {
+          "key": "cleaning",
+          "label": "Cleaning and equipment maintenance",
+          "icon": "sparkles-outline",
+          "presetIds": [
+            "B04",
+            "B05",
+            "B06",
+            "B19"
+          ]
+        },
+        {
+          "key": "prep",
+          "label": "Food preparation",
+          "icon": "restaurant-outline",
+          "presetIds": [
+            "B07"
+          ]
+        },
+        {
+          "key": "stock",
+          "label": "Stock and deliveries",
+          "icon": "cube-outline",
+          "presetIds": [
+            "B08",
+            "B09"
+          ]
+        },
+        {
+          "key": "safety",
+          "label": "Food safety and inspections",
+          "icon": "shield-checkmark-outline",
+          "presetIds": [
+            "B13",
+            "B14",
+            "B20"
+          ]
+        },
+        {
+          "key": "team",
+          "label": "Team training and handovers",
+          "icon": "people-outline",
+          "presetIds": [
+            "B10",
+            "B15"
+          ]
+        },
+        {
+          "key": "cash",
+          "label": "Cash and paperwork",
+          "icon": "cash-outline",
+          "presetIds": [
+            "B11",
+            "B12"
+          ]
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "id": "H01",
+      "category": "home",
+      "group": "home_cleaning",
+      "title": "Evening kitchen reset",
+      "cadence": "Daily",
+      "frequency": "daily",
+      "searchTerms": [
+        "dishes",
+        "tidy kitchen",
+        "closing shift at home"
+      ],
+      "aliases": [],
+      "sections": [
+        {
+          "title": null,
+          "tasks": [
+            "Put away food and deal with leftovers.",
+            "Load the dishwasher or wash the dishes.",
+            "Clear and wipe the counter and dining table.",
+            "Wipe spills from the hob after it has cooled.",
+            "Rinse and wipe the sink.",
+            "Take out rubbish or recycling if the bins are full.",
+            "Set out anything needed for breakfast."
+          ]
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "H02",
+      "category": "home",
+      "group": "home_cleaning",
+      "title": "Weekly home reset",
+      "cadence": "Weekly",
+      "frequency": "weekly",
+      "searchTerms": [
+        "weekly cleaning",
+        "Sunday reset",
+        "apartment chores"
+      ],
+      "aliases": [
+        "weekly cleaning",
+        "house cleaning"
+      ],
+      "sections": [
+        {
+          "title": null,
+          "tasks": [
+            "Put loose items back in their rooms.",
+            "Dust the main surfaces.",
+            "Wipe kitchen and bathroom surfaces.",
+            "Replace used towels and kitchen cloths.",
+            "Vacuum or sweep the main rooms.",
+            "Mop suitable floors where needed.",
+            "Empty bins and sort recycling.",
+            "Pick one extra area to tackle this week."
+          ]
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "H03",
+      "category": "home",
+      "group": "home_cleaning",
+      "title": "Clean the bathroom",
+      "cadence": "Weekly",
+      "frequency": "weekly",
+      "searchTerms": [
+        "toilet",
+        "shower",
+        "bathroom cleaning"
+      ],
+      "aliases": [
+        "clean the bathroom",
+        "clean toilet"
+      ],
+      "sections": [
+        {
+          "title": null,
+          "tasks": [
+            "Gather the bathroom cleaning supplies.",
+            "Wash the sink and wipe around the taps.",
+            "Clean the mirror.",
+            "Clean the toilet bowl, seat, and outside surfaces.",
+            "Wash the bath or shower surfaces.",
+            "Empty the bin and replace used towels.",
+            "Sweep and mop the floor."
+          ]
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "H04",
+      "category": "home",
+      "group": "home_laundry",
+      "title": "Laundry day",
+      "cadence": "Weekly or as needed",
+      "frequency": "weekly",
+      "searchTerms": [
+        "clothes",
+        "washing machine",
+        "wash and fold"
+      ],
+      "aliases": [],
+      "sections": [
+        {
+          "title": null,
+          "tasks": [
+            "Gather laundry and empty pockets.",
+            "Sort loads using the garment care labels.",
+            "Treat stains where appropriate.",
+            "Wash each load using a suitable setting.",
+            "Hang garments or dry them according to the labels.",
+            "Clean the dryer's lint screen if you used a dryer.",
+            "Fold and put away the clean laundry."
+          ]
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "H05",
+      "category": "home",
+      "group": "home_laundry",
+      "title": "Change bedding and towels",
+      "cadence": "Weekly or as needed",
+      "frequency": "weekly",
+      "searchTerms": [
+        "sheets",
+        "linen",
+        "bedroom reset"
+      ],
+      "aliases": [],
+      "sections": [
+        {
+          "title": null,
+          "tasks": [
+            "Strip the beds that need fresh linen.",
+            "Collect used towels and bath mats.",
+            "Start suitable wash loads.",
+            "Make the beds with fresh sheets and pillowcases.",
+            "Put out clean towels.",
+            "Dry and store the washed linen."
+          ]
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "H06",
+      "category": "home",
+      "group": "home_cleaning",
+      "title": "Monthly home deep clean",
+      "cadence": "Monthly",
+      "frequency": "monthly",
+      "searchTerms": [
+        "monthly cleaning",
+        "deep clean",
+        "baseboards"
+      ],
+      "aliases": [
+        "monthly reminders"
+      ],
+      "sections": [
+        {
+          "title": null,
+          "tasks": [
+            "Wipe skirting boards and reachable door trim.",
+            "Dust reachable ledges and tops of furniture.",
+            "Wipe marks from washable doors and cabinet fronts.",
+            "Vacuum under movable furniture where it is easy to reach.",
+            "Clean the inside of the most-used bin.",
+            "Wipe reachable window sills and tracks.",
+            "Wash or vacuum removable mats according to their care instructions.",
+            "Choose one appliance or cupboard for a separate cleaning session."
+          ]
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "H07",
+      "category": "home",
+      "group": "home_meals",
+      "title": "Reset the fridge and pantry",
+      "cadence": "Weekly",
+      "frequency": "weekly",
+      "searchTerms": [
+        "fridge clean-out",
+        "use up food",
+        "cupboards"
+      ],
+      "aliases": [],
+      "sections": [
+        {
+          "title": null,
+          "tasks": [
+            "Check chilled and pantry food before shopping.",
+            "Put food you plan to use soon in an easy-to-see spot.",
+            "Check labels and storage dates and discard food that should go.",
+            "Wipe visible spills and crumbs.",
+            "Move older suitable stock in front of newer purchases.",
+            "Put one use-it-up meal on the plan.",
+            "Add low staples to the shopping list."
+          ]
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "H08",
+      "category": "home",
+      "group": "home_upkeep",
+      "title": "Clean the dishwasher",
+      "cadence": "Monthly or per manual",
+      "frequency": "monthly",
+      "searchTerms": [
+        "dishwasher filter",
+        "appliance care"
+      ],
+      "aliases": [],
+      "sections": [
+        {
+          "title": null,
+          "tasks": [
+            "Find the maintenance instructions for your model.",
+            "Empty the dishwasher.",
+            "Clean removable parts the manual identifies.",
+            "Check the spray arms for visible blockages as directed.",
+            "Wipe the door edges and seals as directed.",
+            "Run the recommended cleaning cycle if due.",
+            "Note leaks or persistent problems for service."
+          ]
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "H09",
+      "category": "home",
+      "group": "home_upkeep",
+      "title": "Care for the washer and dryer",
+      "cadence": "Monthly or per manual",
+      "frequency": "monthly",
+      "searchTerms": [
+        "washing machine maintenance",
+        "dryer care"
+      ],
+      "aliases": [],
+      "sections": [
+        {
+          "title": null,
+          "tasks": [
+            "Check the care instructions for each appliance.",
+            "Wipe the washer door seal and remove visible debris as directed.",
+            "Clean the detergent drawer if the model allows removal.",
+            "Run the recommended drum-cleaning cycle if due.",
+            "Check the dryer lint screen and accessible areas listed in the manual.",
+            "Record any leak, unusual noise, or drying problem for follow-up."
+          ]
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "H10",
+      "category": "home",
+      "group": "home_upkeep",
+      "title": "Monthly home maintenance walk-through",
+      "cadence": "Monthly",
+      "frequency": "monthly",
+      "searchTerms": [
+        "apartment maintenance",
+        "home repairs",
+        "renter checklist"
+      ],
+      "aliases": [
+        "monthly reminders"
+      ],
+      "sections": [
+        {
+          "title": null,
+          "tasks": [
+            "Look for new leaks or damp spots around sinks and toilets.",
+            "Check doors, windows, and handles for problems.",
+            "Check for unusually slow drains.",
+            "Check whether any manufacturer-recommended filter service is due.",
+            "List repairs and note when each problem first appeared.",
+            "Report issues that belong to your landlord or building manager.",
+            "Book help for repairs you are responsible for."
+          ]
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "H11",
+      "category": "home",
+      "group": "home_upkeep",
+      "title": "Test smoke alarms",
+      "cadence": "Monthly or per local guidance",
+      "frequency": "monthly",
+      "searchTerms": [
+        "smoke detector",
+        "fire safety reminder"
+      ],
+      "aliases": [
+        "monthly reminders",
+        "fire alarm"
+      ],
+      "sections": [
+        {
+          "title": null,
+          "tasks": [
+            "Locate each smoke alarm in the home.",
+            "Test each alarm using its test button and the model's instructions.",
+            "Arrange prompt battery replacement, replacement of the alarm, or landlord follow-up for a failed test as appropriate.",
+            "Make sure exits and their routes are clear.",
+            "Record the test date and any unresolved issue."
+          ]
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "H12",
+      "category": "home",
+      "group": "home_meals",
+      "title": "Plan meals for the week",
+      "cadence": "Weekly",
+      "frequency": "weekly",
+      "searchTerms": [
+        "meal plan",
+        "dinners",
+        "weekly menu"
+      ],
+      "aliases": [
+        "Sunday meal plan"
+      ],
+      "sections": [
+        {
+          "title": null,
+          "tasks": [
+            "Check what is already in the fridge, freezer, and cupboards.",
+            "Mark evenings when nobody needs a cooked dinner.",
+            "Choose meals that use ingredients already on hand.",
+            "Pick one quick backup meal.",
+            "Plan when to eat leftovers or freeze extra portions.",
+            "Make a list of ingredients you still need.",
+            "Pick a day to shop and a day to prep."
+          ]
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "H13",
+      "category": "home",
+      "group": "home_meals",
+      "title": "Get ready for the grocery shop",
+      "cadence": "Weekly or as needed",
+      "frequency": "weekly",
+      "searchTerms": [
+        "groceries",
+        "supermarket",
+        "shopping list"
+      ],
+      "aliases": [],
+      "sections": [
+        {
+          "title": null,
+          "tasks": [
+            "Check the meal plan for missing ingredients.",
+            "Check breakfast, snack, and household staples.",
+            "Add the quantities you need.",
+            "Group items by aisle or food category.",
+            "Check whether bags or a cooler are needed.",
+            "Check the list before checkout and put groceries away when home."
+          ]
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "H14",
+      "category": "home",
+      "group": "home_meals",
+      "title": "Prep meals for the week",
+      "cadence": "Weekly",
+      "frequency": "weekly",
+      "searchTerms": [
+        "Sunday meal prep",
+        "packed lunches",
+        "meal boxes"
+      ],
+      "aliases": [
+        "meal prep"
+      ],
+      "sections": [
+        {
+          "title": null,
+          "tasks": [
+            "Pick the meals, portions, and days to prep for.",
+            "Gather recipes, ingredients, and suitable containers.",
+            "Wash produce as appropriate and prepare recipe ingredients.",
+            "Cook the components you plan to make ahead.",
+            "Divide cooked food into meal portions and store it promptly using local food safety guidance.",
+            "Label containers with contents and prep date.",
+            "Freeze portions you plan to eat later if suitable.",
+            "Clean work surfaces and put equipment away."
+          ]
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "H15",
+      "category": "home",
+      "group": "home_meals",
+      "title": "Batch-cook and freeze portions",
+      "cadence": "As needed",
+      "frequency": null,
+      "searchTerms": [
+        "freezer meals",
+        "batch cooking",
+        "make ahead"
+      ],
+      "aliases": [
+        "meal prep for the freezer"
+      ],
+      "sections": [
+        {
+          "title": null,
+          "tasks": [
+            "Pick a freezer-friendly recipe and check available space.",
+            "Decide how many portions to make.",
+            "Gather containers and labels before cooking.",
+            "Cook the batch using the chosen recipe.",
+            "Portion, cool, and store it using local food safety guidance.",
+            "Label with dish name and date.",
+            "Add the portions to your freezer list.",
+            "Put a freezer meal on a future meal plan."
+          ]
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "H16",
+      "category": "home",
+      "group": "home_cooking",
+      "title": "Cook a pot of red lentil soup",
+      "cadence": "As needed",
+      "frequency": null,
+      "searchTerms": [
+        "cook lentil soup",
+        "vegetarian dinner",
+        "soup meal prep"
+      ],
+      "aliases": [],
+      "sections": [
+        {
+          "title": null,
+          "tasks": [
+            "Choose the recipe and scale it to the portions you need.",
+            "Gather red lentils, vegetables, and the broth and seasonings the recipe calls for.",
+            "Prepare the vegetables and lentils as directed.",
+            "Start the vegetable base and add broth and lentils following the recipe.",
+            "Simmer until the lentils are tender and finish the seasoning.",
+            "Set aside portions to cool and store safely if making extra.",
+            "Wash the pot and reset the kitchen."
+          ]
+        }
+      ],
+      "notes": [
+        {
+          "text": "An example recipe with ingredient quantities and cooking steps is available from the NHS.",
+          "links": [
+            {
+              "label": "Vegetable and lentil soup",
+              "url": "https://www.nhs.uk/healthier-families/recipes/vegetable-and-lentil-soup/"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "H17",
+      "category": "home",
+      "group": "home_cooking",
+      "title": "Cook a tray of chickpeas and vegetables",
+      "cadence": "As needed",
+      "frequency": null,
+      "searchTerms": [
+        "tray bake",
+        "sheet-pan dinner",
+        "vegetarian dinner"
+      ],
+      "aliases": [],
+      "sections": [
+        {
+          "title": null,
+          "tasks": [
+            "Choose a recipe and check oven temperature and timing.",
+            "Gather the vegetables, chickpeas, seasoning, and tray.",
+            "Prepare the vegetables and chickpeas as directed.",
+            "Season and spread the ingredients on the tray.",
+            "Roast according to the recipe and check when the vegetables are tender.",
+            "Add a side or topping if planned.",
+            "Store any leftovers promptly using local food safety guidance."
+          ]
+        }
+      ],
+      "notes": [
+        {
+          "text": "An example recipe with ingredient quantities and oven timing is available from Good Food.",
+          "links": [
+            {
+              "label": "Roast summer vegetables and chickpeas",
+              "url": "https://www.bbcgoodfood.com/recipes/roast-summer-vegetables-chickpeas"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "H18",
+      "category": "home",
+      "group": "home_admin",
+      "title": "Monthly household paperwork",
+      "cadence": "Monthly",
+      "frequency": "monthly",
+      "searchTerms": [
+        "bills",
+        "renewals",
+        "home admin",
+        "documents"
+      ],
+      "aliases": [
+        "monthly reminders",
+        "paperwork"
+      ],
+      "sections": [
+        {
+          "title": null,
+          "tasks": [
+            "Gather bills, letters, and receipts that need action.",
+            "Check what is due before next month.",
+            "Review upcoming renewals and appointments.",
+            "File receipts or documents you need to keep.",
+            "Set reminders for unresolved items and record their due dates.",
+            "Follow up on one pending household request."
+          ]
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "H19",
+      "category": "home",
+      "group": "home_care",
+      "title": "Check pet supplies",
+      "cadence": "Weekly or as needed",
+      "frequency": "weekly",
+      "searchTerms": [
+        "dog supplies",
+        "cat supplies",
+        "pet chores"
+      ],
+      "aliases": [],
+      "sections": [
+        {
+          "title": null,
+          "tasks": [
+            "Check the remaining pet food and litter or waste bags.",
+            "Wash bowls as appropriate and check where food is stored.",
+            "Check bedding and clean it if needed.",
+            "Inspect leads, harnesses, carriers, or frequently used toys for wear.",
+            "Confirm the next appointment or refill date already set by your vet.",
+            "Add supplies you are low on to the shopping list."
+          ]
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "H20",
+      "category": "home",
+      "group": "home_occasions",
+      "title": "Prepare for a move",
+      "cadence": "One-time",
+      "frequency": null,
+      "searchTerms": [
+        "moving house",
+        "moving apartment",
+        "packing checklist"
+      ],
+      "aliases": [],
+      "sections": [
+        {
+          "title": null,
+          "tasks": [
+            "Confirm moving and key handover dates.",
+            "Book transport, movers, or helpers.",
+            "Decide what to keep, donate, recycle, or sell.",
+            "Label boxes by destination room.",
+            "Pack a first-night bag and keep essential documents accessible.",
+            "Arrange address and utility updates that apply to you.",
+            "Check the old place room by room before handing over keys.",
+            "Record any condition or meter readings your handover requires."
+          ]
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "H21",
+      "category": "home",
+      "group": "home_occasions",
+      "title": "Get the house ready for guests",
+      "cadence": "As needed",
+      "frequency": null,
+      "searchTerms": [
+        "visitors",
+        "hosting",
+        "guest room"
+      ],
+      "aliases": [],
+      "sections": [
+        {
+          "title": null,
+          "tasks": [
+            "Confirm arrival time and guest count.",
+            "Ask about meal needs if you are serving food.",
+            "Clear the entryway and main seating area.",
+            "Put out fresh hand towels and restock the bathroom.",
+            "Make the guest bed and set out spare towels if needed.",
+            "Prepare drinks, snacks, or meal ingredients.",
+            "Share arrival or access instructions."
+          ]
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "H22",
+      "category": "home",
+      "group": "home_care",
+      "title": "Check houseplants",
+      "cadence": "Weekly check",
+      "frequency": "weekly",
+      "searchTerms": [
+        "watering plants",
+        "plant care"
+      ],
+      "aliases": [],
+      "sections": [
+        {
+          "title": null,
+          "tasks": [
+            "Check each plant using its species-specific care guidance.",
+            "Water plants that actually need it.",
+            "Empty standing water from saucers where appropriate.",
+            "Look for visible pests, damage, or yellowing.",
+            "Remove dead leaves where appropriate.",
+            "Record plants that may need a new pot or a different spot."
+          ]
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "B01",
+      "category": "kitchen",
+      "group": "launch",
+      "title": "Open a new café",
+      "cadence": "One-time project",
+      "frequency": null,
+      "searchTerms": [
+        "starting a coffee shop",
+        "opening a restaurant business",
+        "launch",
+        "café setup"
+      ],
+      "aliases": [
+        "open a cafe",
+        "new restaurant",
+        "start a food business"
+      ],
+      "sections": [
+        {
+          "title": "Plan the business",
+          "tasks": [
+            "Define who the café will serve and what you will sell.",
+            "Sketch a starter menu and hours.",
+            "Estimate startup costs and money needed through the first months.",
+            "Set a target opening date and list what could move it."
+          ]
+        },
+        {
+          "title": "Check the premises and paperwork",
+          "tasks": [
+            "Check whether the premises suit the intended menu and service.",
+            "Confirm relevant premises, ventilation, utility, and fit-out questions before signing commitments.",
+            "Find the relevant local authorities and their startup checklist.",
+            "Confirm which registrations, approvals, or inspections apply.",
+            "Check extra requirements if adding outdoor seating, signs, music, or alcohol.",
+            "Submit applicable paperwork and track responses, dates, and reference numbers.",
+            "Arrange insurance and accounting setup appropriate to the business."
+          ]
+        },
+        {
+          "title": "Set up the operation",
+          "tasks": [
+            "List equipment needed at each station and confirm installation or servicing.",
+            "Choose suppliers and confirm initial delivery dates and ordering contacts.",
+            "Cost and price the starter menu.",
+            "Document ingredients and where to keep current allergen information.",
+            "Set up the food safety, cleaning, and recordkeeping procedures for the site.",
+            "Set up the POS, menu, payment terminal, and receipt flow.",
+            "Write the first opening and closing checklists.",
+            "Agree shift coverage and train staff on the routines they will use."
+          ]
+        },
+        {
+          "title": "Rehearse and open",
+          "tasks": [
+            "Place the first stock order and confirm delivery access.",
+            "Run a practice service from order to cleanup.",
+            "Confirm that all required approvals or startup conditions are met before trading.",
+            "Publish the address and confirmed opening hours.",
+            "Capture the changes to make after the first week."
+          ]
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "B02",
+      "category": "kitchen",
+      "group": "shifts",
+      "title": "Open the café for service",
+      "cadence": "Daily before opening",
+      "frequency": "daily",
+      "searchTerms": [
+        "opening shift",
+        "café opener",
+        "barista opening"
+      ],
+      "aliases": [
+        "open the cafe",
+        "open cafe",
+        "morning opening"
+      ],
+      "sections": [
+        {
+          "title": null,
+          "tasks": [
+            "Review the previous shift's handover and outstanding issues.",
+            "Start opening equipment using the site's routine.",
+            "Complete refrigeration and display checks in the site's log.",
+            "Check handwashing stations are stocked.",
+            "Confirm that counters, tools, and customer areas are ready.",
+            "Set up the espresso station and check the first shot.",
+            "Restock cups, milk, beans, and other service supplies.",
+            "Confirm what's available and check allergen information for menu changes.",
+            "Start the till and confirm the payment terminal is ready.",
+            "Brief the team on expected orders, shortages, and issues.",
+            "Unlock the entrance at opening time."
+          ]
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "B03",
+      "category": "kitchen",
+      "group": "shifts",
+      "title": "Close the café after service",
+      "cadence": "Daily after service",
+      "frequency": "daily",
+      "searchTerms": [
+        "closing shift",
+        "café closer",
+        "end of day"
+      ],
+      "aliases": [
+        "close the cafe",
+        "closing checklist"
+      ],
+      "sections": [
+        {
+          "title": null,
+          "tasks": [
+            "Finish serving and check that open orders are handled.",
+            "Label and store remaining food under the site's procedure.",
+            "Record items discarded according to the site's routine.",
+            "Clean the espresso station and service counters.",
+            "Finish dishwashing and put away clean equipment.",
+            "Empty bins and clean the floors.",
+            "Complete the till and payment close where assigned.",
+            "Leave a note about shortages, maintenance, and unfinished work.",
+            "Put equipment into the correct overnight state.",
+            "Check the premises and secure doors and alarms."
+          ]
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "B16",
+      "category": "kitchen",
+      "group": "shifts",
+      "title": "Open a restaurant kitchen line",
+      "cadence": "Before each service",
+      "frequency": null,
+      "searchTerms": [
+        "restaurant opening",
+        "kitchen opener",
+        "line check"
+      ],
+      "aliases": [],
+      "sections": [
+        {
+          "title": null,
+          "tasks": [
+            "Review bookings, specials, and expected covers.",
+            "Confirm station coverage and prep priorities.",
+            "Start station equipment using the site's procedures.",
+            "Complete required equipment and food-storage checks.",
+            "Check the quality, quantity, and labels of prepared items.",
+            "Refill station tools, plates, and service supplies.",
+            "Confirm menu changes and share allergen updates with service staff.",
+            "Brief the line on shortages and dishes unavailable for this service."
+          ]
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "B17",
+      "category": "kitchen",
+      "group": "shifts",
+      "title": "Close a restaurant kitchen line",
+      "cadence": "After each service",
+      "frequency": null,
+      "searchTerms": [
+        "restaurant closing",
+        "line breakdown",
+        "kitchen closer"
+      ],
+      "aliases": [],
+      "sections": [
+        {
+          "title": null,
+          "tasks": [
+            "Confirm the final orders are complete.",
+            "Record and store eligible remaining food using the site's procedures.",
+            "Record disposals, shortages, and prep needed next shift.",
+            "Break down and clean each station using its cleaning plan.",
+            "Finish dishwashing and return station tools.",
+            "Complete the closing food safety records.",
+            "Leave equipment in the approved overnight state.",
+            "Hand over unresolved issues to the next lead."
+          ]
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "B18",
+      "category": "kitchen",
+      "group": "shifts",
+      "title": "Set up a food truck for service",
+      "cadence": "Before each service",
+      "frequency": null,
+      "searchTerms": [
+        "mobile catering",
+        "food truck opening",
+        "market stall"
+      ],
+      "aliases": [],
+      "sections": [
+        {
+          "title": null,
+          "tasks": [
+            "Confirm the site, service hours, and arrival arrangements.",
+            "Position and secure the vehicle according to the operator's procedure.",
+            "Complete water, power, and equipment checks required for the unit.",
+            "Set up handwashing and waste stations.",
+            "Complete required food storage and service checks.",
+            "Check menu availability and allergen information.",
+            "Test the order and payment setup.",
+            "Prepare the service window and queue area."
+          ]
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "B04",
+      "category": "kitchen",
+      "group": "cleaning",
+      "title": "Clean the café daily",
+      "cadence": "Daily",
+      "frequency": "daily",
+      "searchTerms": [
+        "cleaning checklist",
+        "front of house",
+        "café cleaning"
+      ],
+      "aliases": [],
+      "sections": [
+        {
+          "title": null,
+          "tasks": [
+            "Clean service and food-contact surfaces using the site's method.",
+            "Wash service utensils and trays.",
+            "Wipe spills in the display and counter areas.",
+            "Clean customer tables, chair surfaces, and high-touch points.",
+            "Clean staff and customer washrooms using their assigned supplies.",
+            "Refill handwashing and cleaning supplies.",
+            "Empty bins and replace liners.",
+            "Clean floors and return cleaning equipment to storage.",
+            "Flag areas that could not be cleaned as planned."
+          ]
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "B05",
+      "category": "kitchen",
+      "group": "cleaning",
+      "title": "Deep-clean the café",
+      "cadence": "Weekly as a starting point",
+      "frequency": "weekly",
+      "searchTerms": [
+        "weekly cleaning",
+        "deep cleaning rota",
+        "cleaning schedule"
+      ],
+      "aliases": [],
+      "sections": [
+        {
+          "title": null,
+          "tasks": [
+            "Pick the areas due under the site's cleaning plan.",
+            "Empty and clean accessible shelving sections in stages.",
+            "Clean under and behind movable items where safe and permitted.",
+            "Clean the hard-to-reach areas of the service counter and display.",
+            "Clean bin storage and surrounding surfaces.",
+            "Check stock of approved cleaning supplies.",
+            "Record damaged surfaces, signs of pests, or repairs to escalate.",
+            "Confirm the next cleaning date for work that could not be completed."
+          ]
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "B06",
+      "category": "kitchen",
+      "group": "cleaning",
+      "title": "Clean the espresso station",
+      "cadence": "Daily or per manual",
+      "frequency": "daily",
+      "searchTerms": [
+        "espresso machine cleaning",
+        "coffee bar cleanup",
+        "grinder"
+      ],
+      "aliases": [
+        "clean espresso machine",
+        "coffee machine cleaning"
+      ],
+      "sections": [
+        {
+          "title": null,
+          "tasks": [
+            "Confirm the routine and supplies for this espresso machine and grinder.",
+            "Clean baskets and portafilters as directed.",
+            "Clean group heads and backflush only if required by the machine's instructions.",
+            "Clean steam wands, drip trays, and the surrounding work area.",
+            "Clean milk jugs and other service tools.",
+            "Clean the grinder parts covered by the routine for this model.",
+            "Report leaks, weak steam, or other faults."
+          ]
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "B19",
+      "category": "kitchen",
+      "group": "cleaning",
+      "title": "Review café equipment maintenance",
+      "cadence": "Monthly or per service plan",
+      "frequency": "monthly",
+      "searchTerms": [
+        "espresso machine service",
+        "maintenance log",
+        "equipment repair"
+      ],
+      "aliases": [],
+      "sections": [
+        {
+          "title": null,
+          "tasks": [
+            "Check upcoming service dates against equipment manuals.",
+            "Review faults reported since the last check.",
+            "Confirm which equipment requires a qualified service visit.",
+            "Book work and plan how the affected station will operate.",
+            "Update the service log after completed work.",
+            "Tell the team about equipment unavailable for use."
+          ]
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "B07",
+      "category": "kitchen",
+      "group": "prep",
+      "title": "Prep food before café service",
+      "cadence": "Daily or per shift",
+      "frequency": "daily",
+      "searchTerms": [
+        "kitchen prep",
+        "pastry display",
+        "sandwiches",
+        "prep list"
+      ],
+      "aliases": [],
+      "sections": [
+        {
+          "title": null,
+          "tasks": [
+            "Review the expected demand and menu for the shift.",
+            "Check usable stock before starting prep.",
+            "Pick what to make and set target quantities.",
+            "Prepare the station using the site's separation and hygiene procedures.",
+            "Follow current recipe and ingredient specifications.",
+            "Label and store prepared items under the site's procedure.",
+            "Refill the display or service station as planned.",
+            "Report shortages and update availability before service."
+          ]
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "B08",
+      "category": "kitchen",
+      "group": "stock",
+      "title": "Receive a café delivery",
+      "cadence": "Each delivery",
+      "frequency": null,
+      "searchTerms": [
+        "goods in",
+        "stock delivery",
+        "supplier order"
+      ],
+      "aliases": [
+        "fridge and freezer stock",
+        "check a delivery"
+      ],
+      "sections": [
+        {
+          "title": null,
+          "tasks": [
+            "Match the supplier and items against the order.",
+            "Count the delivered items and record discrepancies.",
+            "Inspect packaging condition and date markings.",
+            "Complete any required temperature checks using the site's procedure.",
+            "Flag substitutions before ingredients are used.",
+            "Handle and document rejected items under the site's procedure.",
+            "Put accepted stock into appropriate storage promptly.",
+            "File the delivery record and follow up on outstanding items."
+          ]
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "B09",
+      "category": "kitchen",
+      "group": "stock",
+      "title": "Count stock and plan reorders",
+      "cadence": "Weekly or before an order",
+      "frequency": "weekly",
+      "searchTerms": [
+        "inventory count",
+        "stock take",
+        "order supplies"
+      ],
+      "aliases": [],
+      "sections": [
+        {
+          "title": null,
+          "tasks": [
+            "Count stock in the bar, kitchen, and storage areas.",
+            "Include packaging, cleaning supplies, and other consumables.",
+            "Note stock approaching its use date and any damaged items.",
+            "Check booked events, expected demand, and incoming orders.",
+            "Compare counts against your target stock levels.",
+            "Make the reorder list and confirm order cutoffs.",
+            "Record shortages the next shift needs to know about."
+          ]
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "B13",
+      "category": "kitchen",
+      "group": "safety",
+      "title": "Review a changed ingredient or menu item",
+      "cadence": "Whenever an ingredient, supplier, or recipe changes",
+      "frequency": null,
+      "searchTerms": [
+        "allergens",
+        "substitutions",
+        "menu update"
+      ],
+      "aliases": [],
+      "sections": [
+        {
+          "title": null,
+          "tasks": [
+            "Identify the ingredient or preparation that changed.",
+            "Obtain the current label or specification from the supplier.",
+            "Check which menu items and service channels are affected.",
+            "Review the change under the site's allergen and cross-contact procedures.",
+            "Update the relevant allergen record and customer-facing information.",
+            "Brief staff before the changed item is served.",
+            "Hold the item and ask the responsible lead when information remains unconfirmed."
+          ]
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "B14",
+      "category": "kitchen",
+      "group": "safety",
+      "title": "Review the café's food safety records",
+      "cadence": "Weekly or monthly per site procedure",
+      "frequency": "weekly",
+      "searchTerms": [
+        "food safety log",
+        "hygiene records",
+        "documentation"
+      ],
+      "aliases": [
+        "paperwork",
+        "fridge temperature log"
+      ],
+      "sections": [
+        {
+          "title": null,
+          "tasks": [
+            "Check that required records can be found and are current.",
+            "Review recent opening, closing, and cleaning records.",
+            "Review missed checks and actions taken.",
+            "Check whether menu or supplier changes require record updates.",
+            "Review unresolved maintenance, pest, or hygiene issues with the lead.",
+            "Assign follow-up and record review dates.",
+            "Update staff guidance when a site procedure changes."
+          ]
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "B20",
+      "category": "kitchen",
+      "group": "safety",
+      "title": "Prepare for a food safety visit",
+      "cadence": "As needed",
+      "frequency": null,
+      "searchTerms": [
+        "inspection checklist",
+        "audit preparation",
+        "restaurant documentation"
+      ],
+      "aliases": [
+        "paperwork",
+        "health inspection"
+      ],
+      "sections": [
+        {
+          "title": null,
+          "tasks": [
+            "Review the relevant local authority's guidance for the site.",
+            "Gather current food safety procedures and the records they reference.",
+            "Check that cleaning, supplier, and training records are accessible.",
+            "Check the current allergen information against the actual menu.",
+            "Walk through the premises and record problems to resolve.",
+            "Confirm who will meet the visitor and where records are stored.",
+            "Record follow-up actions after the visit."
+          ]
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "B10",
+      "category": "kitchen",
+      "group": "team",
+      "title": "Hand over the café shift",
+      "cadence": "Each handover",
+      "frequency": null,
+      "searchTerms": [
+        "shift handoff",
+        "pass to next team",
+        "manager notes"
+      ],
+      "aliases": [],
+      "sections": [
+        {
+          "title": null,
+          "tasks": [
+            "List open orders or customer issues.",
+            "Share sold-out items, substitutions, or pending deliveries.",
+            "Flag equipment faults and safety concerns already raised.",
+            "Name the unfinished tasks and who should follow up.",
+            "Highlight time-sensitive work for the incoming shift.",
+            "Confirm the incoming lead has received the handover."
+          ]
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "B15",
+      "category": "kitchen",
+      "group": "team",
+      "title": "Onboard a new café employee",
+      "cadence": "One-time per hire",
+      "frequency": null,
+      "searchTerms": [
+        "staff training",
+        "first shift",
+        "new barista"
+      ],
+      "aliases": [],
+      "sections": [
+        {
+          "title": null,
+          "tasks": [
+            "Introduce the shift lead and show the layout of the site.",
+            "Set up approved access to the systems the role uses.",
+            "Explain the employee's station and first-shift expectations.",
+            "Show how to find hygiene, allergen, and incident procedures.",
+            "Demonstrate the opening or closing tasks the employee will perform.",
+            "Pair the employee with a trainer for supervised practice.",
+            "Record the training covered and any follow-up still needed."
+          ]
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "B11",
+      "category": "kitchen",
+      "group": "cash",
+      "title": "Close and reconcile the till",
+      "cadence": "Daily or per cash shift",
+      "frequency": "daily",
+      "searchTerms": [
+        "cash up",
+        "cash drawer",
+        "POS close"
+      ],
+      "aliases": [
+        "cash up",
+        "end of day cash",
+        "till count"
+      ],
+      "sections": [
+        {
+          "title": null,
+          "tasks": [
+            "Check for unresolved sales or open orders in the POS.",
+            "Run the required shift or day-end report.",
+            "Count the cash drawer following the business's procedure.",
+            "Compare cash and other payments with the POS totals.",
+            "Record discrepancies and escalate according to policy.",
+            "Prepare deposits and handle floats under the site's procedure.",
+            "File or hand over the close report."
+          ]
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "B12",
+      "category": "kitchen",
+      "group": "cash",
+      "title": "Weekly café paperwork",
+      "cadence": "Weekly",
+      "frequency": "weekly",
+      "searchTerms": [
+        "admin",
+        "paperwork",
+        "owner checklist",
+        "invoices"
+      ],
+      "aliases": [],
+      "sections": [
+        {
+          "title": null,
+          "tasks": [
+            "Collect supplier invoices and receipts.",
+            "Match deliveries with invoices and query differences.",
+            "Review payments, renewals, and bookings coming due.",
+            "Review timesheet exceptions if the café has staff.",
+            "File current business records in the agreed location.",
+            "Check pending authority, landlord, or contractor correspondence.",
+            "Give each unresolved admin task an owner and follow-up date."
+          ]
+        }
+      ],
+      "notes": []
+    }
+  ]
+}

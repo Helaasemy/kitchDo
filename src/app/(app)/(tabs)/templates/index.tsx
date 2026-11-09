@@ -163,6 +163,8 @@ export default function TemplatesScreen() {
     ]);
   };
 
+  const openCatalog = () => router.push('/(app)/(tabs)/templates/catalog');
+
   const stateLabel = (state: TemplateState) => {
     if (state === 'active') return copy.stateActive;
     if (state === 'archived') return copy.stateArchived;
@@ -184,12 +186,26 @@ export default function TemplatesScreen() {
           <ScreenHeader
             title={tone(kitchenMode, copy.titleHome, copy.titleBusiness)}
             right={
-              <IconButton
-                name="add"
-                accessibilityLabel={copy.emptyAction}
-                onPress={() => router.push('/(app)/(tabs)/templates/new')}
-              />
+              <View style={{ flexDirection: 'row', gap: theme.space.sm }}>
+                <IconButton
+                  name="library-outline"
+                  accessibilityLabel={copy.browseTemplates}
+                  onPress={openCatalog}
+                />
+                <IconButton
+                  name="add"
+                  accessibilityLabel={copy.emptyAction}
+                  onPress={() => router.push('/(app)/(tabs)/templates/new')}
+                />
+              </View>
             }
+          />
+
+          <Button
+            label={copy.browseTemplates}
+            variant="secondary"
+            compact
+            onPress={openCatalog}
           />
 
           <TextInput
@@ -305,20 +321,27 @@ export default function TemplatesScreen() {
               style={{ marginTop: theme.space.lg }}
             />
           ) : templates.length === 0 ? (
-            <EmptyState
-              title={tone(
-                kitchenMode,
-                copy.emptyTitleHome,
-                copy.emptyTitleBusiness,
-              )}
-              body={tone(
-                kitchenMode,
-                copy.emptyBodyHome,
-                copy.emptyBodyBusiness,
-              )}
-              actionLabel={copy.emptyAction}
-              onAction={() => router.push('/(app)/(tabs)/templates/new')}
-            />
+            <View>
+              <EmptyState
+                title={tone(
+                  kitchenMode,
+                  copy.emptyTitleHome,
+                  copy.emptyTitleBusiness,
+                )}
+                body={tone(
+                  kitchenMode,
+                  copy.emptyBodyHome,
+                  copy.emptyBodyBusiness,
+                )}
+                actionLabel={copy.browseTemplates}
+                onAction={openCatalog}
+              />
+              <Button
+                label={copy.emptyAction}
+                variant="ghost"
+                onPress={() => router.push('/(app)/(tabs)/templates/new')}
+              />
+            </View>
           ) : (
             <ScrollView
               style={{ flex: 1 }}

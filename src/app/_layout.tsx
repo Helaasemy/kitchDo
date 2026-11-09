@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { memo, useEffect, useMemo } from 'react';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useFonts } from 'expo-font';
@@ -27,7 +27,7 @@ export { ErrorBoundary } from 'expo-router';
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
-function SplashController() {
+const SplashController = memo(function SplashController() {
   const { status } = useAuth();
   const ready = status !== 'loading';
 
@@ -38,38 +38,50 @@ function SplashController() {
   }, [ready]);
 
   return null;
-}
+});
 
-function RootNavigator() {
+const RootNavigator = memo(function RootNavigator() {
   const { status } = useAuth();
   const theme = useTheme();
 
+  // Must be stable — a new screenOptions object each render makes
+  // React Navigation update state → re-render → max update depth.
+  const screenOptions = useMemo(
+    () => ({
+      headerShown: false,
+      contentStyle: { backgroundColor: theme.colors.canvas },
+      animation: theme.reduceMotion ? ('none' as const) : ('fade' as const),
+    }),
+    [theme.colors.canvas, theme.reduceMotion],
+  );
+
+  const showAuth =
+    status === 'misconfigured' ||
+    status === 'unauthenticated' ||
+    status === 'loading';
+  const showOnboarding = status === 'needs_onboarding';
+  const showApp = status === 'authenticated';
+
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-        contentStyle: { backgroundColor: theme.colors.canvas },
-        animation: theme.reduceMotion ? 'none' : 'fade',
-      }}
-    >
+    <Stack screenOptions={screenOptions}>
       <Stack.Screen name="index" />
 
-      <Stack.Protected guard={status === 'misconfigured' || status === 'unauthenticated' || status === 'loading'}>
+      <Stack.Protected guard={showAuth}>
         <Stack.Screen name="(auth)" />
       </Stack.Protected>
 
-      <Stack.Protected guard={status === 'needs_onboarding'}>
+      <Stack.Protected guard={showOnboarding}>
         <Stack.Screen name="(onboarding)" />
       </Stack.Protected>
 
-      <Stack.Protected guard={status === 'authenticated'}>
+      <Stack.Protected guard={showApp}>
         <Stack.Screen name="(app)" />
       </Stack.Protected>
 
       <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
     </Stack>
   );
-}
+});
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({

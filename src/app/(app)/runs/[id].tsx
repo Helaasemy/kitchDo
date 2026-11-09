@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -12,7 +12,7 @@ import {
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { DateTime } from 'luxon';
 
-import { Button, DueCountdownRing, Screen, SyncBanner } from '@/components/ui';
+import { Button, Screen, SyncBanner } from '@/components/ui';
 import { useTheme } from '@/design';
 import { useAuth } from '@/features/auth';
 import {
@@ -25,7 +25,7 @@ import {
   type RunItemView,
 } from '@/features/runs';
 import type { RunItemOutcome } from '@/domain/runProgress';
-import { getDeviceTimeZone, getDueCountdown } from '@/lib/dates';
+import { getDeviceTimeZone } from '@/lib/dates';
 import { goBackOr } from '@/lib/navigation';
 import { t } from '@/i18n';
 
@@ -46,21 +46,18 @@ export default function RunExecutionScreen() {
   const { user, kitchenId } = useAuth();
   const copy = t().runs;
 
-  const todayCopy = t().today;
   const [detail, setDetail] = useState<RunDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [modal, setModal] = useState<NoteModal>(null);
   const [note, setNote] = useState('');
-  const [now, setNow] = useState(() => DateTime.now());
 
   const load = useCallback(async () => {
     if (!user?.id || !runId) return;
     setLoading(true);
     try {
       setDetail(await getRunDetail(user.id, runId));
-      setNow(DateTime.now());
     } finally {
       setLoading(false);
     }
@@ -71,11 +68,6 @@ export default function RunExecutionScreen() {
       void load();
     }, [load]),
   );
-
-  useEffect(() => {
-    const id = setInterval(() => setNow(DateTime.now()), 30_000);
-    return () => clearInterval(id);
-  }, []);
 
   const dueLabel = useMemo(() => {
     if (!detail) return '';
@@ -95,17 +87,6 @@ export default function RunExecutionScreen() {
     if (detail.localDate === today) return window || '';
     return window ? `${detail.localDate} · ${window}` : detail.localDate;
   }, [detail]);
-
-  const countdown = useMemo(() => {
-    if (!detail) return null;
-    return getDueCountdown(detail.dueAt, {
-      now,
-      finished: detail.state === 'finished' || detail.state === 'cancelled',
-      dueIn: todayCopy.dueIn,
-      overdueBy: todayCopy.overdueBy,
-      scheduledFor: detail.scheduledFor,
-    });
-  }, [detail, now, todayCopy.dueIn, todayCopy.overdueBy]);
 
   const sections = useMemo(() => {
     if (!detail) return [] as { title: string | null; items: RunItemView[] }[];
@@ -351,14 +332,6 @@ export default function RunExecutionScreen() {
                   : ''}
               </Text>
             </View>
-            {countdown?.shortLabel ? (
-              <DueCountdownRing
-                shortLabel={countdown.shortLabel}
-                progress={countdown.progress}
-                urgency={countdown.urgency}
-                size={52}
-              />
-            ) : null}
           </View>
 
           {sections.length === 0 ? (

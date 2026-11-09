@@ -37,71 +37,85 @@ const idleStatus: SyncStatus = {
   lastSyncedAt: null,
 };
 
+function statusEqual(a: SyncStatus, b: SyncStatus): boolean {
+  return (
+    a.kind === b.kind &&
+    a.pendingCount === b.pendingCount &&
+    a.lastError === b.lastError &&
+    a.lastSyncedAt === b.lastSyncedAt
+  );
+}
+
 export function SyncProvider({ children }: { children: ReactNode }) {
   const { user, onboarding, status: authStatus } = useAuth();
   const kitchenId = onboarding?.kitchenId ?? null;
   const userId = user?.id ?? null;
   const [status, setStatus] = useState<SyncStatus>(idleStatus);
   const busy = useRef(false);
-  const waiters = useRef<Array<() => void>>([]);
+  const queued = useRef(false);
+
+  const applyStatus = useCallback((next: SyncStatus) => {
+    setStatus((prev) => (statusEqual(prev, next) ? prev : next));
+  }, []);
 
   const refresh = useCallback(async () => {
     if (!userId || !kitchenId || authStatus !== 'authenticated') {
-      setStatus(idleStatus);
+      applyStatus(idleStatus);
       return;
     }
+
     if (busy.current) {
-      await new Promise<void>((resolve) => {
-        waiters.current.push(resolve);
-      });
+      queued.current = true;
       return;
     }
+
     busy.current = true;
-    setStatus(await buildSyncStatus(userId, kitchenId, { syncing: true }));
-
     try {
-      const zone = getDeviceTimeZone();
-      const today = localDateString(nowLocal(zone));
-      const from = localDateString(nowLocal(zone).minus({ days: 7 }));
-      const to = localDateString(nowLocal(zone).plus({ days: 14 }));
+      do {
+        queued.current = false;
+        const zone = getDeviceTimeZone();
+        const today = localDateString(nowLocal(zone));
+        const from = localDateString(nowLocal(zone).minus({ days: 7 }));
+        const to = localDateString(nowLocal(zone).plus({ days: 14 }));
 
-      const ensured = await ensureScheduledOccurrences(
-        kitchenId,
-        from,
-        to,
-        zone,
-      );
-      const flush = await flushOutbox(userId, kitchenId);
-      const pull = await pullKitchenCache(userId, kitchenId, {
-        fromDate: from,
-        toDate: today,
-      });
+        const ensured = await ensureScheduledOccurrences(
+          kitchenId,
+          from,
+          to,
+          zone,
+        );
+        const flush = await flushOutbox(userId, kitchenId);
+        const pull = await pullKitchenCache(userId, kitchenId, {
+          fromDate: from,
+          toDate: today,
+        });
 
-      try {
-        const { getRemindersEnabled } = await import('@/features/settings/api');
-        const { reconcileReminders } = await import('@/lib/notifications');
-        const enabled = await getRemindersEnabled(userId);
-        if (enabled && !ensured.offline && !pull.offline) {
-          await reconcileReminders({ userId, kitchenId, enabled: true });
+        try {
+          const { getRemindersEnabled } = await import('@/features/settings/api');
+          const { reconcileReminders } = await import('@/lib/notifications');
+          const enabled = await getRemindersEnabled(userId);
+          if (enabled && !ensured.offline && !pull.offline) {
+            await reconcileReminders({ userId, kitchenId, enabled: true });
+          }
+        } catch {
+          /* reminders are best-effort */
         }
-      } catch {
-        /* reminders are best-effort */
-      }
 
-      const offline = ensured.offline || flush.offline || pull.offline;
-      const error = flush.error ?? pull.error ?? ensured.error;
-      setStatus(
-        await buildSyncStatus(userId, kitchenId, {
-          offline,
-          error: offline ? error : flush.error ?? pull.error,
-        }),
-      );
+        const offline = ensured.offline || flush.offline || pull.offline;
+        const error = flush.error ?? pull.error ?? ensured.error;
+        // Skip intermediate "syncing" status — it re-rendered the whole
+        // navigator tree and tripped max update depth with Stack options.
+        applyStatus(
+          await buildSyncStatus(userId, kitchenId, {
+            offline,
+            error: offline ? error : flush.error ?? pull.error,
+          }),
+        );
+      } while (queued.current);
     } finally {
       busy.current = false;
-      const pending = waiters.current.splice(0);
-      pending.forEach((resolve) => resolve());
     }
-  }, [userId, kitchenId, authStatus]);
+  }, [userId, kitchenId, authStatus, applyStatus]);
 
   const retry = useCallback(async () => {
     await refresh();

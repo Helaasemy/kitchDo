@@ -1,10 +1,11 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   ScrollView,
   View,
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
+import { DateTime } from 'luxon';
 
 import {
   Chip,
@@ -17,10 +18,40 @@ import {
 import { useTheme } from '@/design';
 import { useAuth } from '@/features/auth';
 import { listHistory, type HistoryRow } from '@/features/history/api';
+import { listRecentTicks, type TaskTick } from '@/features/recurring';
+import { getDeviceTimeZone } from '@/lib/dates';
 import { useSync } from '@/lib/sync';
 import { t, tone } from '@/i18n';
 
 type Filter = 'all' | 'finished' | 'unfinished';
+
+type Entry =
+  | { kind: 'run'; key: string; localDate: string; row: HistoryRow }
+  | { kind: 'tick'; key: string; localDate: string; tick: TaskTick; time: string };
+
+/** Runs and recurring ticks in one list, newest day first. */
+function mergeEntries(rows: HistoryRow[], ticks: TaskTick[]): Entry[] {
+  const zone = getDeviceTimeZone();
+  const entries: Entry[] = [
+    ...rows.map((row) => ({
+      kind: 'run' as const,
+      key: `run:${row.id}`,
+      localDate: row.localDate,
+      row,
+    })),
+    ...ticks.map((tick) => {
+      const at = DateTime.fromISO(tick.tickedAt).setZone(zone);
+      return {
+        kind: 'tick' as const,
+        key: `tick:${tick.itemId}:${tick.periodKey}`,
+        localDate: at.toFormat('yyyy-MM-dd'),
+        time: at.toFormat('HH:mm'),
+        tick,
+      };
+    }),
+  ];
+  return entries.sort((a, b) => b.localDate.localeCompare(a.localDate));
+}
 
 export default function HistoryScreen() {
   const theme = useTheme();
@@ -28,9 +59,11 @@ export default function HistoryScreen() {
   const { refresh } = useSync();
   const copy = t().history;
 
-  const [rows, setRows] = useState<HistoryRow[]>([]);
+  const [rows, setRows] = useState<Entry[]>([]);
   const [filter, setFilter] = useState<Filter>('all');
   const [loading, setLoading] = useState(true);
+  const hasLoaded = useRef(false);
+  const lastFilter = useRef<Filter>(filter);
 
   const load = useCallback(async () => {
     if (!user?.id || !kitchenId) {
@@ -38,14 +71,19 @@ export default function HistoryScreen() {
       setLoading(false);
       return;
     }
-    setLoading(true);
+    const filterChanged = lastFilter.current !== filter;
+    lastFilter.current = filter;
+    if (!hasLoaded.current || filterChanged) setLoading(true);
     try {
       await refresh();
-      setRows(
-        await listHistory(user.id, kitchenId, {
-          state: filter,
-        }),
-      );
+      const [runs, ticks] = await Promise.all([
+        listHistory(user.id, kitchenId, { state: filter }),
+        filter === 'unfinished'
+          ? Promise.resolve([] as TaskTick[])
+          : listRecentTicks(user.id, kitchenId),
+      ]);
+      setRows(mergeEntries(runs, ticks));
+      hasLoaded.current = true;
     } finally {
       setLoading(false);
     }
@@ -105,14 +143,27 @@ export default function HistoryScreen() {
               alignItems: 'stretch',
             }}
           >
-            {rows.map((row) => (
-              <ListRow
-                key={row.id}
-                title={row.title}
-                subtitle={`${row.localDate} · ${row.summary}`}
-                onPress={() => router.push(`/(app)/runs/${row.id}`)}
-              />
-            ))}
+            {rows.map((entry) =>
+              entry.kind === 'run' ? (
+                <ListRow
+                  key={entry.key}
+                  title={entry.row.title}
+                  subtitle={`${entry.localDate} · ${entry.row.summary}`}
+                  onPress={() => router.push(`/(app)/runs/${entry.row.id}`)}
+                />
+              ) : (
+                <ListRow
+                  key={entry.key}
+                  title={entry.tick.title}
+                  subtitle={[
+                    entry.localDate,
+                    entry.tick.templateTitle,
+                    t().recurring[entry.tick.frequency],
+                    t().recurring.historyTicked.replace('{time}', entry.time),
+                  ].join(' · ')}
+                />
+              ),
+            )}
           </ScrollView>
         )}
       </View>

@@ -94,8 +94,24 @@ async function resolveOnboarding(userId: string): Promise<OnboardingDraft | null
   return local;
 }
 
+function onboardingEqual(
+  a: OnboardingDraft | null,
+  b: OnboardingDraft | null,
+): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return (
+    a.completed === b.completed &&
+    a.mode === b.mode &&
+    a.displayName === b.displayName &&
+    a.kitchenName === b.kitchenName &&
+    a.kitchenId === b.kitchenId &&
+    a.kitchenRevision === b.kitchenRevision
+  );
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const config = tryReadSupabaseConfig();
+  const config = useMemo(() => tryReadSupabaseConfig(), []);
   const [session, setSession] = useState<Session | null>(null);
   const [onboarding, setOnboarding] = useState<OnboardingDraft | null>(null);
   const [booting, setBooting] = useState(config.ok);
@@ -106,7 +122,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setOnboarding(null);
       return;
     }
-    setOnboarding(await resolveOnboarding(uid));
+    const next = await resolveOnboarding(uid);
+    setOnboarding((prev) => (onboardingEqual(prev, next) ? prev : next));
   }, [session?.user?.id]);
 
   const setOnboardingDraft = useCallback(
@@ -114,7 +131,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const uid = session?.user?.id;
       if (!uid) return;
       await saveOnboardingState(uid, draft);
-      setOnboarding(draft);
+      setOnboarding((prev) => (onboardingEqual(prev, draft) ? prev : draft));
     },
     [session?.user?.id],
   );
@@ -125,20 +142,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const supabase = getSupabase();
     let active = true;
 
-    supabase.auth.getSession().then(async ({ data }) => {
-      if (!active) return;
-      setSession(data.session);
-      if (data.session?.user) {
-        setOnboarding(await resolveOnboarding(data.session.user.id));
-      }
-      setBooting(false);
-    });
-
     const { data: sub } = supabase.auth.onAuthStateChange(
-      async (_event, next) => {
-        setSession(next);
+      async (event, next) => {
+        if (!active) return;
+
+        setSession((prev) => {
+          if (prev?.access_token === next?.access_token && prev?.user?.id === next?.user?.id) {
+            return prev;
+          }
+          return next;
+        });
+
+        // Token refresh must not re-fetch profile/kitchen — that churned context
+        // and made the whole app look like it was continuously re-rendering.
+        if (event === 'TOKEN_REFRESHED') {
+          setBooting(false);
+          return;
+        }
+
         if (next?.user) {
-          setOnboarding(await resolveOnboarding(next.user.id));
+          const draft = await resolveOnboarding(next.user.id);
+          if (!active) return;
+          setOnboarding((prev) => (onboardingEqual(prev, draft) ? prev : draft));
         } else {
           setOnboarding(null);
         }
@@ -237,13 +262,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [session?.user?.id],
   );
 
+  const configError = config.ok ? null : config.error.message;
+
   const value = useMemo<AuthContextValue>(
     () => ({
       status,
       session,
       user: session?.user ?? null,
       onboarding,
-      configError: config.ok ? null : config.error.message,
+      configError,
       kitchenMode: onboarding?.mode ?? 'home',
       kitchenId: onboarding?.kitchenId ?? null,
       signIn,
@@ -259,7 +286,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       status,
       session,
       onboarding,
-      config,
+      configError,
       signIn,
       signUp,
       signOut,

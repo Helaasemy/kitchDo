@@ -5,6 +5,16 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Button, Screen } from '@/components/ui';
 import { useTheme } from '@/design';
 import { useAuth } from '@/features/auth';
+import { isLibraryCopy } from '@/features/catalog';
+import {
+  countDone,
+  FrequencyTabs,
+  RecurringTaskRow,
+  TASK_FREQUENCIES,
+  useRecurringTasks,
+  type FrequencyTab,
+  type TaskFrequency,
+} from '@/features/recurring';
 import {
   findOpenRunForTemplate,
   startManualRunFromTemplate,
@@ -12,6 +22,8 @@ import {
 import { getTemplate, type TemplateDetail } from '@/features/templates/api';
 import { goBackOr } from '@/lib/navigation';
 import { t } from '@/i18n';
+
+type TabKey = 'all' | TaskFrequency;
 
 function stateLabel(state: TemplateDetail['state']): string {
   const copy = t().templates;
@@ -25,18 +37,25 @@ export default function TemplateHubScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const templateId = String(id);
   const { kitchenId, user } = useAuth();
+  const userId = user?.id;
   const copy = t().templates;
+  const recurringCopy = t().recurring;
 
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [detail, setDetail] = useState<TemplateDetail | null>(null);
   const [openRunId, setOpenRunId] = useState<string | null>(null);
+  const [tab, setTab] = useState<TabKey>('all');
+  const [libraryCopy, setLibraryCopy] = useState(false);
+  const recurring = useRecurringTasks(userId, kitchenId, templateId);
+  const reloadRecurring = recurring.reload;
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
+      await reloadRecurring();
       const tmpl = await getTemplate(templateId);
       setDetail(tmpl);
       if (!tmpl) {
@@ -45,13 +64,13 @@ export default function TemplateHubScreen() {
         return;
       }
 
-      if (user?.id && kitchenId) {
-        const open = await findOpenRunForTemplate(
-          user.id,
-          kitchenId,
-          templateId,
-        );
+      if (userId && kitchenId) {
+        const [open, fromLibrary] = await Promise.all([
+          findOpenRunForTemplate(userId, kitchenId, templateId),
+          isLibraryCopy(userId, kitchenId, templateId),
+        ]);
         setOpenRunId(open?.runId ?? null);
+        setLibraryCopy(fromLibrary);
       } else {
         setOpenRunId(null);
       }
@@ -60,7 +79,7 @@ export default function TemplateHubScreen() {
     } finally {
       setLoading(false);
     }
-  }, [templateId, user?.id, kitchenId]);
+  }, [templateId, userId, kitchenId, reloadRecurring]);
 
   useFocusEffect(
     useCallback(() => {
@@ -124,6 +143,25 @@ export default function TemplateHubScreen() {
     sectionCount === 1
       ? copy.hubSectionCountOne
       : copy.hubSectionCount.replace('{count}', String(sectionCount));
+
+  const recurringById = new Map(recurring.tasks.map((task) => [task.itemId, task]));
+  const sectionTitleById = new Map(
+    (detail?.sections ?? []).map((s) => [s.id, s.title]),
+  );
+  const frequencyTabs: FrequencyTab<TabKey>[] = [
+    { key: 'all', label: recurringCopy.tabAll },
+    ...TASK_FREQUENCIES.flatMap((f) => {
+      const tasks = recurring.tasks.filter((task) => task.frequency === f);
+      return tasks.length > 0
+        ? [{ key: f, label: recurringCopy[f], badge: `${countDone(tasks)}/${tasks.length}` }]
+        : [];
+    }),
+  ];
+  const activeTab = frequencyTabs.some((x) => x.key === tab) ? tab : 'all';
+  const tabTasks =
+    activeTab === 'all'
+      ? []
+      : recurring.tasks.filter((task) => task.frequency === activeTab);
 
   return (
     <Screen scroll>
@@ -265,14 +303,66 @@ export default function TemplateHubScreen() {
             variant="secondary"
             onPress={() => router.push(`/(app)/(tabs)/templates/${templateId}`)}
           />
-          <Button
-            label={copy.addSchedule}
-            variant="secondary"
-            onPress={() =>
-              router.push(`/(app)/(tabs)/templates/${templateId}/schedule`)
-            }
-          />
+          {!libraryCopy ? (
+            <Button
+              label={copy.addSchedule}
+              variant="secondary"
+              onPress={() =>
+                router.push(`/(app)/(tabs)/templates/${templateId}/schedule`)
+              }
+            />
+          ) : null}
         </View>
+
+        {itemCount > 0 ? (
+          <View style={{ gap: theme.space.sm }}>
+            {frequencyTabs.length > 1 ? (
+              <FrequencyTabs tabs={frequencyTabs} value={activeTab} onChange={setTab} />
+            ) : null}
+            {activeTab === 'all'
+              ? detail?.items.map((item) => {
+                  const task = recurringById.get(item.id);
+                  const section = item.sectionId
+                    ? sectionTitleById.get(item.sectionId)
+                    : null;
+                  const frequencyLabel = task
+                    ? recurringCopy[task.frequency]
+                    : recurringCopy.oneOff;
+                  return (
+                    <RecurringTaskRow
+                      key={item.id}
+                      title={item.title}
+                      caption={[frequencyLabel, section].filter(Boolean).join(' · ')}
+                      done={task?.done ?? false}
+                      onToggle={task ? () => void recurring.toggle(task) : undefined}
+                    />
+                  );
+                })
+              : tabTasks.map((task) => (
+                  <RecurringTaskRow
+                    key={task.itemId}
+                    title={task.title}
+                    caption={task.sectionTitle}
+                    done={task.done}
+                    onToggle={() => void recurring.toggle(task)}
+                  />
+                ))}
+            {recurring.tasks.length > 0 ? (
+              <Text
+                style={{
+                  fontFamily: theme.fonts.body,
+                  fontSize: theme.typography.caption.fontSize,
+                  color: theme.colors.inkSubtle,
+                }}
+                allowFontScaling
+              >
+                {recurring.tasks.length < itemCount
+                  ? `${recurringCopy.oneOffHint} ${recurringCopy.localNote}`
+                  : recurringCopy.localNote}
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
       </View>
     </Screen>
   );

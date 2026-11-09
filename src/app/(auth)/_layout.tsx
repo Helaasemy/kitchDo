@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Stack } from 'expo-router';
 
 import { useTheme } from '@/design';
@@ -5,13 +6,16 @@ import { useTheme } from '@/design';
 export default function AuthLayout() {
   const theme = useTheme();
 
-  return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-        contentStyle: { backgroundColor: theme.colors.canvas },
-        animation: theme.reduceMotion ? 'none' : 'slide_from_right',
-      }}
-    />
+  const screenOptions = useMemo(
+    () => ({
+      headerShown: false,
+      contentStyle: { backgroundColor: theme.colors.canvas },
+      animation: theme.reduceMotion
+        ? ('none' as const)
+        : ('slide_from_right' as const),
+    }),
+    [theme.colors.canvas, theme.reduceMotion],
   );
+
+  return <Stack screenOptions={screenOptions} />;
 }

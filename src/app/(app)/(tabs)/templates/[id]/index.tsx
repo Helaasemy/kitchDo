@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -36,6 +36,19 @@ import {
   type TemplateItemInput,
   type TemplateSectionInput,
 } from '@/features/templates/api';
+import {
+  forgetTemplateSource,
+  isLibraryCopy,
+  noteTemplateSaved,
+  templateSignature,
+} from '@/features/catalog';
+import {
+  clearTemplateFrequencies,
+  getTemplateFrequencies,
+  saveTemplateFrequencies,
+  TASK_FREQUENCIES,
+  type TaskFrequency,
+} from '@/features/recurring';
 import { newId } from '@/lib/ids';
 import { goBackOr } from '@/lib/navigation';
 import { t } from '@/i18n';
@@ -46,6 +59,8 @@ type DraftItem = {
   sectionId: string | null;
   title: string;
   instructions: string;
+  /** `null` = one-off, done with Use now. */
+  frequency: TaskFrequency | null;
 };
 
 type DraftSection = {
@@ -61,8 +76,10 @@ export default function TemplateBuilderScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const templateId = String(id);
   const { kitchenId, user } = useAuth();
+  const userId = user?.id;
   const { status: syncStatus } = useSync();
   const copy = t().templates;
+  const recurringCopy = t().recurring;
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -83,6 +100,7 @@ export default function TemplateBuilderScreen() {
   const [pasteRaw, setPasteRaw] = useState('');
   const [afterAction, setAfterAction] = useState<AfterAction>(null);
   const [afterOpenRunId, setAfterOpenRunId] = useState<string | null>(null);
+  const [libraryCopy, setLibraryCopy] = useState(false);
 
   const readOnly = state === 'archived';
   const alreadyUsed = publishedRevision != null;
@@ -95,10 +113,15 @@ export default function TemplateBuilderScreen() {
     setLoading(true);
     setError(null);
     try {
-      const [cats, detail] = await Promise.all([
+      const [cats, detail, frequencies, fromLibrary] = await Promise.all([
         listCategories(kitchenId),
         getTemplate(templateId),
+        userId
+          ? getTemplateFrequencies(userId, kitchenId, templateId)
+          : Promise.resolve({} as Record<string, TaskFrequency>),
+        userId ? isLibraryCopy(userId, kitchenId, templateId) : Promise.resolve(false),
       ]);
+      setLibraryCopy(fromLibrary);
       setCategories(cats);
       if (detail) {
         setExists(true);
@@ -122,6 +145,7 @@ export default function TemplateBuilderScreen() {
             sectionId: i.sectionId,
             title: i.title,
             instructions: i.instructions ?? '',
+            frequency: frequencies[i.id] ?? null,
           })),
         );
       } else {
@@ -135,7 +159,7 @@ export default function TemplateBuilderScreen() {
     } finally {
       setLoading(false);
     }
-  }, [kitchenId, templateId]);
+  }, [kitchenId, templateId, userId]);
 
   useEffect(() => {
     void load();
@@ -181,6 +205,37 @@ export default function TemplateBuilderScreen() {
     setExists(true);
     setRevision(result.revision);
     setState((prev) => (prev === 'archived' ? prev : prev === 'active' ? 'active' : 'draft'));
+    if (userId) {
+      const sectionTitles = new Map(payload.sections.map((s) => [s.id, s.title]));
+      const frequencyById = new Map(items.map((i) => [i.id, i.frequency]));
+      await saveTemplateFrequencies({
+        userId,
+        kitchenId,
+        templateId,
+        templateTitle: title.trim(),
+        tasks: payload.items.map((i) => ({
+          itemId: i.id,
+          frequency: frequencyById.get(i.id) ?? null,
+          title: i.title,
+          sectionTitle: i.section_id ? (sectionTitles.get(i.section_id) ?? null) : null,
+          sortOrder: i.sort_order,
+        })),
+      });
+      await noteTemplateSaved(
+        userId,
+        kitchenId,
+        templateId,
+        templateSignature({
+          title,
+          sections: payload.sections,
+          items: payload.items.map((i) => ({
+            sectionId: i.section_id,
+            title: i.title,
+            frequency: frequencyById.get(i.id) ?? null,
+          })),
+        }),
+      );
+    }
     return result.revision;
   };
 
@@ -220,17 +275,24 @@ export default function TemplateBuilderScreen() {
     setAfterAction('published');
   };
 
-  const onSaveDraft = async () => {
+  /** `saving` state lags a frame; the ref blocks a second tap creating a duplicate. */
+  const savingRef = useRef(false);
+  const runSave = async (task: () => Promise<void>) => {
+    if (savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
     setError(null);
     try {
-      await commitSaveDraft();
+      await task();
     } catch (e) {
       setError(e instanceof Error ? e.message : t().common.errorGeneric);
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   };
+
+  const onSaveDraft = () => runSave(commitSaveDraft);
 
   const onPublish = async () => {
     const payload = buildPayload();
@@ -238,15 +300,7 @@ export default function TemplateBuilderScreen() {
       setError(copy.needItems);
       return;
     }
-    setSaving(true);
-    setError(null);
-    try {
-      await commitPublish();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t().common.errorGeneric);
-    } finally {
-      setSaving(false);
-    }
+    await runSave(commitPublish);
   };
 
   /** For templates already in use: always save draft + publish this template. */
@@ -260,15 +314,7 @@ export default function TemplateBuilderScreen() {
       setError(copy.needItems);
       return;
     }
-    setSaving(true);
-    setError(null);
-    try {
-      await commitPublish();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t().common.errorGeneric);
-    } finally {
-      setSaving(false);
-    }
+    await runSave(commitPublish);
   };
 
   const onDuplicate = async () => {
@@ -297,6 +343,10 @@ export default function TemplateBuilderScreen() {
               templateId,
               expectedRevision: revision,
             });
+            if (userId && kitchenId) {
+              await clearTemplateFrequencies(userId, kitchenId, templateId);
+              await forgetTemplateSource(userId, kitchenId, templateId);
+            }
             router.replace('/(app)/(tabs)/templates');
           } catch (e) {
             setError(e instanceof Error ? e.message : t().common.errorGeneric);
@@ -345,7 +395,14 @@ export default function TemplateBuilderScreen() {
     const id = newId();
     setItems((prev) => [
       ...prev,
-      { key: id, id, sectionId, title: '', instructions: '' },
+      {
+        key: id,
+        id,
+        sectionId,
+        title: '',
+        instructions: '',
+        frequency: prev.at(-1)?.frequency ?? null,
+      },
     ]);
   };
 
@@ -355,19 +412,23 @@ export default function TemplateBuilderScreen() {
       setPasteOpen(false);
       return;
     }
-    setItems((prev) => [
-      ...prev,
-      ...lines.map((line) => {
-        const id = newId();
-        return {
-          key: id,
-          id,
-          sectionId: null,
-          title: line,
-          instructions: '',
-        };
-      }),
-    ]);
+    setItems((prev) => {
+      const frequency = prev.at(-1)?.frequency ?? null;
+      return [
+        ...prev,
+        ...lines.map((line) => {
+          const id = newId();
+          return {
+            key: id,
+            id,
+            sectionId: null,
+            title: line,
+            instructions: '',
+            frequency,
+          };
+        }),
+      ];
+    });
     setPasteRaw('');
     setPasteOpen(false);
   };
@@ -469,6 +530,51 @@ export default function TemplateBuilderScreen() {
               )
             }
           />
+          <View style={{ gap: theme.space.xs }}>
+            <Text
+              style={{
+                fontFamily: theme.fonts.label,
+                fontSize: theme.typography.caption.fontSize,
+                color: theme.colors.inkSubtle,
+              }}
+              allowFontScaling
+            >
+              {recurringCopy.frequencyLabel}
+            </Text>
+            {readOnly ? (
+              <Text
+                style={{
+                  fontFamily: theme.fonts.body,
+                  fontSize: theme.typography.bodySmall.fontSize,
+                  color: theme.colors.inkMuted,
+                }}
+                allowFontScaling
+              >
+                {item.frequency ? recurringCopy[item.frequency] : recurringCopy.oneOff}
+              </Text>
+            ) : (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ gap: theme.space.sm }}
+              >
+                {([null, ...TASK_FREQUENCIES] as (TaskFrequency | null)[]).map((f) => (
+                  <CatChip
+                    key={f ?? 'once'}
+                    label={f ? recurringCopy[f] : recurringCopy.oneOff}
+                    selected={item.frequency === f}
+                    onPress={() =>
+                      setItems((prev) =>
+                        prev.map((i) =>
+                          i.key === item.key ? { ...i, frequency: f } : i,
+                        ),
+                      )
+                    }
+                  />
+                ))}
+              </ScrollView>
+            )}
+          </View>
           {sections.length > 0 && !readOnly ? (
             <ScrollView
               horizontal
@@ -505,7 +611,7 @@ export default function TemplateBuilderScreen() {
         </View>
       </ScaleDecorator>
     ),
-    [copy, readOnly, sections, theme],
+    [copy, recurringCopy, readOnly, sections, theme],
   );
 
   if (!kitchenId) {
@@ -800,7 +906,7 @@ export default function TemplateBuilderScreen() {
               onPress={onArchive}
             />
           ) : null}
-          {state === 'active' || publishedRevision ? (
+          {(state === 'active' || publishedRevision) && !libraryCopy ? (
             <Button
               label={copy.addSchedule}
               variant="ghost"
@@ -1027,15 +1133,17 @@ export default function TemplateBuilderScreen() {
                 onPress={() => void onUseNow()}
               />
             ) : null}
-            <Button
-              label={copy.addSchedule}
-              variant="secondary"
-              onPress={() => {
-                setAfterAction(null);
-                setAfterOpenRunId(null);
-                router.push(`/(app)/(tabs)/templates/${templateId}/schedule`);
-              }}
-            />
+            {!libraryCopy ? (
+              <Button
+                label={copy.addSchedule}
+                variant="secondary"
+                onPress={() => {
+                  setAfterAction(null);
+                  setAfterOpenRunId(null);
+                  router.push(`/(app)/(tabs)/templates/${templateId}/schedule`);
+                }}
+              />
+            ) : null}
           </View>
         </View>
       </Modal>

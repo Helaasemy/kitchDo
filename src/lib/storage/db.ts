@@ -1,45 +1,40 @@
 import * as SQLite from 'expo-sqlite';
 
-import { SQLITE_MIGRATIONS } from './migrations';
+import { applyMigrations, LATEST_SQLITE_VERSION } from './migrate';
 
 const DB_NAME = 'kdo_local_v1.db';
 
 let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
-
-async function applyMigrations(db: SQLite.SQLiteDatabase): Promise<void> {
-  await db.execAsync(`
-    PRAGMA foreign_keys = ON;
-    CREATE TABLE IF NOT EXISTS schema_migrations (
-      version INTEGER PRIMARY KEY NOT NULL
-    );
-  `);
-
-  const rows = await db.getAllAsync<{ version: number }>(
-    'SELECT version FROM schema_migrations ORDER BY version',
-  );
-  const applied = new Set(rows.map((r) => r.version));
-
-  for (const migration of SQLITE_MIGRATIONS) {
-    if (applied.has(migration.version)) continue;
-    await db.withTransactionAsync(async () => {
-      await db.execAsync(migration.sql);
-      await db.runAsync(
-        'INSERT INTO schema_migrations (version) VALUES (?)',
-        migration.version,
-      );
-    });
-  }
-}
+/** Schema version the open connection was migrated to. */
+let migratedTo = 0;
+let catchUp: Promise<void> | null = null;
 
 export async function getLocalDb(): Promise<SQLite.SQLiteDatabase> {
   if (!dbPromise) {
-    dbPromise = (async () => {
+    const opening = (async () => {
       const db = await SQLite.openDatabaseAsync(DB_NAME);
-      await applyMigrations(db);
+      migratedTo = await applyMigrations(db);
       return db;
     })();
+    dbPromise = opening;
+    // A failed open is retried on the next call instead of sticking.
+    opening.catch(() => {
+      if (dbPromise === opening) dbPromise = null;
+    });
   }
-  return dbPromise;
+  const db = await dbPromise;
+  // A connection opened before newer migrations were bundled catches up once.
+  if (migratedTo < LATEST_SQLITE_VERSION) {
+    catchUp ??= applyMigrations(db)
+      .then((version) => {
+        migratedTo = version;
+      })
+      .finally(() => {
+        catchUp = null;
+      });
+    await catchUp;
+  }
+  return db;
 }
 
 /** Drop all account-scoped rows for a user (sign-out / account switch). */
@@ -53,6 +48,9 @@ export async function clearAccountLocalData(userId: string): Promise<void> {
     await db.runAsync('DELETE FROM cached_revisions WHERE user_id = ?', userId);
     await db.runAsync('DELETE FROM sync_meta WHERE user_id = ?', userId);
     await db.runAsync('DELETE FROM notification_map WHERE user_id = ?', userId);
+    await db.runAsync('DELETE FROM local_recurring_tasks WHERE user_id = ?', userId);
+    await db.runAsync('DELETE FROM local_task_ticks WHERE user_id = ?', userId);
+    await db.runAsync('DELETE FROM local_template_sources WHERE user_id = ?', userId);
   });
 }
 
