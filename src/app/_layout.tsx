@@ -75,6 +75,7 @@ const RootNavigator = memo(function RootNavigator() {
       >
         <Stack screenOptions={screenOptions}>
           <Stack.Screen name="index" />
+          <Stack.Screen name="join" />
 
           <Stack.Protected guard={showAuth}>
             <Stack.Screen name="(auth)" />

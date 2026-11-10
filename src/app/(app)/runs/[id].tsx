@@ -52,7 +52,7 @@ export default function RunExecutionScreen() {
   const theme = useTheme();
   const params = useLocalSearchParams<{ id: string | string[] }>();
   const runId = Array.isArray(params.id) ? params.id[0] : params.id;
-  const { user, kitchenId } = useAuth();
+  const { user, kitchenId, canComplete } = useAuth();
   const insets = useSafeAreaInsets();
   const copy = t().runs;
 
@@ -122,6 +122,10 @@ export default function RunExecutionScreen() {
     outcomeNote?: string | null,
   ) {
     if (!user?.id || !kitchenId) return;
+    if (!canComplete) {
+      Alert.alert(t().invite.cannotComplete);
+      return;
+    }
     setBusyId(item.id);
     try {
       await applyItemOutcome({
@@ -157,6 +161,10 @@ export default function RunExecutionScreen() {
 
   async function toggleDone(item: RunItemView) {
     if (!user?.id || !kitchenId || busyId) return;
+    if (!canComplete) {
+      Alert.alert(t().invite.cannotComplete);
+      return;
+    }
     if (item.outcome === 'pending') {
       await applyOutcome(item, 'done', null);
       return;
@@ -181,6 +189,10 @@ export default function RunExecutionScreen() {
 
   async function confirmModal() {
     if (!modal || !user?.id || !kitchenId) return;
+    if (!canComplete) {
+      Alert.alert(t().invite.cannotComplete);
+      return;
+    }
     if (modal.kind === 'outcome') {
       if (modal.requireNote && !note.trim()) {
         Alert.alert(copy.noteRequired);
@@ -303,6 +315,18 @@ export default function RunExecutionScreen() {
         >
           <View style={{ gap: theme.space.sm }}>
             <ScreenHeader size="display" eyebrow={eyebrow} title={detail.title} />
+            {!canComplete ? (
+              <Text
+                style={{
+                  fontFamily: theme.fonts.bodyMedium,
+                  color: theme.colors.inkMuted,
+                  fontSize: theme.typography.caption.fontSize,
+                }}
+                allowFontScaling
+              >
+                {t().invite.cannotComplete}
+              </Text>
+            ) : null}
             {detail.pendingCreate ? (
               <Text
                 style={{

@@ -69,7 +69,7 @@ export default function TemplateHubScreen() {
   const theme = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const templateId = String(id);
-  const { kitchenId, user } = useAuth();
+  const { kitchenId, user, canEditTemplates, canComplete } = useAuth();
   const userId = user?.id;
   const copy = t().templates;
   const recurringCopy = t().recurring;
@@ -275,19 +275,21 @@ export default function TemplateHubScreen() {
               label={hasOpenRun ? copy.continueRun : copy.useNow}
               icon="play"
               loading={starting}
-              disabled={!hasOpenRun && !canStart}
+              disabled={!hasOpenRun && (!canStart || !canComplete)}
               onPress={() => void onPrimary()}
               style={{ flex: 1 }}
             />
-            <Button
-              label={copy.hubEditShort}
-              icon="pencil"
-              variant="secondary"
-              onPress={() => router.push(`/(app)/(tabs)/templates/${templateId}`)}
-              style={{ flex: 1 }}
-            />
+            {canEditTemplates ? (
+              <Button
+                label={copy.hubEditShort}
+                icon="pencil"
+                variant="secondary"
+                onPress={() => router.push(`/(app)/(tabs)/templates/${templateId}`)}
+                style={{ flex: 1 }}
+              />
+            ) : null}
           </View>
-          {!libraryCopy ? (
+          {canEditTemplates && !libraryCopy ? (
             <Button
               label={copy.addSchedule}
               icon="calendar-outline"

@@ -62,6 +62,13 @@
       ],
       "expo-sqlite",
       [
+        "expo-camera",
+        {
+          "cameraPermission": "KitchDo uses the camera to scan kitchen join codes.",
+          "barcodeScannerEnabled": true
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#FBF6EE",

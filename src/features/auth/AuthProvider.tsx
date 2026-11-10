@@ -10,6 +10,7 @@ import {
 } from 'react';
 import { AppState } from 'react-native';
 import * as Linking from 'expo-linking';
+import { router } from 'expo-router';
 import type { Session, User } from '@supabase/supabase-js';
 
 import type { KitchenMode } from '@/i18n';
@@ -24,10 +25,18 @@ import {
 import { tryReadSupabaseConfig } from '@/lib/supabase';
 import { AUTH_CALLBACK_URL, getSupabase } from '@/lib/supabase/client';
 import { completeOnboarding } from '@/features/onboarding/api';
+import { fetchProfile } from '@/features/kitchens/api';
 import {
-  fetchProfile,
-  listOwnedKitchens,
-} from '@/features/kitchens/api';
+  clearPendingJoinCode,
+  createKitchen as createKitchenRpc,
+  isJoinUrl,
+  isOnboardingComplete,
+  joinKitchen as joinKitchenRpc,
+  listMemberships,
+  loadPendingJoinCode,
+  stashPendingJoinCode,
+  type KitchenMembership,
+} from '@/features/membership';
 import { errorMessage } from '@/lib/errors';
 import {
   loadOnboardingState,
@@ -58,8 +67,14 @@ type AuthContextValue = {
   configError: string | null;
   kitchenMode: KitchenMode;
   kitchenId: string | null;
+  kitchens: KitchenMembership[];
+  membership: KitchenMembership | null;
+  isAdmin: boolean;
+  canComplete: boolean;
+  canEditTemplates: boolean;
   recoveryPending: boolean;
   authLinkError: string | null;
+  pendingJoinCode: string | null;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signUp: (email: string, password: string) => Promise<SignUpResult>;
   signOut: (opts?: {
@@ -72,13 +87,45 @@ type AuthContextValue = {
     displayName: string;
     kitchenName: string;
   }) => Promise<{ error: string | null }>;
+  joinKitchenWithCode: (
+    code: string,
+    displayName?: string,
+  ) => Promise<{ error: string | null; alreadyMember?: boolean }>;
+  createAnotherKitchen: (input: {
+    mode: KitchenMode;
+    name: string;
+  }) => Promise<{ error: string | null }>;
+  switchKitchen: (kitchenId: string) => Promise<void>;
   refreshOnboarding: () => Promise<void>;
   setOnboardingDraft: (draft: OnboardingDraft) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-type ResolveResult = { draft: OnboardingDraft | null; unknown: boolean };
+type ResolveResult = {
+  draft: OnboardingDraft | null;
+  unknown: boolean;
+  kitchens: KitchenMembership[];
+};
+
+function friendlyJoinError(raw: string): string {
+  const copy = t().invite;
+  const lower = raw.toLowerCase();
+  if (lower.includes('invalid join code')) return copy.invalidCode;
+  if (lower.includes('revoked')) return copy.revokedCode;
+  if (lower.includes('expired')) return copy.expiredCode;
+  if (lower.includes('already a member')) return copy.alreadyMember;
+  if (lower.includes('display name')) return t().onboarding.displayNameRequired;
+  return raw || copy.joinFailed;
+}
+
+function pickMembership(
+  kitchens: KitchenMembership[],
+  preferredId?: string | null,
+): KitchenMembership | null {
+  if (kitchens.length === 0) return null;
+  return kitchens.find((k) => k.kitchenId === preferredId) ?? kitchens[0] ?? null;
+}
 
 async function resolveOnboarding(userId: string): Promise<ResolveResult> {
   let local: OnboardingDraft | null = null;
@@ -91,20 +138,24 @@ async function resolveOnboarding(userId: string): Promise<ResolveResult> {
   try {
     const [profile, kitchens] = await Promise.all([
       fetchProfile(userId),
-      listOwnedKitchens(userId),
+      listMemberships(userId),
     ]);
-    const kitchen = kitchens[0] ?? null;
+    const kitchen = pickMembership(kitchens, local?.kitchenId);
+    const completed = isOnboardingComplete({
+      hasProfile: Boolean(profile),
+      kitchenCount: kitchens.length,
+    });
     if (profile && kitchen) {
       const draft: OnboardingDraft = {
-        completed: true,
+        completed,
         mode: kitchen.mode,
         displayName: profile.displayName,
         kitchenName: kitchen.name,
-        kitchenId: kitchen.id,
+        kitchenId: kitchen.kitchenId,
         kitchenRevision: kitchen.revision,
       };
       await saveOnboardingState(userId, draft);
-      return { draft, unknown: false };
+      return { draft, unknown: false, kitchens };
     }
     if (profile && !kitchen) {
       return {
@@ -115,13 +166,15 @@ async function resolveOnboarding(userId: string): Promise<ResolveResult> {
           kitchenName: local?.kitchenName ?? '',
         },
         unknown: false,
+        kitchens,
       };
     }
+    return { draft: local, unknown: false, kitchens };
   } catch {
-    if (!local) return { draft: null, unknown: true };
+    if (!local) return { draft: null, unknown: true, kitchens: [] };
   }
 
-  return { draft: local, unknown: false };
+  return { draft: local, unknown: false, kitchens: [] };
 }
 
 function onboardingEqual(
@@ -159,6 +212,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [offlineUnknown, setOfflineUnknown] = useState(false);
   const [recoveryPending, setRecoveryPending] = useState(false);
   const [authLinkError, setAuthLinkError] = useState<string | null>(null);
+  const [kitchens, setKitchens] = useState<KitchenMembership[]>([]);
+  const [pendingJoinCode, setPendingJoinCode] = useState<string | null>(null);
   const seq = useRef(0);
   const currentUserId = useRef<string | null>(null);
   const lastAuthUrl = useRef<string | null>(null);
@@ -173,13 +228,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const uid = currentUserId.current ?? session?.user?.id;
     if (!uid) {
       setOnboarding(null);
+      setKitchens([]);
       setOfflineUnknown(false);
       return;
     }
     const my = ++seq.current;
-    const { draft, unknown } = await resolveOnboarding(uid);
+    const { draft, unknown, kitchens: nextKitchens } = await resolveOnboarding(uid);
     if (my !== seq.current || currentUserId.current !== uid) return;
     setOfflineUnknown(unknown);
+    setKitchens(nextKitchens);
     applyDraft(uid, draft);
     if (draft?.kitchenId) await hydrateLocalOnly(uid, draft.kitchenId);
   }, [session?.user?.id, applyDraft]);
@@ -227,14 +284,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (event === 'USER_UPDATED' && resolvedFor === uid && uid) return;
 
         if (uid) {
-          const { draft, unknown } = await resolveOnboarding(uid);
+          const { draft, unknown, kitchens: nextKitchens } = await resolveOnboarding(uid);
           if (!active || my !== seq.current) return;
           setOfflineUnknown(unknown);
+          setKitchens(nextKitchens);
           applyDraft(uid, draft);
           if (draft?.kitchenId) await hydrateLocalOnly(uid, draft.kitchenId);
         } else {
           if (!active || my !== seq.current) return;
           setOnboarding(null);
+          setKitchens([]);
           setResolvedFor(null);
           setOfflineUnknown(false);
         }
@@ -279,7 +338,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!config.ok) return;
     let active = true;
     const consume = async (url: string) => {
-      if (!active || !isAuthCallbackUrl(url) || lastAuthUrl.current === url) return;
+      if (!active) return;
+      if (isJoinUrl(url)) {
+        const code = await stashPendingJoinCode(url);
+        if (code) {
+          setPendingJoinCode(code);
+          router.push(`/join/${code}`);
+        }
+        return;
+      }
+      if (!isAuthCallbackUrl(url) || lastAuthUrl.current === url) return;
       lastAuthUrl.current = url;
       const result = await applyAuthUrl(url);
       if (!active) return;
@@ -407,6 +475,80 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  useEffect(() => {
+    void loadPendingJoinCode().then((code) => {
+      if (code) setPendingJoinCode(code);
+    });
+  }, []);
+
+  const switchKitchen = useCallback(
+    async (kitchenId: string) => {
+      const uid = currentUserId.current ?? session?.user?.id;
+      if (!uid) return;
+      const { draft, kitchens: nextKitchens } = await resolveOnboarding(uid);
+      const picked = pickMembership(nextKitchens, kitchenId);
+      if (!picked || !draft) return;
+      const next: OnboardingDraft = {
+        ...draft,
+        completed: true,
+        mode: picked.mode,
+        kitchenName: picked.name,
+        kitchenId: picked.kitchenId,
+        kitchenRevision: picked.revision,
+      };
+      await saveOnboardingState(uid, next);
+      setKitchens(nextKitchens);
+      applyDraft(uid, next);
+      await hydrateLocalOnly(uid, picked.kitchenId);
+    },
+    [session?.user?.id, applyDraft],
+  );
+
+  const joinKitchenWithCode = useCallback(
+    async (code: string, displayName?: string) => {
+      const { data: sessionData } = await getSupabase().auth.getSession();
+      const uid =
+        sessionData.session?.user.id ?? currentUserId.current ?? session?.user?.id;
+      if (!uid) return { error: t().auth.notSignedIn };
+      try {
+        const joined = await joinKitchenRpc({
+          code,
+          displayName: displayName || onboarding?.displayName,
+        });
+        await clearPendingJoinCode();
+        setPendingJoinCode(null);
+        await switchKitchen(joined.kitchenId);
+        await refreshOnboarding();
+        if (joined.alreadyMember) {
+          return { error: null, alreadyMember: true };
+        }
+        return { error: null };
+      } catch (e) {
+        return { error: friendlyJoinError(errorMessage(e)) };
+      }
+    },
+    [session?.user?.id, onboarding, switchKitchen, refreshOnboarding],
+  );
+
+  const createAnotherKitchen = useCallback(
+    async (input: { mode: KitchenMode; name: string }) => {
+      const uid = currentUserId.current ?? session?.user?.id;
+      if (!uid) return { error: t().auth.notSignedIn };
+      try {
+        const created = await createKitchenRpc({
+          name: input.name,
+          mode: input.mode,
+        });
+        await switchKitchen(created.kitchenId);
+        await refreshOnboarding();
+        return { error: null };
+      } catch (e) {
+        return { error: errorMessage(e) };
+      }
+    },
+    [session?.user?.id, switchKitchen, refreshOnboarding],
+  );
+
   const finishOnboarding = useCallback(
     async (input: {
       mode: KitchenMode;
@@ -417,10 +559,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!uid) return { error: t().auth.notSignedIn };
       try {
         const draft = await completeOnboarding({ userId: uid, ...input });
-        const { draft: resolved } = await resolveOnboarding(uid);
+        const { draft: resolved, kitchens: nextKitchens } = await resolveOnboarding(uid);
         if (currentUserId.current !== uid) return { error: null };
         const next = resolved?.completed ? resolved : draft;
         await saveOnboardingState(uid, next);
+        setKitchens(nextKitchens);
         applyDraft(uid, next);
         setOfflineUnknown(false);
         if (next.kitchenId) await hydrateLocalOnly(uid, next.kitchenId);
@@ -433,6 +576,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const configError = config.ok ? null : config.error.message;
+  const membership =
+    kitchens.find((k) => k.kitchenId === onboarding?.kitchenId) ?? kitchens[0] ?? null;
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -441,16 +586,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user: session?.user ?? null,
       onboarding,
       configError,
-      kitchenMode: onboarding?.mode ?? 'home',
-      kitchenId: onboarding?.kitchenId ?? null,
+      kitchenMode: membership?.mode ?? onboarding?.mode ?? 'home',
+      kitchenId: membership?.kitchenId ?? onboarding?.kitchenId ?? null,
+      kitchens,
+      membership,
+      isAdmin: membership?.role === 'admin',
+      canComplete: membership?.canComplete ?? true,
+      canEditTemplates: membership?.canEditTemplates ?? true,
       recoveryPending,
       authLinkError,
+      pendingJoinCode,
       signIn,
       signUp,
       signOut,
       requestPasswordReset,
       updatePassword,
       finishOnboarding,
+      joinKitchenWithCode,
+      createAnotherKitchen,
+      switchKitchen,
       refreshOnboarding,
       setOnboardingDraft,
     }),
@@ -459,14 +613,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session,
       onboarding,
       configError,
+      kitchens,
+      membership,
       recoveryPending,
       authLinkError,
+      pendingJoinCode,
       signIn,
       signUp,
       signOut,
       requestPasswordReset,
       updatePassword,
       finishOnboarding,
+      joinKitchenWithCode,
+      createAnotherKitchen,
+      switchKitchen,
       refreshOnboarding,
       setOnboardingDraft,
     ],

@@ -1,9 +1,7 @@
 import { type ComponentProps, type ComponentRef, useRef, useState } from 'react';
-import { Link } from 'expo-router';
 import {
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   Text,
   TextInput,
   View,
@@ -12,17 +10,17 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 
 import {
   Button,
-  IconButton,
+  ErrorText,
   IconTile,
   PaperCard,
   PasswordField,
   RequirementRow,
-  Logo,
   Screen,
   TextField,
+  Wordmark,
 } from '@/components/ui';
 import { useTheme } from '@/design';
-import { useAuth } from '@/features/auth';
+import { AuthModeToggle, useAuth } from '@/features/auth';
 import type { TaskFrequency } from '@/features/recurring/period';
 import { goBackOr } from '@/lib/navigation';
 import { useT } from '@/i18n';
@@ -58,12 +56,16 @@ export default function SignupScreen() {
     },
     {
       frequency: 'monthly',
-      icon: 'cloud-offline-outline',
-      label: copy.benefitOffline,
+      icon: 'people-outline',
+      label: copy.benefitInvite,
     },
   ];
 
   const goBack = () => goBackOr('/(auth)/login');
+  const contentStyle = {
+    paddingHorizontal: theme.space.xxl,
+    paddingTop: theme.space.xxxl + theme.space.xxl,
+  };
 
   const onSubmit = async () => {
     if (loading) return;
@@ -93,7 +95,7 @@ export default function SignupScreen() {
       style={{ flex: 1, backgroundColor: theme.colors.canvas }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <Screen scroll>
+      <Screen scroll contentStyle={checkEmail ? undefined : contentStyle}>
         {checkEmail ? (
           <View style={{ gap: theme.space.xl, paddingTop: theme.space.xxl }}>
             <IconTile
@@ -135,21 +137,11 @@ export default function SignupScreen() {
           </View>
         ) : (
         <>
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: theme.space.xl,
-          }}
-        >
-          <IconButton
-            name="chevron-back"
-            accessibilityLabel={t().common.back}
-            onPress={goBack}
-          />
-          <Logo size="sm" />
-          <View style={{ width: 44, height: 44 }} />
+        <View style={{ alignItems: 'center', marginBottom: theme.space.xl }}>
+          <Wordmark size="lg" />
+        </View>
+        <View style={{ marginBottom: theme.space.xl }}>
+          <AuthModeToggle value="signup" />
         </View>
 
         <View style={{ gap: theme.space.sm, marginBottom: theme.space.xl }}>
@@ -218,20 +210,7 @@ export default function SignupScreen() {
               />
             </View>
           </View>
-          {error ? (
-            <Text
-              accessibilityLiveRegion="polite"
-              style={{
-                fontFamily: theme.fonts.bodySemiBold,
-                fontSize: theme.typography.caption.fontSize,
-                lineHeight: theme.typography.caption.lineHeight,
-                color: theme.colors.coral,
-              }}
-              allowFontScaling
-            >
-              {error}
-            </Text>
-          ) : null}
+          <ErrorText message={error} boxed />
         </PaperCard>
 
         <View style={{ gap: theme.space.lg, marginBottom: theme.space.xl }}>
@@ -280,39 +259,6 @@ export default function SignupScreen() {
           onPress={onSubmit}
           loading={loading}
         />
-
-        <Link href="/(auth)/login" asChild>
-          <Pressable
-            accessibilityRole="link"
-            style={{
-              minHeight: 44,
-              marginTop: theme.space.md,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Text
-              style={{
-                fontFamily: theme.fonts.bodyMedium,
-                fontSize: theme.typography.bodySmall.fontSize,
-                lineHeight: theme.typography.bodySmall.lineHeight,
-                color: theme.colors.inkMuted,
-                textAlign: 'center',
-              }}
-              allowFontScaling
-            >
-              {copy.haveAccount}{' '}
-              <Text
-                style={{
-                  fontFamily: theme.fonts.bodyExtraBold,
-                  color: theme.colors.primary,
-                }}
-              >
-                {copy.loginAction}
-              </Text>
-            </Text>
-          </Pressable>
-        </Link>
         </>
         )}
       </Screen>

@@ -1,5 +1,15 @@
-import { Text, View } from 'react-native';
-import Ionicons from '@expo/vector-icons/Ionicons';
+import { useCallback, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import {
+  Alert,
+  Linking,
+  Share,
+  Switch,
+  Text,
+  View,
+} from 'react-native';
+import * as Clipboard from 'expo-clipboard';
+import QRCode from 'react-native-qrcode-svg';
 
 import {
   Button,
@@ -8,376 +18,422 @@ import {
   Screen,
   ScreenHeader,
   SectionChip,
+  TextField,
 } from '@/components/ui';
-import { useTheme, type AppTheme } from '@/design';
+import { useTheme } from '@/design';
 import { useAuth } from '@/features/auth';
+import {
+  canLeaveKitchen,
+  createKitchenInvite,
+  formatJoinCode,
+  joinDeepLink,
+  leaveKitchen,
+  listKitchenInvites,
+  listKitchenMembers,
+  removeMember,
+  revokeKitchenInvite,
+  updateMemberPermissions,
+  type KitchenInvite,
+  type KitchenMember,
+} from '@/features/membership';
 import { goBackOr } from '@/lib/navigation';
 import { useT } from '@/i18n';
-
-const noop = () => {};
-
-function initialsFor(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return '?';
-  const first = parts[0][0] ?? '';
-  const last = parts.length > 1 ? (parts[parts.length - 1][0] ?? '') : '';
-  return (first + last).toUpperCase();
-}
-
-function ComingSoonBanner({ theme }: { theme: AppTheme }) {
-  const t = useT();
-  const copy = t().invite;
-  return (
-    <View
-      accessibilityRole="text"
-      accessibilityLabel={`${copy.comingSoonTitle}. ${copy.comingSoonBody}`}
-      style={{
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        gap: theme.space.md,
-        padding: theme.space.lg,
-        borderRadius: theme.radii.xl,
-        backgroundColor: theme.colors.primaryTint,
-      }}
-    >
-      <Ionicons name="time-outline" size={22} color={theme.colors.primary} />
-      <View style={{ flex: 1, gap: 2 }}>
-        <Text
-          style={{
-            fontFamily: theme.fonts.bodyExtraBold,
-            fontSize: theme.typography.bodySmall.fontSize,
-            lineHeight: theme.typography.bodySmall.lineHeight,
-            color: theme.colors.primary,
-          }}
-          allowFontScaling
-        >
-          {copy.comingSoonTitle}
-        </Text>
-        <Text
-          style={{
-            fontFamily: theme.fonts.bodyMedium,
-            fontSize: theme.typography.caption.fontSize,
-            lineHeight: theme.typography.caption.lineHeight,
-            color: theme.colors.ink,
-          }}
-          allowFontScaling
-        >
-          {copy.comingSoonBody}
-        </Text>
-      </View>
-    </View>
-  );
-}
-
-function InviteLinkCard({ theme }: { theme: AppTheme }) {
-  const t = useT();
-  const copy = t().invite;
-  return (
-    <PaperCard
-      style={{
-        borderRadius: theme.radii.xxl,
-        padding: theme.space.xl,
-        opacity: 0.55,
-      }}
-    >
-      <View
-        accessibilityState={{ disabled: true }}
-        pointerEvents="none"
-        style={{ gap: theme.space.lg }}
-      >
-        <Text
-          style={{
-            fontFamily: theme.fonts.bodyExtraBold,
-            fontSize: theme.typography.chip.fontSize,
-            lineHeight: theme.typography.chip.lineHeight,
-            letterSpacing: 0.6,
-            textTransform: 'uppercase',
-            color: theme.colors.inkMuted,
-          }}
-          allowFontScaling
-        >
-          {copy.linkLabel}
-        </Text>
-        <View
-          style={{
-            padding: theme.space.lg,
-            borderRadius: theme.radii.xl,
-            backgroundColor: theme.colors.sand,
-          }}
-        >
-          <Text
-            style={{
-              fontFamily: theme.fonts.bodyMedium,
-              fontSize: 15,
-              color: theme.colors.ink,
-            }}
-            numberOfLines={1}
-            allowFontScaling
-          >
-            {copy.linkPlaceholder}
-          </Text>
-        </View>
-        <View style={{ flexDirection: 'row', gap: theme.space.md }}>
-          <Button
-            label={copy.shareLink}
-            icon="share-outline"
-            onPress={noop}
-            disabled
-            compact
-            style={{ flex: 1 }}
-          />
-          <Button
-            label={copy.copy}
-            icon="copy-outline"
-            variant="secondary"
-            onPress={noop}
-            disabled
-            compact
-            style={{ flex: 1 }}
-          />
-        </View>
-        <Text
-          style={{
-            fontFamily: theme.fonts.body,
-            fontSize: theme.typography.caption.fontSize,
-            lineHeight: theme.typography.caption.lineHeight,
-            color: theme.colors.inkMuted,
-          }}
-          allowFontScaling
-        >
-          {copy.linkNote}
-        </Text>
-      </View>
-    </PaperCard>
-  );
-}
-
-function EmailInviteRow({ theme }: { theme: AppTheme }) {
-  const t = useT();
-  const copy = t().invite;
-  return (
-    <View
-      accessibilityState={{ disabled: true }}
-      pointerEvents="none"
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: theme.space.sm,
-        opacity: 0.55,
-      }}
-    >
-      <View
-        style={{
-          flex: 1,
-          minHeight: 52,
-          justifyContent: 'center',
-          paddingHorizontal: theme.space.lg,
-          borderRadius: 24,
-          borderWidth: 0.5,
-          borderColor: theme.colors.border,
-          backgroundColor: theme.colors.white,
-        }}
-      >
-        <Text
-          style={{
-            fontFamily: theme.fonts.bodyMedium,
-            fontSize: theme.typography.body.fontSize,
-            color: theme.colors.inkSubtle,
-          }}
-          numberOfLines={1}
-          allowFontScaling
-        >
-          {copy.emailPlaceholder}
-        </Text>
-      </View>
-      <View
-        accessibilityRole="button"
-        accessibilityLabel={copy.send}
-        accessibilityState={{ disabled: true }}
-        style={{
-          minHeight: 44,
-          paddingHorizontal: theme.space.lg,
-          borderRadius: theme.radii.pill,
-          backgroundColor: theme.colors.primary,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <Text
-          style={{
-            fontFamily: theme.fonts.bodyBold,
-            fontSize: theme.typography.bodySmall.fontSize,
-            color: '#FFFFFF',
-            includeFontPadding: false,
-          }}
-          allowFontScaling
-        >
-          {copy.send}
-        </Text>
-      </View>
-    </View>
-  );
-}
-
-function MemberRow({
-  theme,
-  name,
-  email,
-}: {
-  theme: AppTheme;
-  name: string;
-  email?: string;
-}) {
-  const t = useT();
-  const copy = t().invite;
-  return (
-    <View
-      accessible
-      accessibilityLabel={[name, copy.you, email, copy.owner].filter(Boolean).join(', ')}
-      style={{
-        minHeight: 72,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: theme.space.md,
-        paddingVertical: theme.space.md,
-        paddingHorizontal: theme.space.xl - 4,
-      }}
-    >
-      <View
-        style={{
-          width: 40,
-          height: 40,
-          borderRadius: 20,
-          backgroundColor: theme.colors.frequency.daily.tint,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <Text
-          style={{
-            fontFamily: theme.fonts.bodyBold,
-            fontSize: theme.typography.bodySmall.fontSize,
-            color: theme.colors.frequency.daily.text,
-          }}
-          allowFontScaling={false}
-        >
-          {initialsFor(name)}
-        </Text>
-      </View>
-      <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
-        <Text
-          style={{
-            fontFamily: theme.fonts.bodyBold,
-            fontSize: theme.typography.body.fontSize,
-            lineHeight: 22,
-            color: theme.colors.ink,
-          }}
-          numberOfLines={1}
-          allowFontScaling
-        >
-          {name}
-          <Text style={{ fontFamily: theme.fonts.bodyMedium, color: theme.colors.inkMuted }}>
-            {` · ${copy.you}`}
-          </Text>
-        </Text>
-        {email ? (
-          <Text
-            style={{
-              fontFamily: theme.fonts.bodyMedium,
-              fontSize: theme.typography.caption.fontSize,
-              lineHeight: theme.typography.caption.lineHeight,
-              color: theme.colors.inkMuted,
-            }}
-            numberOfLines={1}
-            allowFontScaling
-          >
-            {email}
-          </Text>
-        ) : null}
-      </View>
-      <View
-        style={{
-          paddingVertical: 4,
-          paddingHorizontal: 10,
-          borderRadius: 8,
-          backgroundColor: theme.colors.primaryTint,
-        }}
-      >
-        <Text
-          style={{
-            fontFamily: theme.fonts.bodyExtraBold,
-            fontSize: 10,
-            letterSpacing: 0.6,
-            textTransform: 'uppercase',
-            color: theme.colors.primary,
-          }}
-          allowFontScaling
-        >
-          {copy.owner}
-        </Text>
-      </View>
-    </View>
-  );
-}
 
 export default function InviteScreen() {
   const t = useT();
   const theme = useTheme();
-  const { user, onboarding } = useAuth();
+  const {
+    user,
+    onboarding,
+    kitchenId,
+    isAdmin,
+    kitchens,
+    switchKitchen,
+    refreshOnboarding,
+  } = useAuth();
   const copy = t().invite;
+  const userId = user?.id;
 
-  const email = user?.email ?? undefined;
-  const name = onboarding?.displayName?.trim() || email || '';
+  const [canComplete, setCanComplete] = useState(true);
+  const [canEdit, setCanEdit] = useState(false);
+  const [invite, setInvite] = useState<KitchenInvite | null>(null);
+  const [members, setMembers] = useState<KitchenMember[]>([]);
+  const [email, setEmail] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const myRow = members.find((member) => member.userId === userId);
+  const admin = isAdmin || myRow?.role === 'admin';
+
+  const reload = useCallback(async () => {
+    if (!kitchenId) return;
+    const nextMembers = await listKitchenMembers(kitchenId);
+    const amAdmin =
+      isAdmin || nextMembers.some((member) => member.userId === userId && member.role === 'admin');
+    const invites = amAdmin ? await listKitchenInvites(kitchenId) : [];
+    setMembers(nextMembers);
+    setInvite(invites[0] ?? null);
+  }, [kitchenId, isAdmin, userId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void refreshOnboarding();
+      void reload().catch((e) => {
+        Alert.alert(t().common.errorGeneric, e instanceof Error ? e.message : undefined);
+      });
+    }, [reload, refreshOnboarding, t]),
+  );
+
+  const code = invite ? formatJoinCode(invite.code) : null;
+  const deepLink = invite ? joinDeepLink(invite.code) : null;
+
+  const generate = async () => {
+    if (!kitchenId) return;
+    setBusy(true);
+    try {
+      const next = await createKitchenInvite({
+        kitchenId,
+        canComplete,
+        canEditTemplates: canEdit,
+      });
+      setInvite(next);
+    } catch (e) {
+      Alert.alert(copy.joinFailed, e instanceof Error ? e.message : copy.networkRequired);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const copyCode = async () => {
+    if (!code) return;
+    await Clipboard.setStringAsync(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
+  const onLeft = async (nextId?: string) => {
+    if (nextId) await switchKitchen(nextId);
+    goBackOr('/(app)/settings');
+  };
 
   return (
     <Screen scroll contentStyle={{ paddingBottom: theme.space.xxxl }}>
       <View style={{ gap: theme.space.xl }}>
-        <View style={{ alignSelf: 'flex-start' }}>
-          <IconButton
-            name="chevron-back"
-            accessibilityLabel={t().common.back}
-            onPress={() => goBackOr()}
+        <IconButton
+          name="chevron-back"
+          accessibilityLabel={t().common.back}
+          onPress={() => goBackOr()}
+        />
+        <ScreenHeader
+          size="display"
+          eyebrow={onboarding?.kitchenName}
+          title={copy.title}
+        />
+        <Text
+          style={{
+            fontFamily: theme.fonts.body,
+            fontSize: theme.typography.body.fontSize,
+            color: theme.colors.inkMuted,
+          }}
+        >
+          {admin ? copy.subtitle : copy.cannotInvite}
+        </Text>
+
+        {admin ? (
+        <View style={{ gap: theme.space.md }}>
+          <ToggleRow
+            label={copy.canComplete}
+            value={canComplete}
+            onValueChange={setCanComplete}
+          />
+          <ToggleRow
+            label={copy.canEditTemplates}
+            value={canEdit}
+            onValueChange={setCanEdit}
+          />
+          <Button
+            label={invite ? copy.generateAnother : copy.generateCode}
+            onPress={() => void generate()}
+            loading={busy}
           />
         </View>
+        ) : null}
 
-        <View style={{ gap: theme.space.sm }}>
-          <ScreenHeader
-            size="display"
-            eyebrow={onboarding?.kitchenName || undefined}
-            title={copy.title}
-          />
-          <Text
-            style={{
-              fontFamily: theme.fonts.body,
-              fontSize: theme.typography.body.fontSize,
-              lineHeight: theme.typography.body.lineHeight,
-              color: theme.colors.inkMuted,
-            }}
-            allowFontScaling
-          >
-            {copy.subtitle}
-          </Text>
-        </View>
+        {admin && invite && code && deepLink ? (
+          <PaperCard style={{ borderRadius: theme.radii.xxl, padding: theme.space.xl, gap: theme.space.lg }}>
+            <Text
+              style={{
+                fontFamily: theme.fonts.bodyExtraBold,
+                letterSpacing: 0.6,
+                textTransform: 'uppercase',
+                color: theme.colors.inkMuted,
+              }}
+            >
+              {copy.linkLabel}
+            </Text>
+            <Text
+              style={{
+                fontFamily: theme.fonts.bodyBold,
+                fontSize: 28,
+                letterSpacing: 2,
+                color: theme.colors.ink,
+              }}
+            >
+              {code}
+            </Text>
+            <View style={{ alignItems: 'center', paddingVertical: theme.space.md }}>
+              <QRCode value={deepLink} size={180} />
+            </View>
+            <View style={{ flexDirection: 'row', gap: theme.space.md }}>
+              <Button
+                label={copy.shareLink}
+                icon="share-outline"
+                onPress={() => void Share.share({ message: `${code}\n${deepLink}` })}
+                compact
+                style={{ flex: 1 }}
+              />
+              <Button
+                label={copied ? t().common.copied : copy.copy}
+                icon="copy-outline"
+                variant="secondary"
+                onPress={() => void copyCode()}
+                compact
+                style={{ flex: 1 }}
+              />
+            </View>
+            <Button
+              label={copy.revoke}
+              variant="ghost"
+              onPress={() => {
+                void revokeKitchenInvite(invite.id).then(() => {
+                  setInvite(null);
+                  void reload();
+                });
+              }}
+            />
+            <Text
+              style={{
+                fontFamily: theme.fonts.body,
+                fontSize: theme.typography.caption.fontSize,
+                color: theme.colors.inkMuted,
+              }}
+            >
+              {copy.linkNote}
+            </Text>
+          </PaperCard>
+        ) : null}
 
-        <ComingSoonBanner theme={theme} />
-
-        <InviteLinkCard theme={theme} />
-
+        {admin ? (
         <View style={{ gap: theme.space.md }}>
           <SectionChip label={copy.byEmail} />
-          <EmailInviteRow theme={theme} />
+          <View style={{ flexDirection: 'row', gap: theme.space.sm, alignItems: 'flex-end' }}>
+            <View style={{ flex: 1 }}>
+              <TextField
+                label={copy.emailPlaceholder}
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
+              />
+            </View>
+            <Button
+              label={copy.send}
+              compact
+              disabled={!code || !email.trim()}
+              onPress={() => {
+                if (!code) return;
+                const subject = encodeURIComponent(copy.emailSubject);
+                const body = encodeURIComponent(
+                  copy.emailBody
+                    .replace('{kitchen}', onboarding?.kitchenName ?? '')
+                    .replace('{code}', code),
+                );
+                void Linking.openURL(`mailto:${email.trim()}?subject=${subject}&body=${body}`);
+              }}
+            />
+          </View>
         </View>
+        ) : null}
 
-        <View style={{ gap: theme.space.md }}>
-          <SectionChip
-            label={copy.members.replace('{count}', '1')}
-            chipTone={{ background: theme.colors.primary, text: '#FFFFFF' }}
-          />
-          <PaperCard style={{ borderRadius: theme.radii.xxl }}>
-            <MemberRow theme={theme} name={name} email={email !== name ? email : undefined} />
-          </PaperCard>
-        </View>
+        <MemberList
+          members={members}
+          userId={userId}
+          isAdmin={Boolean(admin)}
+          kitchenId={kitchenId}
+          onChanged={reload}
+          otherKitchenId={kitchens.find((k) => k.kitchenId !== kitchenId)?.kitchenId}
+          onLeft={onLeft}
+        />
       </View>
     </Screen>
+  );
+}
+
+function ToggleRow({
+  label,
+  value,
+  onValueChange,
+}: {
+  label: string;
+  value: boolean;
+  onValueChange: (next: boolean) => void;
+}) {
+  const theme = useTheme();
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        minHeight: 52,
+      }}
+    >
+      <Text style={{ fontFamily: theme.fonts.bodyMedium, color: theme.colors.ink, flex: 1 }}>
+        {label}
+      </Text>
+      <Switch value={value} onValueChange={onValueChange} />
+    </View>
+  );
+}
+
+function MemberList({
+  members,
+  userId,
+  isAdmin,
+  kitchenId,
+  onChanged,
+  otherKitchenId,
+  onLeft,
+}: {
+  members: KitchenMember[];
+  userId?: string;
+  isAdmin: boolean;
+  kitchenId: string | null;
+  onChanged: () => Promise<void>;
+  otherKitchenId?: string;
+  onLeft: (nextKitchenId?: string) => Promise<void>;
+}) {
+  const t = useT();
+  const theme = useTheme();
+  const copy = t().invite;
+  const adminCount = members.filter((m) => m.role === 'admin').length;
+  const mine = members.find((member) => member.userId === userId);
+  const showLeave =
+    Boolean(kitchenId) &&
+    members.length > 1 &&
+    Boolean(mine) &&
+    canLeaveKitchen({
+      isAdmin: mine?.role === 'admin',
+      adminCount,
+      memberCount: members.length,
+    });
+
+  return (
+    <View style={{ gap: theme.space.md }}>
+      <SectionChip
+        label={copy.members.replace('{count}', String(members.length))}
+        chipTone={{ background: theme.colors.primary, text: '#FFFFFF' }}
+      />
+      <PaperCard style={{ borderRadius: theme.radii.xxl }}>
+        {members.map((member) => {
+          const mine = member.userId === userId;
+          return (
+            <View
+              key={member.userId}
+              style={{
+                padding: theme.space.lg,
+                gap: theme.space.sm,
+                borderBottomWidth: 0.5,
+                borderBottomColor: theme.colors.border,
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.space.md }}>
+                <View
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 20,
+                    backgroundColor: theme.colors.frequency.daily.tint,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontFamily: theme.fonts.bodyBold,
+                      color: theme.colors.frequency.daily.text,
+                    }}
+                  >
+                    {member.displayName.slice(0, 1).toUpperCase()}
+                  </Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontFamily: theme.fonts.bodyBold, color: theme.colors.ink }}>
+                    {member.displayName}
+                    {mine ? ` · ${copy.you}` : ''}
+                  </Text>
+                  <Text
+                    style={{
+                      fontFamily: theme.fonts.bodyMedium,
+                      fontSize: theme.typography.caption.fontSize,
+                      color: theme.colors.inkMuted,
+                    }}
+                  >
+                    {member.role === 'admin' ? copy.owner : copy.permissions}
+                  </Text>
+                </View>
+              </View>
+              {isAdmin && !mine && member.role !== 'admin' && kitchenId ? (
+                <View style={{ gap: theme.space.sm }}>
+                  <ToggleRow
+                    label={copy.canComplete}
+                    value={member.canComplete}
+                    onValueChange={(next) => {
+                      void updateMemberPermissions({
+                        kitchenId,
+                        userId: member.userId,
+                        canComplete: next,
+                        canEditTemplates: member.canEditTemplates,
+                      }).then(onChanged);
+                    }}
+                  />
+                  <ToggleRow
+                    label={copy.canEditTemplates}
+                    value={member.canEditTemplates}
+                    onValueChange={(next) => {
+                      void updateMemberPermissions({
+                        kitchenId,
+                        userId: member.userId,
+                        canComplete: member.canComplete,
+                        canEditTemplates: next,
+                      }).then(onChanged);
+                    }}
+                  />
+                  <Button
+                    label={copy.remove}
+                    variant="ghost"
+                    compact
+                    onPress={() => {
+                      if (!kitchenId) return;
+                      void removeMember(kitchenId, member.userId).then(onChanged);
+                    }}
+                  />
+                </View>
+              ) : null}
+            </View>
+          );
+        })}
+      </PaperCard>
+      {showLeave ? (
+        <Button
+          label={copy.leave}
+          variant="ghost"
+          onPress={() => {
+            if (!kitchenId) return;
+            void leaveKitchen(kitchenId).then(() => onLeft(otherKitchenId));
+          }}
+        />
+      ) : null}
+    </View>
   );
 }

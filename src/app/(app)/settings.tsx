@@ -23,6 +23,7 @@ import {
 } from '@/components/ui';
 import { useTheme } from '@/design';
 import { useAuth } from '@/features/auth';
+import { KitchenSwitcher } from '@/features/membership/KitchenSwitcher';
 import {
   updateKitchen,
   updateProfileDisplayName,
@@ -57,6 +58,7 @@ export default function SettingsScreen() {
     user,
     kitchenMode,
     kitchenId,
+    isAdmin,
     refreshOnboarding,
     setOnboardingDraft,
   } = useAuth();
@@ -69,6 +71,7 @@ export default function SettingsScreen() {
   const [reminders, setReminders] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [kitchenOpen, setKitchenOpen] = useState(false);
+  const [switcherOpen, setSwitcherOpen] = useState(false);
   const [languageOpen, setLanguageOpen] = useState(false);
   const [displayName, setDisplayName] = useState(onboarding?.displayName ?? '');
   const [kitchenName, setKitchenName] = useState(onboarding?.kitchenName ?? '');
@@ -252,8 +255,15 @@ export default function SettingsScreen() {
                   }`
                 : ''
             }
-            onPress={() => setKitchenOpen(true)}
+            onPress={() => setSwitcherOpen(true)}
           />
+          {isAdmin ? (
+            <ListRow
+              title={copy.editKitchen}
+              subtitle={copy.kitchen}
+              onPress={() => setKitchenOpen(true)}
+            />
+          ) : null}
           <ListRow
             title={copy.invitePeople}
             subtitle={copy.invitePeopleHint}
@@ -652,6 +662,7 @@ export default function SettingsScreen() {
           </View>
         </View>
       </Modal>
+      <KitchenSwitcher visible={switcherOpen} onClose={() => setSwitcherOpen(false)} />
     </Screen>
   );
 }

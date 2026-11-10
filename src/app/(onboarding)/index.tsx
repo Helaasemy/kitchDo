@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
+import { router } from 'expo-router';
 
 import { Button, ErrorText, Screen, TextField, Wordmark } from '@/components/ui';
 import { useTheme } from '@/design';
@@ -12,6 +13,7 @@ export default function OnboardingScreen() {
   const theme = useTheme();
   const { finishOnboarding, user } = useAuth();
   const copy = t().onboarding;
+  const [path, setPath] = useState<'create' | null>(null);
   const [mode, setMode] = useState<KitchenMode | null>(null);
   const [displayName, setDisplayName] = useState('');
   const [kitchenName, setKitchenName] = useState('');
@@ -77,6 +79,22 @@ export default function OnboardingScreen() {
 
         <View style={{ gap: theme.space.sm }}>
           <ModeCard
+            selected={path === 'create'}
+            title={copy.createKitchen}
+            hint={copy.whereSubtitle}
+            onPress={() => setPath('create')}
+          />
+          <ModeCard
+            selected={false}
+            title={copy.haveCode}
+            hint={copy.joinSubtitle}
+            onPress={() => router.push('/join')}
+          />
+        </View>
+
+        {path === 'create' ? (
+        <View style={{ gap: theme.space.sm }}>
+          <ModeCard
             selected={mode === 'home'}
             title={copy.homeLabel}
             hint={copy.homeHint}
@@ -89,8 +107,9 @@ export default function OnboardingScreen() {
             onPress={() => applyMode('business')}
           />
         </View>
+        ) : null}
 
-        {mode ? (
+        {path === 'create' && mode ? (
           <View style={{ gap: theme.space.md }}>
             <Text
               style={{
@@ -152,12 +171,14 @@ export default function OnboardingScreen() {
 
         <ErrorText message={error} boxed />
 
-        <Button
-          label={copy.finish}
-          onPress={onFinish}
-          loading={loading}
-          disabled={!mode}
-        />
+        {path === 'create' ? (
+          <Button
+            label={copy.finish}
+            onPress={onFinish}
+            loading={loading}
+            disabled={!mode}
+          />
+        ) : null}
       </View>
     </Screen>
   );

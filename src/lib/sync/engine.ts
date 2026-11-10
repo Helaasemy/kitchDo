@@ -119,8 +119,7 @@ async function flushOne(row: OutboxRow): Promise<void> {
     const { data: items, error: itemsErr } = await supabase
       .from('kdo_run_items')
       .select('*')
-      .eq('run_id', runId)
-      .eq('owner_user_id', row.userId);
+      .eq('run_id', runId);
     if (itemsErr) throw itemsErr;
     await replaceCachedItemsForRun(
       row.userId,
@@ -203,7 +202,6 @@ async function flushOne(row: OutboxRow): Promise<void> {
         })
         .eq('id', runId)
         .eq('revision', revision)
-        .eq('owner_user_id', row.userId)
         .select('id');
       if (updErr) throw updErr;
       return data ?? [];
@@ -215,7 +213,6 @@ async function flushOne(row: OutboxRow): Promise<void> {
         .from('kdo_runs')
         .select('id, state, revision')
         .eq('id', runId)
-        .eq('owner_user_id', row.userId)
         .maybeSingle();
       if (getErr) throw getErr;
       if (!existing) {
@@ -311,7 +308,6 @@ export async function pullKitchenCache(
       .from('kdo_template_revisions')
       .select('id, kitchen_id, template_id, version, published_at, definition')
       .eq('kitchen_id', kitchenId)
-      .eq('owner_user_id', userId)
       .order('published_at', { ascending: false })
       .limit(100);
 
@@ -336,7 +332,6 @@ export async function pullKitchenCache(
       .from('kdo_runs')
       .select('*')
       .eq('kitchen_id', kitchenId)
-      .eq('owner_user_id', userId)
       .order('local_date', { ascending: false })
       .limit(200);
 
@@ -422,7 +417,6 @@ export async function pullKitchenCache(
       const { data: items, error: itemsErr } = await supabase
         .from('kdo_run_items')
         .select('*')
-        .eq('owner_user_id', userId)
         .in('run_id', runIds);
       if (itemsErr) throw itemsErr;
 
@@ -452,7 +446,6 @@ export async function pullKitchenCache(
       const { data: issues, error: issuesErr } = await supabase
         .from('kdo_issues')
         .select('*')
-        .eq('owner_user_id', userId)
         .in('run_id', runIds);
       if (issuesErr) throw issuesErr;
 

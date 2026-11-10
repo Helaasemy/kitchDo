@@ -35,7 +35,7 @@ npm install
 npx expo start
 ```
 
-Deep link scheme: `kitchdo://` (password reset / auth callback).
+Deep link scheme: `kitchdo://` (password reset / auth callback, join codes at `kitchdo://join/<code>`).
 
 ## Local SQLite
 

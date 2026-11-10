@@ -27,7 +27,7 @@ export default function CatalogPresetScreen() {
   const preset = getPreset(String(presetId));
   const copy = t().catalog;
   const recurringCopy = t().recurring;
-  const { user, kitchenId } = useAuth();
+  const { user, kitchenId, canEditTemplates } = useAuth();
   const userId = user?.id;
   const adding = useRef(false);
   const [busy, setBusy] = useState(false);
@@ -56,6 +56,10 @@ export default function CatalogPresetScreen() {
 
   const onUse = async () => {
     if (adding.current || copyId) return;
+    if (!canEditTemplates) {
+      setError(t().invite.cannotEdit);
+      return;
+    }
     if (!userId || !kitchenId) {
       setError(t().templates.needKitchen);
       return;

@@ -8,10 +8,10 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import Ionicons from '@expo/vector-icons/Ionicons';
 
 import {
   Button,
+  ErrorText,
   PaperCard,
   PasswordField,
   Screen,
@@ -19,7 +19,7 @@ import {
   Wordmark,
 } from '@/components/ui';
 import { useTheme } from '@/design';
-import { useAuth } from '@/features/auth';
+import { AuthModeToggle, useAuth } from '@/features/auth';
 import { useT } from '@/i18n';
 
 export default function LoginScreen() {
@@ -83,8 +83,11 @@ export default function LoginScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <Screen scroll contentStyle={contentStyle}>
-        <View style={{ alignItems: 'center', marginBottom: theme.space.xxxl }}>
+        <View style={{ alignItems: 'center', marginBottom: theme.space.xl }}>
           <Wordmark size="lg" />
+        </View>
+        <View style={{ marginBottom: theme.space.xl }}>
+          <AuthModeToggle value="login" />
         </View>
 
         <View style={{ gap: theme.space.sm, marginBottom: theme.space.xxl }}>
@@ -146,37 +149,7 @@ export default function LoginScreen() {
             value={password}
             onChangeText={setPassword}
           />
-          {error ? (
-            <View
-              accessibilityLiveRegion="polite"
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: theme.space.sm,
-                padding: theme.space.md,
-                borderRadius: theme.radii.sm,
-                backgroundColor: theme.colors.alertTint,
-              }}
-            >
-              <Ionicons
-                name="alert-circle"
-                size={18}
-                color={theme.colors.coral}
-              />
-              <Text
-                style={{
-                  flex: 1,
-                  fontFamily: theme.fonts.bodySemiBold,
-                  fontSize: theme.typography.caption.fontSize,
-                  lineHeight: theme.typography.caption.lineHeight,
-                  color: theme.colors.coral,
-                }}
-                allowFontScaling
-              >
-                {error}
-              </Text>
-            </View>
-          ) : null}
+          <ErrorText message={error} boxed />
           <Button
             label={copy.loginAction}
             onPress={onSubmit}
@@ -208,38 +181,6 @@ export default function LoginScreen() {
                 allowFontScaling
               >
                 {copy.forgotLink}
-              </Text>
-            </Pressable>
-          </Link>
-          <Link href="/(auth)/signup" asChild>
-            <Pressable
-              accessibilityRole="link"
-              style={{
-                minHeight: 44,
-                paddingHorizontal: theme.space.md,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Text
-                style={{
-                  fontFamily: theme.fonts.body,
-                  fontSize: 15,
-                  lineHeight: 22,
-                  color: theme.colors.inkMuted,
-                  textAlign: 'center',
-                }}
-                allowFontScaling
-              >
-                {copy.noAccount}{' '}
-                <Text
-                  style={{
-                    fontFamily: theme.fonts.bodyBold,
-                    color: theme.colors.primary,
-                  }}
-                >
-                  {copy.signupAction}
-                </Text>
               </Text>
             </Pressable>
           </Link>

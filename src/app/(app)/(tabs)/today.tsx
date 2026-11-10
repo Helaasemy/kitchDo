@@ -25,6 +25,7 @@ import {
 } from '@/components/ui';
 import { useTheme, type AppTheme } from '@/design';
 import { useAuth } from '@/features/auth';
+import { KitchenSwitcher } from '@/features/membership/KitchenSwitcher';
 import {
   countDone,
   groupByFrequencyAndTemplate,
@@ -264,6 +265,7 @@ export default function TodayScreen() {
   const t = useT();
   const theme = useTheme();
   const { kitchenMode, onboarding, user, kitchenId } = useAuth();
+  const [switcherOpen, setSwitcherOpen] = useState(false);
   const userId = user?.id;
   const { refresh } = useSync();
   const copy = t().today;
@@ -345,6 +347,7 @@ export default function TodayScreen() {
           <ScreenHeader
             size="display"
             eyebrow={onboarding?.kitchenName || undefined}
+            onEyebrowPress={() => setSwitcherOpen(true)}
             title={title}
             right={
               <IconButton
@@ -467,6 +470,7 @@ export default function TodayScreen() {
           </ScrollView>
         )}
       </View>
+      <KitchenSwitcher visible={switcherOpen} onClose={() => setSwitcherOpen(false)} />
     </Screen>
   );
 }

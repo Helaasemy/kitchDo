@@ -683,6 +683,85 @@ export type Database = {
           },
         ]
       }
+      kdo_kitchen_members: {
+        Row: {
+          kitchen_id: string
+          user_id: string
+          role: string
+          can_complete: boolean
+          can_edit_templates: boolean
+          joined_at: string
+        }
+        Insert: {
+          kitchen_id: string
+          user_id: string
+          role: string
+          can_complete?: boolean
+          can_edit_templates?: boolean
+          joined_at?: string
+        }
+        Update: {
+          kitchen_id?: string
+          user_id?: string
+          role?: string
+          can_complete?: boolean
+          can_edit_templates?: boolean
+          joined_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kdo_kitchen_members_kitchen_id_fkey"
+            columns: ["kitchen_id"]
+            isOneToOne: false
+            referencedRelation: "kdo_kitchens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kdo_kitchen_invites: {
+        Row: {
+          id: string
+          kitchen_id: string
+          created_by: string
+          code: string
+          can_complete: boolean
+          can_edit_templates: boolean
+          expires_at: string
+          revoked_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          kitchen_id: string
+          created_by: string
+          code: string
+          can_complete?: boolean
+          can_edit_templates?: boolean
+          expires_at: string
+          revoked_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          kitchen_id?: string
+          created_by?: string
+          code?: string
+          can_complete?: boolean
+          can_edit_templates?: boolean
+          expires_at?: string
+          revoked_at?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kdo_kitchen_invites_kitchen_id_fkey"
+            columns: ["kitchen_id"]
+            isOneToOne: false
+            referencedRelation: "kdo_kitchens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -730,6 +809,50 @@ export type Database = {
           p_kitchen_kind?: string
           p_kitchen_name: string
           p_locale?: string
+        }
+        Returns: Json
+      }
+      create_kitchen: {
+        Args: {
+          p_kitchen_id?: string
+          p_kind: string
+          p_name: string
+        }
+        Returns: Json
+      }
+      create_kitchen_invite: {
+        Args: {
+          p_can_complete?: boolean
+          p_can_edit_templates?: boolean
+          p_kitchen_id: string
+        }
+        Returns: Json
+      }
+      join_kitchen: {
+        Args: {
+          p_code: string
+          p_display_name?: string
+        }
+        Returns: Json
+      }
+      leave_kitchen: {
+        Args: { p_kitchen_id: string }
+        Returns: Json
+      }
+      remove_member: {
+        Args: { p_kitchen_id: string; p_user_id: string }
+        Returns: Json
+      }
+      revoke_kitchen_invite: {
+        Args: { p_invite_id: string }
+        Returns: Json
+      }
+      update_member_permissions: {
+        Args: {
+          p_can_complete: boolean
+          p_can_edit_templates: boolean
+          p_kitchen_id: string
+          p_user_id: string
         }
         Returns: Json
       }

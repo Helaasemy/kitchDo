@@ -195,7 +195,6 @@ export async function reconcileReminders(input: {
       'id, series_id, template_id, weekdays, local_start_time, due_after_minutes, reminder_enabled, reminder_lead_minutes, effective_from, effective_until',
     )
     .eq('kitchen_id', input.kitchenId)
-    .eq('owner_user_id', input.userId)
     .eq('reminder_enabled', true)
     .is('effective_until', null);
 
@@ -204,8 +203,7 @@ export async function reconcileReminders(input: {
   const { data: templates } = await supabase
     .from('kdo_templates')
     .select('id, title, state')
-    .eq('kitchen_id', input.kitchenId)
-    .eq('owner_user_id', input.userId);
+    .eq('kitchen_id', input.kitchenId);
 
   const titleByTemplate = new Map(
     (templates ?? [])
@@ -217,7 +215,6 @@ export async function reconcileReminders(input: {
     .from('kdo_runs')
     .select('occurrence_key, state')
     .eq('kitchen_id', input.kitchenId)
-    .eq('owner_user_id', input.userId)
     .gte('local_date', now.toISODate() ?? '')
     .lte(
       'local_date',

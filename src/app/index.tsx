@@ -8,7 +8,7 @@ import { useT } from '@/i18n';
 
 export default function Index() {
   const t = useT();
-  const { status, recoveryPending, refreshOnboarding } = useAuth();
+  const { status, recoveryPending, refreshOnboarding, pendingJoinCode } = useAuth();
   const theme = useTheme();
   const copy = t().auth;
 
@@ -76,7 +76,7 @@ export default function Index() {
   }
 
   if (status === 'needs_onboarding') {
-    return <Redirect href="/(onboarding)" />;
+    return <Redirect href={pendingJoinCode ? '/join' : '/(onboarding)'} />;
   }
 
   return <Redirect href="/(app)/(tabs)/today" />;

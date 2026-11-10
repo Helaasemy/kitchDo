@@ -77,7 +77,7 @@ export default function TemplateBuilderScreen() {
   const theme = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const templateId = String(id);
-  const { kitchenId, user } = useAuth();
+  const { kitchenId, user, canEditTemplates } = useAuth();
   const userId = user?.id;
   const { status: syncStatus } = useSync();
   const copy = t().templates;
@@ -104,7 +104,7 @@ export default function TemplateBuilderScreen() {
   const [afterOpenRunId, setAfterOpenRunId] = useState<string | null>(null);
   const [libraryCopy, setLibraryCopy] = useState(false);
 
-  const readOnly = state === 'archived';
+  const readOnly = state === 'archived' || !canEditTemplates;
   const alreadyUsed = publishedRevision != null;
 
   const loadKey = `${kitchenId}:${templateId}:${userId}`;

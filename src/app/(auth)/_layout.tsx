@@ -10,9 +10,7 @@ export default function AuthLayout() {
     () => ({
       headerShown: false,
       contentStyle: { backgroundColor: theme.colors.canvas },
-      animation: theme.reduceMotion
-        ? ('none' as const)
-        : ('slide_from_right' as const),
+      animation: theme.reduceMotion ? ('none' as const) : ('fade' as const),
     }),
     [theme.colors.canvas, theme.reduceMotion],
   );

@@ -3,6 +3,7 @@ import {
   saveOnboardingState,
   type OnboardingDraft,
 } from '@/features/auth/onboardingStore';
+import { listMemberships } from '@/features/membership';
 import { getSupabase, rpcErrorMessage } from '@/lib/supabase';
 
 export type Kitchen = {
@@ -38,19 +39,14 @@ export async function fetchProfile(userId: string): Promise<Profile | null> {
   };
 }
 
+/** Kitchens the user belongs to (any role), oldest membership first. */
 export async function listOwnedKitchens(userId: string): Promise<Kitchen[]> {
-  const { data, error } = await getSupabase()
-    .from('kdo_kitchens')
-    .select('id, name, kind, owner_user_id, revision, archived_at')
-    .eq('owner_user_id', userId)
-    .is('archived_at', null)
-    .order('created_at', { ascending: true });
-  if (error) throw new Error(rpcErrorMessage(error, 'Could not load kitchens.'));
-  return (data ?? []).map((k) => ({
-    id: k.id,
+  const memberships = await listMemberships(userId);
+  return memberships.map((k) => ({
+    id: k.kitchenId,
     name: k.name,
-    mode: asMode(k.kind),
-    ownerUserId: k.owner_user_id,
+    mode: k.mode,
+    ownerUserId: k.ownerUserId,
     revision: k.revision,
   }));
 }
@@ -58,8 +54,16 @@ export async function listOwnedKitchens(userId: string): Promise<Kitchen[]> {
 export async function fetchPrimaryKitchen(
   userId: string,
 ): Promise<Kitchen | null> {
-  const kitchens = await listOwnedKitchens(userId);
-  return kitchens[0] ?? null;
+  const memberships = await listMemberships(userId);
+  const kitchen = memberships[0];
+  if (!kitchen) return null;
+  return {
+    id: kitchen.kitchenId,
+    name: kitchen.name,
+    mode: kitchen.mode,
+    ownerUserId: kitchen.ownerUserId,
+    revision: kitchen.revision,
+  };
 }
 
 /** Server source of truth for whether onboarding is done. */

@@ -10,6 +10,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 
 import { Button, Screen, TextField } from '@/components/ui';
 import { useTheme } from '@/design';
+import { useAuth } from '@/features/auth';
 import { getTemplate, type TemplateDetail } from '@/features/templates/api';
 import {
   listActiveSchedulesForTemplate,
@@ -35,8 +36,10 @@ export default function TemplateScheduleScreen() {
   ];
   const { id } = useLocalSearchParams<{ id: string }>();
   const templateId = String(id);
+  const { canEditTemplates } = useAuth();
   const copy = t().schedules;
   const tmplCopy = t().templates;
+  const readOnly = !canEditTemplates;
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -98,12 +101,17 @@ export default function TemplateScheduleScreen() {
   }, [fetchData, t]);
 
   const toggleDay = (day: Weekday) => {
+    if (readOnly) return;
     setWeekdays((prev) =>
       prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day].sort(),
     );
   };
 
   const onSave = async () => {
+    if (readOnly) {
+      setError(t().invite.cannotEdit);
+      return;
+    }
     if (!published) {
       setError(copy.needPublish);
       return;
@@ -137,7 +145,7 @@ export default function TemplateScheduleScreen() {
   };
 
   const onPause = () => {
-    if (!active) return;
+    if (readOnly || !active) return;
     Alert.alert(copy.pause, undefined, [
       { text: t().common.cancel, style: 'cancel' },
       {
@@ -289,12 +297,14 @@ export default function TemplateScheduleScreen() {
           placeholder={copy.startTimePlaceholder}
           keyboardType="numbers-and-punctuation"
           autoCapitalize="none"
+          editable={!readOnly}
         />
         <TextField
           label={copy.dueAfter}
           value={dueAfter}
           onChangeText={setDueAfter}
           keyboardType="number-pad"
+          editable={!readOnly}
         />
 
         <Pressable
@@ -342,6 +352,7 @@ export default function TemplateScheduleScreen() {
             value={reminderLead}
             onChangeText={setReminderLead}
             keyboardType="number-pad"
+            editable={!readOnly}
           />
         ) : null}
 
@@ -382,10 +393,23 @@ export default function TemplateScheduleScreen() {
           </Text>
         ) : null}
 
+        {readOnly ? (
+          <Text
+            style={{
+              fontFamily: theme.fonts.body,
+              color: theme.colors.inkMuted,
+              fontSize: theme.typography.caption.fontSize,
+            }}
+            allowFontScaling
+          >
+            {t().invite.cannotEdit}
+          </Text>
+        ) : null}
+
         <Button
           label={copy.save}
           loading={saving}
-          disabled={!published}
+          disabled={!published || readOnly}
           onPress={() => void onSave()}
         />
         {active ? (
@@ -393,6 +417,7 @@ export default function TemplateScheduleScreen() {
             label={copy.pause}
             variant="secondary"
             loading={saving}
+            disabled={readOnly}
             onPress={onPause}
           />
         ) : null}

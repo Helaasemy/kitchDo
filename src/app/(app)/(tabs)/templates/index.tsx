@@ -173,7 +173,7 @@ function TemplateCard({
 export default function TemplatesScreen() {
   const t = useT();
   const theme = useTheme();
-  const { kitchenMode, kitchenId, onboarding, user } = useAuth();
+  const { kitchenMode, kitchenId, onboarding, user, canEditTemplates } = useAuth();
   const catalog = useCatalog();
   const copy = t().templates;
   const recurring = useRecurringTasks(user?.id, kitchenId);
@@ -338,21 +338,34 @@ export default function TemplatesScreen() {
             eyebrow={onboarding?.kitchenName || undefined}
             title={tone(kitchenMode, copy.titleHome, copy.titleBusiness)}
             right={
-              <IconButton
-                name="add"
-                accessibilityLabel={copy.emptyAction}
-                onPress={() => router.push('/(app)/(tabs)/templates/new')}
-              />
+              canEditTemplates ? (
+                <IconButton
+                  name="add"
+                  accessibilityLabel={copy.emptyAction}
+                  onPress={() => router.push('/(app)/(tabs)/templates/new')}
+                />
+              ) : undefined
             }
           />
 
-          <ListRow
-            title={copy.browseTemplates}
-            subtitle={copy.libraryCount.replace('{count}', String(libraryCount))}
-            left={<IconTile name="book-outline" />}
-            onPress={openCatalog}
-            style={{ borderRadius: theme.radii.xxl, backgroundColor: theme.colors.white }}
-          />
+          {canEditTemplates ? (
+            <ListRow
+              title={copy.browseTemplates}
+              subtitle={copy.libraryCount.replace('{count}', String(libraryCount))}
+              left={<IconTile name="book-outline" />}
+              onPress={openCatalog}
+              style={{ borderRadius: theme.radii.xxl, backgroundColor: theme.colors.white }}
+            />
+          ) : (
+            <Text
+              style={{
+                fontFamily: theme.fonts.body,
+                color: theme.colors.inkMuted,
+              }}
+            >
+              {t().invite.cannotEdit}
+            </Text>
+          )}
 
           <View
             style={{

@@ -12,6 +12,8 @@
     "aes-js": "^3.1.2",
     "eslint-config-expo": "~58.0.4",
     "expo": "~58.0.19",
+    "expo-camera": "~58.0.14",
+    "expo-clipboard": "~58.0.4",
     "expo-constants": "~58.0.13",
     "expo-crypto": "~58.0.7",
     "expo-font": "~58.0.10",
@@ -32,6 +34,7 @@
     "react-native-draggable-flatlist": "^4.0.3",
     "react-native-gesture-handler": "~3.3.0",
     "react-native-get-random-values": "^2.0.0",
+    "react-native-qrcode-svg": "^6.3.54",
     "react-native-reanimated": "4.7.1",
     "react-native-safe-area-context": "~5.10.1",
     "react-native-screens": "~4.30.0",
@@ -64,6 +67,7 @@
     "test:catalog-sanity": "node scripts/catalog-sanity-tests.mjs",
     "test:catalog-load": "node scripts/catalog-load-tests.mjs",
     "test:catalog-i18n": "node scripts/catalog-i18n-tests.mjs",
+    "test:membership": "node scripts/membership-tests.mjs",
     "catalog:import-sanity": "node scripts/import-catalog-to-sanity.mjs"
   },
   "private": true

@@ -217,7 +217,6 @@ async function ensureRevisionCached(
     .from('kdo_template_revisions')
     .select('id, kitchen_id, template_id, version, published_at, definition')
     .eq('id', revisionId)
-    .eq('owner_user_id', userId)
     .maybeSingle();
   if (error) throw error;
   if (!data) throw new Error('Published revision not found. Publish the template first.');
@@ -252,7 +251,6 @@ export async function getLatestPublishedRevisionId(
     .from('kdo_templates')
     .select('id, published_revision, state')
     .eq('id', templateId)
-    .eq('owner_user_id', userId)
     .maybeSingle();
   if (error) throw error;
   if (!data || data.state === 'archived' || data.published_revision == null) {
@@ -263,7 +261,6 @@ export async function getLatestPublishedRevisionId(
     .from('kdo_template_revisions')
     .select('id')
     .eq('template_id', templateId)
-    .eq('owner_user_id', userId)
     .eq('version', data.published_revision)
     .maybeSingle();
   if (revErr) throw revErr;
