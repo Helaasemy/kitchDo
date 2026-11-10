@@ -25,7 +25,7 @@ import {
 } from '@/components/ui';
 import { useTheme } from '@/design';
 import { useAuth } from '@/features/auth';
-import { catalog } from '@/features/catalog';
+import { useCatalog } from '@/features/catalog';
 import {
   TASK_FREQUENCIES,
   useRecurringTasks,
@@ -174,6 +174,7 @@ export default function TemplatesScreen() {
   const t = useT();
   const theme = useTheme();
   const { kitchenMode, kitchenId, onboarding, user } = useAuth();
+  const catalog = useCatalog();
   const copy = t().templates;
   const recurring = useRecurringTasks(user?.id, kitchenId);
   const reloadRecurring = recurring.reload;

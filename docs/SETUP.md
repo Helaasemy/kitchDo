@@ -16,6 +16,14 @@ Copy `.env.example` → `.env` if needed. Required public keys:
 
 `SUPABASE_SERVICE_ROLE_KEY` is for agent/CLI only — never ship it in the app bundle.
 
+Public Sanity keys (template library):
+
+- `EXPO_PUBLIC_SANITY_PROJECT_ID` (`qxq0r1rb`)
+- `EXPO_PUBLIC_SANITY_DATASET` (`production`)
+- `EXPO_PUBLIC_SANITY_API_VERSION` (`2025-02-19`)
+
+`SANITY_API_WRITE_TOKEN` is CLI/import only — never `EXPO_PUBLIC_`, never commit it. Dataset `production` must be **public** so the app can read without a token.
+
 ## Install and run
 
 ```bash
@@ -46,3 +54,26 @@ node scripts/domain-tests.mjs
 nvm use 22
 npx tsc --noEmit
 ```
+
+## Template library (Sanity)
+
+Project `qxq0r1rb`, dataset `production` (public). The app fetches the catalog for the active UI language, saves it on device, and does not fetch again until the language changes. `src/features/catalog/catalog.json` is the import seed for Studio, not the runtime source.
+
+Edit content locally:
+
+```bash
+cd studio
+npm install
+npx sanity dev
+```
+
+Studio runs at http://localhost:3333. Re-seed from the bundled catalog (idempotent):
+
+```bash
+node scripts/import-catalog-to-sanity.mjs --dry-run
+node scripts/import-catalog-to-sanity.mjs
+```
+
+Markdown `docs/catalog/KitchDo_Home_and_Kitchen_Templates.md` plus `npm run catalog:build` still generate the import seed. They are not what the app reads at runtime.
+
+English is the source language on every translatable field (`localeString` / `localeText`). Other app locales (FR, ES, PT, DE, IT, ID, TR, ZH, JA, KO, AR) are optional in Studio under **Translations**. The app asks Sanity for the active locale and falls back to English. Frequency lives on each **section**; the template only shows a single daily/weekly/monthly value when every section agrees.

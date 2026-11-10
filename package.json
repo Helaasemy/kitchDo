@@ -7,6 +7,7 @@
     "@expo-google-fonts/plus-jakarta-sans": "^0.4.2",
     "@expo/vector-icons": "^15.0.2",
     "@react-native-async-storage/async-storage": "2.2.0",
+    "@sanity/client": "^8.15.1",
     "@supabase/supabase-js": "^2.118.0",
     "aes-js": "^3.1.2",
     "eslint-config-expo": "~58.0.4",
@@ -59,7 +60,11 @@
     "lint": "expo lint",
     "test:recurring": "node scripts/recurring-tests.mjs",
     "test:migrations": "node --no-warnings scripts/migration-tests.mjs",
-    "test:i18n": "node scripts/i18n-tests.mjs"
+    "test:i18n": "node scripts/i18n-tests.mjs",
+    "test:catalog-sanity": "node scripts/catalog-sanity-tests.mjs",
+    "test:catalog-load": "node scripts/catalog-load-tests.mjs",
+    "test:catalog-i18n": "node scripts/catalog-i18n-tests.mjs",
+    "catalog:import-sanity": "node scripts/import-catalog-to-sanity.mjs"
   },
   "private": true
 }

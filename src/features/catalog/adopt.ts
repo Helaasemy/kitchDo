@@ -61,14 +61,17 @@ export async function addPresetToTemplates(input: {
   await publishTemplate({ templateId, expectedRevision: draft.revision });
 
   const sectionTitles = new Map(sections.map((s) => [s.id, s.title]));
+  const frequencies = preset.sections.flatMap((section) =>
+    section.tasks.map(() => section.frequency ?? preset.frequency),
+  );
   await saveTemplateFrequencies({
     userId,
     kitchenId,
     templateId,
     templateTitle: preset.title,
-    tasks: items.map((i) => ({
+    tasks: items.map((i, index) => ({
       itemId: i.id,
-      frequency: preset.frequency,
+      frequency: frequencies[index] ?? preset.frequency,
       title: i.title,
       sectionTitle: i.section_id ? (sectionTitles.get(i.section_id) ?? null) : null,
       sortOrder: i.sort_order,

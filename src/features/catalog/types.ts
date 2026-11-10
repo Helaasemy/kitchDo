@@ -11,6 +11,8 @@ export type CatalogNote = { text: string; links: CatalogLink[] };
 export type CatalogSection = {
   /** `null` for presets that are a single flat list. */
   title: string | null;
+  /** Starting frequency for tasks in this section; `null` means one-off. */
+  frequency: TaskFrequency | null;
   tasks: string[];
 };
 
@@ -22,7 +24,7 @@ export type CatalogPreset = {
   title: string;
   /** Suggested cadence as readable text. */
   cadence: string;
-  /** Starting frequency for every task; `null` means one-off. */
+  /** Same as every section when they agree; `null` if mixed or one-off. */
   frequency: TaskFrequency | null;
   searchTerms: string[];
   aliases: string[];

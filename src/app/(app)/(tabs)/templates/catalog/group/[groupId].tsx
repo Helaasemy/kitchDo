@@ -3,7 +3,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 
 import { EmptyState, Screen, ScreenHeader } from '@/components/ui';
 import { useTheme } from '@/design';
-import { findGroup, getPreset } from '@/features/catalog';
+import { findGroup, getPreset, useCatalog } from '@/features/catalog';
 import {
   CatalogBackLink,
   countLabel,
@@ -14,6 +14,7 @@ import { useT } from '@/i18n';
 export default function CatalogGroupScreen() {
   const t = useT();
   const theme = useTheme();
+  useCatalog();
   const { groupId } = useLocalSearchParams<{ groupId: string }>();
   const found = findGroup(String(groupId));
   const copy = t().catalog;

@@ -1,6 +1,6 @@
-import catalogData from '@/features/catalog/catalog.json';
+import { getCatalogSnapshot } from '@/features/catalog/CatalogProvider';
 import { presetSignature } from '@/features/catalog/signature';
-import type { Catalog, CatalogPreset } from '@/features/catalog/types';
+import type { CatalogPreset } from '@/features/catalog/types';
 import { getLocalDb, getSyncMeta, setSyncMeta } from '@/lib/storage';
 import {
   listLocalBackups,
@@ -15,7 +15,6 @@ import {
 } from './api';
 import { matchPresetForTemplate } from './matchCatalog';
 
-const catalog = catalogData as Catalog;
 const HYDRATE_KEY = 'recurring_hydrated';
 
 type RestoreOutcome = 'wrote' | 'none' | 'empty' | 'retry';
@@ -73,8 +72,11 @@ async function restoreFrequenciesFromCatalog(
     }
     if (!detail || detail.items.length === 0) continue;
 
-    const preset = matchPresetForTemplate(catalog.presets, detail);
-    if (!preset?.frequency) continue;
+    const preset = matchPresetForTemplate(getCatalogSnapshot().presets, detail);
+    const sectionFreqs = preset?.sections.flatMap((section) =>
+      section.tasks.map(() => section.frequency ?? preset.frequency),
+    );
+    if (!preset || !sectionFreqs?.some(Boolean)) continue;
 
     const sectionTitles = new Map(detail.sections.map((s) => [s.id, s.title]));
     await saveTemplateFrequencies({
@@ -82,9 +84,9 @@ async function restoreFrequenciesFromCatalog(
       kitchenId,
       templateId: detail.id,
       templateTitle: detail.title,
-      tasks: detail.items.map((item) => ({
+      tasks: detail.items.map((item, index) => ({
         itemId: item.id,
-        frequency: preset.frequency,
+        frequency: sectionFreqs[index] ?? preset.frequency,
         title: item.title,
         sectionTitle: item.sectionId ? (sectionTitles.get(item.sectionId) ?? null) : null,
         sortOrder: item.sortOrder,

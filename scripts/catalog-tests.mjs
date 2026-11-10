@@ -173,7 +173,11 @@ function savedCopyOf(preset, edit = (x) => x) {
     const sectionId = section.title ? `s${s}` : null;
     if (sectionId) sections.push({ id: sectionId, title: section.title });
     for (const task of section.tasks) {
-      items.push({ sectionId, title: task, frequency: preset.frequency });
+      items.push({
+        sectionId,
+        title: task,
+        frequency: section.frequency ?? preset.frequency,
+      });
     }
   });
   return templateSignature(edit({ title: preset.title, sections, items }));

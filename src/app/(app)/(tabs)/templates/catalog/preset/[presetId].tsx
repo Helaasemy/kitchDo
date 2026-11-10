@@ -13,6 +13,7 @@ import {
   getPreset,
   groupLabel,
   presetTaskCount,
+  useCatalog,
 } from '@/features/catalog';
 import { CatalogBackLink } from '@/features/catalog/components';
 import { useT } from '@/i18n';
@@ -21,9 +22,11 @@ import { useT } from '@/i18n';
 export default function CatalogPresetScreen() {
   const t = useT();
   const theme = useTheme();
+  useCatalog();
   const { presetId } = useLocalSearchParams<{ presetId: string }>();
   const preset = getPreset(String(presetId));
   const copy = t().catalog;
+  const recurringCopy = t().recurring;
   const { user, kitchenId } = useAuth();
   const userId = user?.id;
   const adding = useRef(false);
@@ -126,8 +129,12 @@ export default function CatalogPresetScreen() {
               {copy.startsAs.replace(
                 '{frequency}',
                 preset.frequency
-                  ? t().recurring[preset.frequency]
-                  : t().recurring.oneOff,
+                  ? recurringCopy[preset.frequency]
+                  : [...new Set(
+                      preset.sections.flatMap((s) => (s.frequency ? [s.frequency] : [])),
+                    )]
+                      .map((frequency) => recurringCopy[frequency])
+                      .join(' · ') || recurringCopy.oneOff,
               )}
               . {copy.cadenceHint}
             </Text>
@@ -155,7 +162,7 @@ export default function CatalogPresetScreen() {
             </SectionLabel>
             {preset.sections.map((section, sIndex) => (
               <View key={`${sIndex}-${section.title ?? ''}`} style={card}>
-                {section.title ? (
+                {section.title || (!preset.frequency && section.frequency) ? (
                   <Text
                     style={{
                       fontFamily: theme.fonts.displayRegular,
@@ -165,7 +172,14 @@ export default function CatalogPresetScreen() {
                     }}
                     allowFontScaling
                   >
-                    {section.title}
+                    {[
+                      section.title,
+                      !preset.frequency && section.frequency
+                        ? recurringCopy[section.frequency]
+                        : null,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
                   </Text>
                 ) : null}
                 {section.tasks.map((task, tIndex) => {

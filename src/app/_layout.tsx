@@ -19,6 +19,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { ThemeProvider, useTheme } from '@/design';
 import { AuthProvider, useAuth } from '@/features/auth';
+import { CatalogProvider } from '@/features/catalog';
 import { I18nProvider, useI18n } from '@/i18n';
 import { ReminderResponseBridge } from '@/features/runs/ReminderResponseBridge';
 import { SyncProvider } from '@/lib/sync';
@@ -120,13 +121,15 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <ThemeProvider>
           <I18nProvider>
-            <AuthProvider>
-              <SyncProvider>
-                <SplashController />
-                <ReminderResponseBridge />
-                <RootNavigator />
-              </SyncProvider>
-            </AuthProvider>
+            <CatalogProvider>
+              <AuthProvider>
+                <SyncProvider>
+                  <SplashController />
+                  <ReminderResponseBridge />
+                  <RootNavigator />
+                </SyncProvider>
+              </AuthProvider>
+            </CatalogProvider>
           </I18nProvider>
         </ThemeProvider>
       </SafeAreaProvider>

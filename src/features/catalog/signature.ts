@@ -14,7 +14,11 @@ export function presetSignature(preset: CatalogPreset): string {
   return signatureOf(
     preset.title,
     preset.sections.flatMap((s) =>
-      s.tasks.map((task) => ({ section: s.title, title: task, frequency: preset.frequency })),
+      s.tasks.map((task) => ({
+        section: s.title,
+        title: task,
+        frequency: s.frequency ?? preset.frequency,
+      })),
     ),
   );
 }

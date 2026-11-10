@@ -7,7 +7,7 @@ import { useTheme, type AppTheme } from '@/design';
 import type { TaskFrequency } from '@/features/recurring/period';
 import { useT } from '@/i18n';
 
-import { findGroup, getCategory, groupLabel, presetTaskCount } from './index';
+import { findGroup, groupLabel, presetTaskCount, useCatalog } from './index';
 import type { CatalogGroup, CatalogPreset, CatalogScope } from './types';
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];
@@ -31,9 +31,16 @@ export function ScopeChips({
 }) {
   const t = useT();
   const theme = useTheme();
+  const catalog = useCatalog();
+  const homeLabel =
+    catalog.categories.find((category) => category.key === 'home')?.label ??
+    t().onboarding.homeLabel;
+  const kitchenLabel =
+    catalog.categories.find((category) => category.key === 'kitchen')?.label ??
+    t().settings.kitchen;
   const options: [CatalogScope, string][] = [
-    ['home', getCategory('home').label],
-    ['kitchen', getCategory('kitchen').label],
+    ['home', homeLabel],
+    ['kitchen', kitchenLabel],
     ['all', t().catalog.scopeAllShort],
   ];
   return (
@@ -338,12 +345,16 @@ export function PresetRow({
   onPress: () => void;
 }) {
   const t = useT();
+  const catalog = useCatalog();
   const tasks = t().catalog.taskCount.replace(
     '{count}',
     String(presetTaskCount(preset)),
   );
+  const categoryLabel =
+    catalog.categories.find((category) => category.key === preset.category)?.label ??
+    '';
   const context = showContext
-    ? `${getCategory(preset.category).label} · ${groupLabel(preset.group)} · `
+    ? `${categoryLabel} · ${groupLabel(preset.group)} · `
     : '';
   return (
     <ListRow

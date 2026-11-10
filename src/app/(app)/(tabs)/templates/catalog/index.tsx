@@ -13,10 +13,10 @@ import {
 import { useTheme } from '@/design';
 import { useAuth } from '@/features/auth';
 import {
-  catalog,
   categoryForKitchenMode,
   getPreset,
   searchCatalog,
+  useCatalog,
   type CatalogCategory,
   type CatalogScope,
 } from '@/features/catalog';
@@ -39,6 +39,7 @@ export default function TemplateCatalogScreen() {
   const t = useT();
   const theme = useTheme();
   const { kitchenMode } = useAuth();
+  const catalog = useCatalog();
   const copy = t().catalog;
   const preferred = categoryForKitchenMode(kitchenMode);
 
@@ -52,7 +53,7 @@ export default function TemplateCatalogScreen() {
       searching
         ? searchCatalog(catalog, deferredQuery, { scope, preferred })
         : [],
-    [deferredQuery, preferred, scope, searching],
+    [catalog, deferredQuery, preferred, scope, searching],
   );
 
   const visibleCategories = useMemo(() => {
@@ -60,7 +61,7 @@ export default function TemplateCatalogScreen() {
       a.key === preferred ? -1 : b.key === preferred ? 1 : 0,
     );
     return scope === 'all' ? ordered : ordered.filter((c) => c.key === scope);
-  }, [preferred, scope]);
+  }, [catalog.categories, preferred, scope]);
 
   const renderCategory = (category: CatalogCategory) => (
     <View key={category.key} style={{ gap: theme.space.xxl }}>
