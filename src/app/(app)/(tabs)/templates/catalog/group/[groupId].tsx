@@ -31,22 +31,24 @@ export default function CatalogGroupScreen() {
 
   return (
     <Screen>
-      <View style={{ flex: 1, gap: 10 }}>
-        <CatalogBackLink />
-        <ScreenHeader
+      <View style={{ flex: 1, gap: theme.space.lg }}>
+        <View style={{ gap: theme.space.xs }}>
+          <CatalogBackLink />
+          <ScreenHeader
           eyebrow={`${category.label} · ${countLabel(
             presets.length,
             copy.templateCountOne,
             copy.templateCount,
           )}`}
-          title={group.label}
-        />
+            title={group.label}
+          />
+        </View>
         <ScrollView
           style={{ flex: 1 }}
           contentContainerStyle={{
-            gap: theme.space.sm,
-            paddingTop: theme.space.sm,
-            paddingBottom: theme.space.xxl,
+            gap: theme.space.md,
+            paddingTop: theme.space.xs,
+            paddingBottom: theme.space.xxxl,
           }}
           showsVerticalScrollIndicator={false}
         >

@@ -3,16 +3,24 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
-  Pressable,
   ScrollView,
   Text,
   TextInput,
   View,
 } from 'react-native';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DateTime } from 'luxon';
 
-import { Button, Screen, SyncBanner } from '@/components/ui';
+import {
+  BackLink,
+  Button,
+  IconButton,
+  Screen,
+  ScreenHeader,
+  SectionChip,
+  SyncBanner,
+} from '@/components/ui';
 import { useTheme } from '@/design';
 import { useAuth } from '@/features/auth';
 import {
@@ -44,6 +52,7 @@ export default function RunExecutionScreen() {
   const params = useLocalSearchParams<{ id: string | string[] }>();
   const runId = Array.isArray(params.id) ? params.id[0] : params.id;
   const { user, kitchenId } = useAuth();
+  const insets = useSafeAreaInsets();
   const copy = t().runs;
 
   const [detail, setDetail] = useState<RunDetail | null>(null);
@@ -215,18 +224,18 @@ export default function RunExecutionScreen() {
   if (!detail) {
     return (
       <Screen>
-        <View style={{ paddingTop: theme.space.sm, gap: theme.space.md }}>
-          <Pressable onPress={() => goBackOr()} hitSlop={12}>
-            <Text
-              style={{
-                fontFamily: theme.fonts.bodyMedium,
-                color: theme.colors.primary,
-              }}
-            >
-              {t().common.back}
-            </Text>
-          </Pressable>
-          <Text style={{ color: theme.colors.inkMuted }}>{copy.missingRun}</Text>
+        <View style={{ gap: theme.space.md }}>
+          <BackLink fallback="/(app)/(tabs)/today" />
+          <Text
+            style={{
+              fontFamily: theme.fonts.bodyMedium,
+              fontSize: theme.typography.body.fontSize,
+              color: theme.colors.inkMuted,
+            }}
+            allowFontScaling
+          >
+            {copy.missingRun}
+          </Text>
         </View>
       </Screen>
     );
@@ -234,10 +243,27 @@ export default function RunExecutionScreen() {
 
   const total = detail.done + detail.notApplicable + detail.blocked + detail.pending;
   const completed = detail.done + detail.notApplicable + detail.blocked;
+  const finished = detail.state === 'finished';
+  const ratio = total > 0 ? completed / total : 0;
+  const stateText = finished
+    ? copy.finished
+    : detail.state === 'in_progress'
+      ? copy.inProgress
+      : copy.notStarted;
+  const summary = [
+    copy.doneSummary,
+    detail.blocked ? copy.blockedCount.replace('{count}', String(detail.blocked)) : null,
+    detail.notApplicable
+      ? copy.naCount.replace('{count}', String(detail.notApplicable))
+      : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+  const eyebrow = [copy.eyebrow, dueLabel, detail.categoryName].filter(Boolean).join(' · ');
 
   return (
     <Screen>
-      <View style={{ flex: 1, gap: theme.space.md, paddingTop: theme.space.sm }}>
+      <View style={{ flex: 1, gap: theme.space.md }}>
         <View
           style={{
             flexDirection: 'row',
@@ -245,92 +271,110 @@ export default function RunExecutionScreen() {
             alignItems: 'center',
           }}
         >
-          <Pressable onPress={() => goBackOr()} hitSlop={12}>
-            <Text
-              style={{
-                fontFamily: theme.fonts.bodyMedium,
-                color: theme.colors.primary,
-              }}
-            >
-              {t().common.back}
-            </Text>
-          </Pressable>
-          <Text
-            style={{
-              fontFamily: theme.fonts.label,
-              color: theme.colors.inkSubtle,
-              textTransform: 'uppercase',
-            }}
-          >
-            {detail.state === 'finished'
-              ? copy.finished
-              : detail.state === 'in_progress'
-                ? copy.inProgress
-                : copy.notStarted}
-          </Text>
+          <IconButton
+            name="chevron-back"
+            accessibilityLabel={t().common.back}
+            onPress={() => goBackOr()}
+          />
+          <SectionChip
+            label={stateText}
+            chipTone={
+              finished
+                ? {
+                    background: theme.colors.frequency.monthly.tint,
+                    text: theme.colors.frequency.monthly.text,
+                    dot: theme.colors.frequency.monthly.base,
+                  }
+                : undefined
+            }
+          />
         </View>
 
         <SyncBanner />
 
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ gap: theme.space.md, paddingBottom: 48 }}
+          contentContainerStyle={{
+            gap: theme.space.xxl,
+            paddingTop: theme.space.sm,
+            paddingBottom: theme.space.xxxl,
+          }}
         >
-          {detail.pendingCreate ? (
-            <Text
-              style={{
-                fontFamily: theme.fonts.body,
-                color: theme.colors.inkMuted,
-                fontSize: theme.typography.caption.fontSize,
-              }}
-            >
-              {t().sync.syncing}
-            </Text>
-          ) : null}
-
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: theme.space.md,
-            }}
-          >
-            <View style={{ flex: 1, gap: theme.space.xs, minWidth: 0 }}>
+          <View style={{ gap: theme.space.sm }}>
+            <ScreenHeader size="display" eyebrow={eyebrow} title={detail.title} />
+            {detail.pendingCreate ? (
               <Text
                 style={{
-                  fontFamily: theme.fonts.display,
-                  fontSize: theme.typography.heading.fontSize,
-                  lineHeight: theme.typography.heading.lineHeight,
+                  fontFamily: theme.fonts.bodyMedium,
+                  color: theme.colors.inkMuted,
+                  fontSize: theme.typography.caption.fontSize,
+                }}
+                allowFontScaling
+              >
+                {t().sync.syncing}
+              </Text>
+            ) : null}
+          </View>
+
+          <View
+            accessible
+            accessibilityLabel={`${copy.progress
+              .replace('{done}', String(completed))
+              .replace('{total}', String(total))} ${summary}`}
+            style={{
+              gap: theme.space.lg,
+              padding: theme.space.xl,
+              borderRadius: theme.radii.xxl,
+              backgroundColor: theme.colors.white,
+              boxShadow: theme.shadows.raised,
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: theme.space.sm }}>
+              <Text
+                style={{
+                  fontFamily: theme.fonts.bodyExtraBold,
+                  fontSize: 32,
+                  lineHeight: 36,
                   color: theme.colors.ink,
                 }}
                 allowFontScaling
               >
-                {detail.title}
-              </Text>
-              <Text
-                style={{
-                  fontFamily: theme.fonts.body,
-                  color: theme.colors.inkMuted,
-                  fontSize: theme.typography.caption.fontSize,
-                }}
-              >
-                {[dueLabel, detail.categoryName].filter(Boolean).join(' · ')}
-              </Text>
-              <Text
-                style={{
-                  fontFamily: theme.fonts.label,
-                  color: theme.colors.inkSubtle,
-                  fontSize: theme.typography.label.fontSize,
-                }}
-              >
                 {copy.progress
                   .replace('{done}', String(completed))
                   .replace('{total}', String(total))}
-                {detail.blocked ? ` · ${detail.blocked} blocked` : ''}
-                {detail.notApplicable
-                  ? ` · ${detail.notApplicable} N/A`
-                  : ''}
               </Text>
+              <Text
+                style={{
+                  flex: 1,
+                  fontFamily: theme.fonts.bodySemiBold,
+                  fontSize: theme.typography.bodySmall.fontSize,
+                  lineHeight: 20,
+                  marginBottom: 4,
+                  color: theme.colors.inkMuted,
+                }}
+                allowFontScaling
+              >
+                {summary}
+              </Text>
+            </View>
+            <View
+              style={{
+                height: 10,
+                borderRadius: 5,
+                backgroundColor: theme.colors.sand,
+                overflow: 'hidden',
+              }}
+            >
+              <View
+                style={{
+                  width: `${Math.round(ratio * 100)}%`,
+                  height: '100%',
+                  borderRadius: 5,
+                  backgroundColor: finished
+                    ? theme.colors.frequency.monthly.base
+                    : theme.colors.primary,
+                }}
+              />
             </View>
           </View>
 
@@ -348,50 +392,57 @@ export default function RunExecutionScreen() {
           ) : null}
 
           {sections.map((section) => (
-            <View key={section.title ?? '__none'} style={{ gap: theme.space.xs }}>
-              {section.title ? (
-                <Text
-                  style={{
-                    fontFamily: theme.fonts.label,
-                    color: theme.colors.inkSubtle,
-                    textTransform: 'uppercase',
-                    letterSpacing: 0.5,
-                    marginTop: theme.space.sm,
-                  }}
-                >
-                  {section.title}
-                </Text>
-              ) : null}
-              {section.items.map((item) => (
-                <RunChecklistItem
-                  key={item.id}
-                  item={item}
-                  busy={busyId === item.id}
-                  instructionsOpen={Boolean(expanded[item.id])}
-                  onToggleDone={() => void toggleDone(item)}
-                  onNotApplicable={() =>
-                    openOutcomeModal(item, 'not_applicable')
-                  }
-                  onBlocked={() => openOutcomeModal(item, 'blocked')}
-                  onToggleInstructions={() =>
-                    setExpanded((s) => ({ ...s, [item.id]: !s[item.id] }))
-                  }
-                  onResolveIssue={
-                    item.issueId && item.issueState === 'open'
-                      ? () => {
-                          setNote('');
-                          setModal({
-                            kind: 'resolve',
-                            issueId: item.issueId!,
-                          });
-                        }
-                      : undefined
-                  }
-                />
-              ))}
+            <View key={section.title ?? '__none'} style={{ gap: theme.space.lg }}>
+              {section.title ? <SectionChip label={section.title} /> : null}
+              <View
+                style={{
+                  borderRadius: theme.radii.xxl,
+                  borderWidth: 0.5,
+                  borderColor: theme.colors.border,
+                  backgroundColor: theme.colors.white,
+                  boxShadow: theme.shadows.soft,
+                  overflow: 'hidden',
+                }}
+              >
+                {section.items.map((item, index) => (
+                  <RunChecklistItem
+                    key={item.id}
+                    item={item}
+                    busy={busyId === item.id}
+                    divider={index < section.items.length - 1}
+                    instructionsOpen={Boolean(expanded[item.id])}
+                    onToggleDone={() => void toggleDone(item)}
+                    onNotApplicable={() => openOutcomeModal(item, 'not_applicable')}
+                    onBlocked={() => openOutcomeModal(item, 'blocked')}
+                    onToggleInstructions={() =>
+                      setExpanded((s) => ({ ...s, [item.id]: !s[item.id] }))
+                    }
+                    onResolveIssue={
+                      item.issueId && item.issueState === 'open'
+                        ? () => {
+                            setNote('');
+                            setModal({
+                              kind: 'resolve',
+                              issueId: item.issueId!,
+                            });
+                          }
+                        : undefined
+                    }
+                  />
+                ))}
+              </View>
             </View>
           ))}
         </ScrollView>
+
+        <View
+          style={{
+            paddingTop: theme.space.sm,
+            paddingBottom: Math.max(insets.bottom, theme.space.lg),
+          }}
+        >
+          <Button label={copy.close} onPress={() => goBackOr()} />
+        </View>
       </View>
 
       <Modal visible={modal != null} transparent animationType="fade">
@@ -405,18 +456,21 @@ export default function RunExecutionScreen() {
           <View
             style={{
               backgroundColor: theme.colors.canvas,
-              borderTopLeftRadius: theme.radii.lg,
-              borderTopRightRadius: theme.radii.lg,
-              padding: theme.space.lg,
-              gap: theme.space.md,
+              borderTopLeftRadius: theme.radii.xxl,
+              borderTopRightRadius: theme.radii.xxl,
+              padding: theme.space.xl,
+              paddingBottom: theme.space.xxl,
+              gap: theme.space.lg,
             }}
           >
             <Text
               style={{
                 fontFamily: theme.fonts.display,
-                fontSize: theme.typography.heading.fontSize,
+                fontSize: 28,
+                lineHeight: 32,
                 color: theme.colors.ink,
               }}
+              allowFontScaling
             >
               {modal?.kind === 'resolve'
                 ? copy.resolveIssue
@@ -438,9 +492,10 @@ export default function RunExecutionScreen() {
                 minHeight: 96,
                 borderWidth: 1,
                 borderColor: theme.colors.border,
-                borderRadius: theme.radii.sm,
-                padding: theme.space.md,
+                borderRadius: theme.radii.xl,
+                padding: theme.space.lg,
                 fontFamily: theme.fonts.body,
+                fontSize: theme.typography.body.fontSize,
                 color: theme.colors.ink,
                 backgroundColor: theme.colors.white,
                 textAlignVertical: 'top',

@@ -35,14 +35,15 @@ export function SyncBanner() {
         alignItems: 'center',
         justifyContent: 'space-between',
         gap: theme.space.sm,
+        minHeight: 44,
         paddingVertical: theme.space.sm,
-        paddingHorizontal: theme.space.md,
-        borderRadius: theme.radii.sm,
+        paddingHorizontal: theme.space.lg,
+        borderRadius: theme.radii.xl,
         backgroundColor:
           status.kind === 'offline' || status.kind === 'error'
             ? theme.colors.sand
-            : theme.colors.white,
-        borderWidth: 1,
+            : theme.colors.card,
+        borderWidth: 0.5,
         borderColor: theme.colors.border,
       }}
       accessibilityRole="summary"
@@ -50,7 +51,7 @@ export function SyncBanner() {
       <Text
         style={{
           flex: 1,
-          fontFamily: theme.fonts.body,
+          fontFamily: theme.fonts.bodyMedium,
           fontSize: theme.typography.caption.fontSize,
           color: theme.colors.inkMuted,
         }}
@@ -66,7 +67,7 @@ export function SyncBanner() {
         >
           <Text
             style={{
-              fontFamily: theme.fonts.bodySemiBold,
+              fontFamily: theme.fonts.bodyExtraBold,
               color: theme.colors.primary,
               fontSize: theme.typography.caption.fontSize,
             }}

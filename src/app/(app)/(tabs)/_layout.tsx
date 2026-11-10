@@ -1,5 +1,5 @@
-import { useCallback, useMemo } from 'react';
-import { type ColorValue } from 'react-native';
+import { useCallback, useMemo, type ComponentProps } from 'react';
+import { View, type ColorValue } from 'react-native';
 import { Tabs } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,39 +7,65 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/design';
 import { t } from '@/i18n';
 
+type IconName = ComponentProps<typeof Ionicons>['name'];
+
 type TabIconProps = {
   focused: boolean;
   color: ColorValue;
   size: number;
 };
 
+function TabIcon({
+  focused,
+  color,
+  active,
+  inactive,
+}: TabIconProps & { active: IconName; inactive: IconName }) {
+  return (
+    <View style={{ alignItems: 'center', gap: 3 }}>
+      <Ionicons name={focused ? active : inactive} color={String(color)} size={24} />
+      <View
+        style={{
+          width: 4,
+          height: 4,
+          borderRadius: 2,
+          backgroundColor: focused ? String(color) : 'transparent',
+        }}
+      />
+    </View>
+  );
+}
+
 export default function AppTabsLayout() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const tabs = t().tabs;
   const bottomPad = Math.max(insets.bottom, 12);
-  const tabBarHeight = 56 + bottomPad;
+  const tabBarHeight = 64 + bottomPad;
 
   const screenOptions = useMemo(
     () => ({
       headerShown: false,
       tabBarActiveTintColor: theme.colors.primary,
-      tabBarInactiveTintColor: theme.colors.inkSubtle,
+      tabBarInactiveTintColor: theme.colors.inkMuted,
       tabBarStyle: {
         backgroundColor: theme.colors.canvas,
         borderTopColor: theme.colors.border,
-        borderTopWidth: 1,
+        borderTopWidth: 0.5,
         height: tabBarHeight,
-        paddingTop: 6,
+        paddingTop: 8,
         paddingBottom: bottomPad,
+        boxShadow: theme.shadows.soft,
       },
       tabBarItemStyle: {
         paddingVertical: 2,
       },
       tabBarLabelStyle: {
         fontFamily: theme.fonts.label,
-        fontSize: 11,
-        lineHeight: 14,
+        fontSize: 10,
+        lineHeight: 13,
+        letterSpacing: 0.4,
+        textTransform: 'uppercase' as const,
         marginTop: 2,
       },
       tabBarIconStyle: {
@@ -49,9 +75,10 @@ export default function AppTabsLayout() {
     }),
     [
       theme.colors.primary,
-      theme.colors.inkSubtle,
+      theme.colors.inkMuted,
       theme.colors.canvas,
       theme.colors.border,
+      theme.shadows.soft,
       theme.fonts.label,
       theme.reduceMotion,
       tabBarHeight,
@@ -60,21 +87,15 @@ export default function AppTabsLayout() {
   );
 
   const todayIcon = useCallback(
-    ({ color, size }: TabIconProps) => (
-      <Ionicons name="sunny-outline" color={String(color)} size={size} />
-    ),
+    (props: TabIconProps) => <TabIcon {...props} active="sunny" inactive="sunny-outline" />,
     [],
   );
   const templatesIcon = useCallback(
-    ({ color, size }: TabIconProps) => (
-      <Ionicons name="list-outline" color={String(color)} size={size} />
-    ),
+    (props: TabIconProps) => <TabIcon {...props} active="list" inactive="list-outline" />,
     [],
   );
   const historyIcon = useCallback(
-    ({ color, size }: TabIconProps) => (
-      <Ionicons name="time-outline" color={String(color)} size={size} />
-    ),
+    (props: TabIconProps) => <TabIcon {...props} active="time" inactive="time-outline" />,
     [],
   );
 

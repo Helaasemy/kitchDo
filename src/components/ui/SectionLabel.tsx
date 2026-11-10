@@ -9,11 +9,11 @@ export function SectionLabel({ children }: { children: string }) {
     <Text
       style={{
         fontFamily: theme.fonts.label,
-        fontSize: theme.typography.label.fontSize,
-        lineHeight: theme.typography.label.lineHeight,
-        color: theme.colors.inkSubtle,
+        fontSize: theme.typography.chip.fontSize,
+        lineHeight: theme.typography.chip.lineHeight,
+        color: theme.colors.inkMuted,
         textTransform: 'uppercase',
-        letterSpacing: 0.6,
+        letterSpacing: 0.9,
       }}
       allowFontScaling
     >

@@ -7,6 +7,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect } from 'expo-router';
 import Swipeable, {
   type SwipeableMethods,
@@ -16,18 +17,21 @@ import { DateTime } from 'luxon';
 import {
   EmptyState,
   IconButton,
-  ListRow,
   Screen,
   ScreenHeader,
+  SectionChip,
   SyncBanner,
 } from '@/components/ui';
 import { useTheme, type AppTheme } from '@/design';
 import { useAuth } from '@/features/auth';
 import {
+  countDone,
   groupByFrequencyAndTemplate,
   periodEnd,
   RecurringGroupCard,
+  TASK_FREQUENCIES,
   useRecurringTasks,
+  type RecurringTaskState,
   type TaskFrequency,
 } from '@/features/recurring';
 import { cancelRun, listTodayRuns, type RunSummary } from '@/features/runs';
@@ -49,7 +53,7 @@ function runSubtitle(run: RunSummary, lead: string = run.dueLabel): string {
     .join(' · ');
 }
 
-function TodayRunRow({
+function RunCard({
   run,
   subtitle,
   theme,
@@ -61,6 +65,7 @@ function TodayRunRow({
   onRequestDelete: (run: RunSummary) => void;
 }) {
   const copy = t().today;
+  const alert = run.urgency || run.blocked > 0;
 
   const renderRightActions = (
     _progress: unknown,
@@ -80,15 +85,15 @@ function TodayRunRow({
         alignItems: 'center',
         paddingHorizontal: theme.space.lg,
         marginLeft: theme.space.sm,
-        borderRadius: theme.radii.sm,
+        borderRadius: theme.radii.xxl,
         minWidth: 88,
       }}
     >
       <Text
         style={{
-          fontFamily: theme.fonts.bodyMedium,
+          fontFamily: theme.fonts.bodyBold,
           fontSize: theme.typography.body.fontSize,
-          color: theme.colors.white,
+          color: '#FFFFFF',
         }}
         allowFontScaling
       >
@@ -103,51 +108,131 @@ function TodayRunRow({
       overshootRight={false}
       friction={2}
     >
-      <ListRow
-        title={run.title}
-        subtitle={subtitle}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${run.title}, ${subtitle}`}
         onPress={() => openRun(run.id)}
-      />
+        style={({ pressed }) => ({
+          minHeight: 64,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: theme.space.lg,
+          padding: theme.space.lg,
+          borderRadius: theme.radii.xxl,
+          backgroundColor: alert ? theme.colors.alertTint : theme.colors.white,
+          boxShadow: theme.shadows.raised,
+          opacity: pressed ? 0.85 : 1,
+        })}
+      >
+        <View
+          style={{
+            width: 48,
+            height: 48,
+            borderRadius: theme.radii.xl,
+            backgroundColor: alert ? theme.colors.coral : theme.colors.primaryTint,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Ionicons
+            name={alert ? 'alert-circle' : 'play'}
+            size={22}
+            color={alert ? '#FFFFFF' : theme.colors.primary}
+          />
+        </View>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text
+            style={{
+              fontFamily: theme.fonts.bodyExtraBold,
+              fontSize: theme.typography.body.fontSize,
+              lineHeight: 22,
+              color: theme.colors.ink,
+            }}
+            numberOfLines={2}
+            allowFontScaling
+          >
+            {run.title}
+          </Text>
+          <Text
+            style={{
+              fontFamily: alert ? theme.fonts.bodySemiBold : theme.fonts.bodyMedium,
+              fontSize: theme.typography.caption.fontSize,
+              lineHeight: theme.typography.caption.lineHeight,
+              color: alert ? theme.colors.coral : theme.colors.inkMuted,
+            }}
+            allowFontScaling
+          >
+            {subtitle}
+          </Text>
+        </View>
+      </Pressable>
     </Swipeable>
   );
 }
 
-function SectionHeading({
+function SummaryTiles({
   theme,
-  label,
-  hint,
+  tasks,
 }: {
   theme: AppTheme;
-  label: string;
-  hint?: string;
+  tasks: RecurringTaskState[];
 }) {
+  const copy = t().today;
+  const labels: Record<TaskFrequency, string> = {
+    daily: copy.summaryToday,
+    weekly: copy.summaryWeek,
+    monthly: copy.summaryMonth,
+  };
+
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: theme.space.sm }}>
-      <Text
-        style={{
-          fontFamily: theme.fonts.label,
-          fontSize: theme.typography.label.fontSize,
-          lineHeight: theme.typography.label.lineHeight,
-          color: theme.colors.inkSubtle,
-          textTransform: 'uppercase',
-          letterSpacing: 0.5,
-        }}
-        allowFontScaling
-      >
-        {label}
-      </Text>
-      {hint ? (
-        <Text
-          style={{
-            fontFamily: theme.fonts.body,
-            fontSize: theme.typography.caption.fontSize,
-            color: theme.colors.inkSubtle,
-          }}
-          allowFontScaling
-        >
-          {hint}
-        </Text>
-      ) : null}
+    <View style={{ flexDirection: 'row', gap: theme.space.md }}>
+      {TASK_FREQUENCIES.map((frequency) => {
+        const accent = theme.colors.frequency[frequency];
+        const ofFrequency = tasks.filter((task) => task.frequency === frequency);
+        const done = countDone(ofFrequency);
+        const value = ofFrequency.length ? `${done}/${ofFrequency.length}` : '–';
+        return (
+          <View
+            key={frequency}
+            accessible
+            accessibilityLabel={copy.summaryA11y
+              .replace('{period}', labels[frequency])
+              .replace('{done}', String(done))
+              .replace('{total}', String(ofFrequency.length))}
+            style={{
+              flex: 1,
+              gap: theme.space.xs,
+              padding: theme.space.lg,
+              borderRadius: 24,
+              backgroundColor: accent.tint,
+            }}
+          >
+            <Text
+              style={{
+                fontFamily: theme.fonts.label,
+                fontSize: theme.typography.chip.fontSize,
+                lineHeight: theme.typography.chip.lineHeight,
+                textTransform: 'uppercase',
+                color: accent.text,
+              }}
+              allowFontScaling
+            >
+              {labels[frequency]}
+            </Text>
+            <Text
+              style={{
+                fontFamily: theme.fonts.bodyExtraBold,
+                fontSize: 20,
+                lineHeight: 26,
+                color: theme.colors.ink,
+              }}
+              allowFontScaling
+            >
+              {value}
+            </Text>
+          </View>
+        );
+      })}
     </View>
   );
 }
@@ -159,6 +244,17 @@ function periodHint(frequency: TaskFrequency): string | undefined {
     '{date}',
     end.toFormat(frequency === 'weekly' ? 'ccc d LLL' : 'd LLL'),
   );
+}
+
+function dateLine(tasks: RecurringTaskState[]): string {
+  const copy = t().today;
+  const date = DateTime.now().setZone(getDeviceTimeZone()).toFormat('cccc d LLLL');
+  const daily = tasks.filter((task) => task.frequency === 'daily');
+  if (daily.length === 0) return date;
+  const left = daily.length - countDone(daily);
+  if (left === 0) return copy.allDoneToday.replace('{date}', date);
+  if (left === 1) return copy.leftTodayOne.replace('{date}', date);
+  return copy.leftToday.replace('{date}', date).replace('{count}', String(left));
 }
 
 export default function TodayScreen() {
@@ -206,11 +302,11 @@ export default function TodayScreen() {
   );
 
   const groups = groupByFrequencyAndTemplate(recurring.tasks);
-  const periods: { frequency: TaskFrequency; label: string }[] = [
-    { frequency: 'daily', label: recurringCopy.periodToday },
-    { frequency: 'weekly', label: recurringCopy.periodWeek },
-    { frequency: 'monthly', label: recurringCopy.periodMonth },
-  ];
+  const periodLabels: Record<TaskFrequency, string> = {
+    daily: recurringCopy.periodToday,
+    weekly: recurringCopy.periodWeek,
+    monthly: recurringCopy.periodMonth,
+  };
   const empty =
     !loading && recurring.tasks.length === 0 && due.length === 0 && earlier.length === 0;
 
@@ -240,18 +336,32 @@ export default function TodayScreen() {
 
   return (
     <Screen>
-      <View style={{ gap: theme.space.md, flex: 1 }}>
-        <ScreenHeader
-          eyebrow={onboarding?.kitchenName || undefined}
-          title={title}
-          right={
-            <IconButton
-              name="settings-outline"
-              accessibilityLabel={t().settings.title}
-              onPress={() => router.push('/(app)/settings')}
-            />
-          }
-        />
+      <View style={{ gap: theme.space.lg, flex: 1 }}>
+        <View style={{ gap: theme.space.xs }}>
+          <ScreenHeader
+            size="display"
+            eyebrow={onboarding?.kitchenName || undefined}
+            title={title}
+            right={
+              <IconButton
+                name="settings-outline"
+                accessibilityLabel={t().settings.title}
+                onPress={() => router.push('/(app)/settings')}
+              />
+            }
+          />
+          <Text
+            style={{
+              fontFamily: theme.fonts.bodyMedium,
+              fontSize: 15,
+              lineHeight: 20,
+              color: theme.colors.inkMuted,
+            }}
+            allowFontScaling
+          >
+            {dateLine(recurring.tasks)}
+          </Text>
+        </View>
 
         <SyncBanner />
 
@@ -270,38 +380,54 @@ export default function TodayScreen() {
           <ScrollView
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{
-              gap: theme.space.xl,
-              paddingBottom: theme.space.xxl,
+              gap: theme.space.xxl + theme.space.sm,
+              paddingTop: theme.space.sm,
+              paddingBottom: theme.space.xxxl,
               alignItems: 'stretch',
             }}
           >
+            {recurring.tasks.length > 0 ? (
+              <SummaryTiles theme={theme} tasks={recurring.tasks} />
+            ) : null}
+
             {due.length > 0 ? (
-              <View style={{ gap: theme.space.sm }}>
-                <SectionHeading theme={theme} label={copy.checklistsTitle} />
-                {due.map((run) => (
-                  <TodayRunRow
-                    key={run.id}
-                    run={run}
-                    theme={theme}
-                    onRequestDelete={onRequestDelete}
-                    subtitle={runSubtitle(run)}
-                  />
-                ))}
+              <View style={{ gap: theme.space.lg }}>
+                <SectionChip
+                  label={copy.checklistsTitle}
+                  chipTone={{ background: theme.colors.primary, text: '#FFFFFF' }}
+                />
+                <View style={{ gap: theme.space.md }}>
+                  {due.map((run) => (
+                    <RunCard
+                      key={run.id}
+                      run={run}
+                      theme={theme}
+                      onRequestDelete={onRequestDelete}
+                      subtitle={runSubtitle(run)}
+                    />
+                  ))}
+                </View>
               </View>
             ) : null}
 
-            {periods.map(({ frequency, label }) =>
-              groups[frequency].length > 0 ? (
-                <View key={frequency} style={{ gap: theme.space.md }}>
-                  <SectionHeading
-                    theme={theme}
-                    label={label}
+            {TASK_FREQUENCIES.map((frequency) => {
+              const accent = theme.colors.frequency[frequency];
+              return groups[frequency].length > 0 ? (
+                <View key={frequency} style={{ gap: theme.space.lg }}>
+                  <SectionChip
+                    label={periodLabels[frequency]}
                     hint={periodHint(frequency)}
+                    chipTone={{
+                      background: accent.tint,
+                      text: theme.colors.ink,
+                      dot: accent.base,
+                    }}
                   />
                   {groups[frequency].map((group) => (
                     <RecurringGroupCard
                       key={group.templateId}
                       title={group.templateTitle}
+                      frequency={frequency}
                       tasks={group.tasks}
                       doneCount={group.doneCount}
                       onOpenTemplate={() =>
@@ -311,21 +437,26 @@ export default function TodayScreen() {
                     />
                   ))}
                 </View>
-              ) : null,
-            )}
+              ) : null;
+            })}
 
             {earlier.length > 0 ? (
-              <View style={{ gap: theme.space.sm }}>
-                <SectionHeading theme={theme} label={copy.earlierUnfinished} />
-                {earlier.map((run) => (
-                  <TodayRunRow
-                    key={run.id}
-                    run={run}
-                    theme={theme}
-                    onRequestDelete={onRequestDelete}
-                    subtitle={runSubtitle(run, run.localDate)}
-                  />
-                ))}
+              <View style={{ gap: theme.space.lg }}>
+                <SectionChip
+                  label={copy.earlierUnfinished}
+                  chipTone={{ background: theme.colors.sand, text: theme.colors.ink }}
+                />
+                <View style={{ gap: theme.space.md }}>
+                  {earlier.map((run) => (
+                    <RunCard
+                      key={run.id}
+                      run={run}
+                      theme={theme}
+                      onRequestDelete={onRequestDelete}
+                      subtitle={runSubtitle(run, run.localDate)}
+                    />
+                  ))}
+                </View>
               </View>
             ) : null}
           </ScrollView>

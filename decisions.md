@@ -29,19 +29,18 @@ Prepared overnight for morning review. Secrets are never copied here.
 
 ## Design system (from both design skills)
 
-**Direction:** Friendly kitchen companion × focused personal productivity — calm, tactile, list-first. Not corporate restaurant software. Not cream+terracotta “AI kitchen” cliché. Not purple SaaS.
+**Direction (Nov 2026 redesign, "Warm Sorbet × Paper"):** warm, homey and calm, with each frequency color-coded. Replaces the earlier teal/mint system.
 
 | Token area | Choice | Why |
 | --- | --- | --- |
-| Product fit | Productivity Tool + Grocery/checklist cues (UI/UX Pro Max) | Checklist execution first; kitchen warmth second |
-| Style | Soft flat + restrained micro-interactions (not Bauhaus hard-shadow; not electric-blue SaaS) | Readable under time pressure; modern personal app |
-| Palette | Deep teal primary `#0F766E`, soft mint canvas `#F2FBF8`, charcoal ink `#14302C`, coral action `#E11D48` for urgency only, warm sand surface `#FFF8F1` for secondary panels | Teal focus + clear hierarchy from Pro Max productivity palette; coral replaces orange for stronger WCAG on white |
-| Typography | Display: **Fraunces** (soft old-style, kitchen-human); Body/UI: **DM Sans**; Mono labels: **IBM Plex Mono** | Avoid Inter/Roboto/system defaults per frontend-design; Fraunces ≠ Playfair “editorial luxury” overuse |
-| Surfaces | Soft 12–16px radii, hairline borders, almost-no cards in hero; compact checklist rows | Brief: compact practical rows, restrained rounded surfaces |
-| Motion | 180–280ms fades/slides; spring presses; honor reduced motion | 2–3 intentional motions; Pro Max 150–300ms guidance |
-| Logo | Text treatment **Kdo** (large rounded K + small “do”) until an approved vector asset is added | Asset missing in repo |
+| Palette | Cream canvas `#FBF6EE`, paper cards `#FFFDF9`, espresso ink `#2B211C`, muted `#7A6A5F`, terracotta primary `#C4452A`, coral alert `#C43E2A` on `#FFF5F5` | Warm kitchen feel; shades deepened from the design so text passes WCAG AA |
+| Frequency colors | Daily peach `#F4A261`/`#FFF1E8`, weekly lavender `#9C8FD9`/`#EFEBFA`, monthly sage `#7FB08A`/`#E6F1E8`, each with a darker text shade | Lets users tell periods apart at a glance (summary tiles, chips, checkboxes) |
+| Typography | Display: **Instrument Serif** (italic for page titles); UI: **Plus Jakarta Sans** 400–800; uppercase 800 labels/chips | One UI family; serif only for warmth in titles |
+| Surfaces | Paper cards 20px radius with hairline border + soft shadow; floating cards 28px; pill chips; 24pt gutter | Recipe-card feel for task lists |
+| Motion | 180–280ms; honor reduced motion | Unchanged |
+| Logo | Text placeholder until the new logo is designed | Logo redesign pending |
 
-Respect system light/dark: light is default brand; dark uses inverted teal surfaces without neon glow.
+Light is the default; dark mode uses warm espresso surfaces with the same frequency hues.
 
 ---
 

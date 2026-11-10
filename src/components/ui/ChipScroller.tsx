@@ -7,7 +7,7 @@ type Props = {
   scroll?: boolean;
 };
 
-const ROW_H = 34;
+const ROW_H = 44;
 
 /**
  * Tight chip row. Default wraps with 8pt gaps and left alignment.

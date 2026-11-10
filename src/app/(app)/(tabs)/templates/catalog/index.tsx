@@ -2,7 +2,14 @@ import { useDeferredValue, useMemo, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { router } from 'expo-router';
 
-import { Button, EmptyState, Screen, ScreenHeader, SectionLabel } from '@/components/ui';
+import {
+  Button,
+  EmptyState,
+  Screen,
+  ScreenHeader,
+  SectionChip,
+  SectionLabel,
+} from '@/components/ui';
 import { useTheme } from '@/design';
 import { useAuth } from '@/features/auth';
 import {
@@ -18,8 +25,9 @@ import {
   CatalogSearchField,
   countLabel,
   GroupCard,
+  PresetCard,
   PresetRow,
-  ScopeChips
+  ScopeChips,
 } from '@/features/catalog/components';
 import { t } from '@/i18n';
 
@@ -54,28 +62,35 @@ export default function TemplateCatalogScreen() {
   }, [preferred, scope]);
 
   const renderCategory = (category: CatalogCategory) => (
-    <View key={category.key} style={{ gap: theme.space.md }}>
-      {scope === 'all' ? <SectionLabel>{category.label}</SectionLabel> : null}
-      <View style={{ gap: theme.space.sm }}>
-        <SectionLabel>{copy.featuredTitle}</SectionLabel>
+    <View key={category.key} style={{ gap: theme.space.xxl }}>
+      {scope === 'all' ? (
+        <ScreenHeader title={category.label} style={{ marginBottom: -theme.space.lg }} />
+      ) : null}
+      <View style={{ gap: theme.space.lg }}>
+        <SectionChip
+          label={copy.featuredTitle}
+          chipTone={{ background: theme.colors.primary, text: '#FFFFFF' }}
+        />
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ gap: theme.space.sm, paddingRight: theme.space.lg }}
+          style={{ marginHorizontal: -theme.space.screen }}
+          contentContainerStyle={{
+            gap: theme.space.lg,
+            paddingHorizontal: theme.space.screen,
+            paddingTop: theme.space.xs,
+            paddingBottom: theme.space.xl,
+          }}
         >
           {category.featured.map((id) => {
             const preset = getPreset(id);
             if (!preset) return null;
-            return (
-              <View key={id} style={{ width: 240 }}>
-                <PresetRow preset={preset} onPress={() => openPreset(id)} />
-              </View>
-            );
+            return <PresetCard key={id} preset={preset} onPress={() => openPreset(id)} />;
           })}
         </ScrollView>
       </View>
-      <View style={{ gap: theme.space.sm }}>
-        <SectionLabel>{copy.categoriesTitle}</SectionLabel>
+      <View style={{ gap: theme.space.lg, marginTop: -theme.space.lg }}>
+        <SectionChip label={copy.categoriesTitle} />
         <View
           style={{
             flexDirection: 'row',
@@ -83,10 +98,11 @@ export default function TemplateCatalogScreen() {
             justifyContent: 'space-between',
           }}
         >
-          {category.groups.map((group) => (
+          {category.groups.map((group, index) => (
             <GroupCard
               key={group.key}
               group={group}
+              index={index}
               onPress={() =>
                 router.push(`/(app)/(tabs)/templates/catalog/group/${group.key}`)
               }
@@ -100,19 +116,21 @@ export default function TemplateCatalogScreen() {
   return (
     <Screen>
       <View style={{ flex: 1 }}>
-        <View style={{ gap: 10, flexShrink: 0 }}>
-          <CatalogBackLink />
-          <ScreenHeader title={copy.title} eyebrow={copy.eyebrow} />
-          <CatalogSearchField value={query} onChangeText={setQuery} />
+        <View style={{ gap: theme.space.lg, flexShrink: 0 }}>
+          <View style={{ gap: theme.space.xs }}>
+            <CatalogBackLink />
+            <ScreenHeader size="display" title={copy.title} eyebrow={copy.eyebrow} />
+          </View>
           <ScopeChips scope={scope} onChange={setScope} />
+          <CatalogSearchField value={query} onChangeText={setQuery} />
         </View>
 
         <ScrollView
           style={{ flex: 1 }}
           contentContainerStyle={{
-            gap: theme.space.xl,
-            paddingTop: theme.space.sm,
-            paddingBottom: theme.space.xxl,
+            gap: theme.space.xxl,
+            paddingTop: theme.space.xl,
+            paddingBottom: theme.space.xxxl,
           }}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
@@ -137,7 +155,7 @@ export default function TemplateCatalogScreen() {
               />
             </View>
           ) : (
-            <View style={{ gap: theme.space.sm }}>
+            <View style={{ gap: theme.space.md }}>
               <SectionLabel>
                 {countLabel(results.length, copy.resultsCountOne, copy.resultsCount)}
               </SectionLabel>

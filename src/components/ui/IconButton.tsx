@@ -11,7 +11,7 @@ type Props = {
   size?: number;
 };
 
-/** 44×44 touch target with centered icon — for header trailing actions. */
+/** 44×44 round touch target with centered icon — for header trailing actions. */
 export function IconButton({
   name,
   accessibilityLabel,
@@ -29,14 +29,17 @@ export function IconButton({
       style={({ pressed }) => ({
         width: 44,
         height: 44,
-        borderRadius: theme.radii.sm,
-        backgroundColor: theme.colors.sand,
+        borderRadius: theme.radii.pill,
+        backgroundColor: theme.colors.white,
+        borderWidth: 0.5,
+        borderColor: theme.colors.border,
+        boxShadow: theme.shadows.soft,
         alignItems: 'center',
         justifyContent: 'center',
         opacity: pressed ? 0.85 : 1,
       })}
     >
-      <Ionicons name={name} size={size} color={theme.colors.inkMuted} />
+      <Ionicons name={name} size={size} color={theme.colors.ink} />
     </Pressable>
   );
 }

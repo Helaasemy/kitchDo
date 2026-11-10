@@ -1,8 +1,15 @@
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Text, View } from 'react-native';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 
-import { Button, Screen } from '@/components/ui';
+import {
+  BackLink,
+  Button,
+  PaperCard,
+  Screen,
+  ScreenHeader,
+  SectionLabel,
+} from '@/components/ui';
 import { useTheme } from '@/design';
 import { useAuth } from '@/features/auth';
 import { isLibraryCopy } from '@/features/catalog';
@@ -13,6 +20,7 @@ import {
   TASK_FREQUENCIES,
   useRecurringTasks,
   type FrequencyTab,
+  type RecurringTaskState,
   type TaskFrequency,
 } from '@/features/recurring';
 import {
@@ -20,10 +28,34 @@ import {
   startManualRunFromTemplate,
 } from '@/features/runs';
 import { getTemplate, type TemplateDetail } from '@/features/templates/api';
-import { goBackOr } from '@/lib/navigation';
 import { t } from '@/i18n';
 
 type TabKey = 'all' | TaskFrequency;
+
+type HubRow = {
+  key: string;
+  title: string;
+  task: RecurringTaskState | undefined;
+};
+
+type HubGroup = { key: string; title: string | null; rows: HubRow[] };
+
+/** Rows grouped under their section, in template order; unsectioned rows first. */
+function groupRows(
+  detail: TemplateDetail,
+  rows: (HubRow & { sectionId: string | null })[],
+): HubGroup[] {
+  const sections = [...detail.sections].sort((a, b) => a.sortOrder - b.sortOrder);
+  const groups: HubGroup[] = [
+    { key: 'none', title: null, rows: rows.filter((r) => !r.sectionId) },
+    ...sections.map((section) => ({
+      key: section.id,
+      title: section.title,
+      rows: rows.filter((r) => r.sectionId === section.id),
+    })),
+  ];
+  return groups.filter((g) => g.rows.length > 0);
+}
 
 function stateLabel(state: TemplateDetail['state']): string {
   const copy = t().templates;
@@ -145,9 +177,6 @@ export default function TemplateHubScreen() {
       : copy.hubSectionCount.replace('{count}', String(sectionCount));
 
   const recurringById = new Map(recurring.tasks.map((task) => [task.itemId, task]));
-  const sectionTitleById = new Map(
-    (detail?.sections ?? []).map((s) => [s.id, s.title]),
-  );
   const frequencyTabs: FrequencyTab<TabKey>[] = [
     { key: 'all', label: recurringCopy.tabAll },
     ...TASK_FREQUENCIES.flatMap((f) => {
@@ -163,195 +192,162 @@ export default function TemplateHubScreen() {
       ? []
       : recurring.tasks.filter((task) => task.frequency === activeTab);
 
+  const frequencyLabel = (task: RecurringTaskState | undefined) =>
+    task ? recurringCopy[task.frequency] : recurringCopy.oneOff;
+
+  const sectionIdByItem = new Map((detail?.items ?? []).map((i) => [i.id, i.sectionId]));
+  const rows =
+    activeTab === 'all'
+      ? (detail?.items ?? []).map((item) => ({
+          key: item.id,
+          title: item.title,
+          task: recurringById.get(item.id),
+          sectionId: item.sectionId,
+        }))
+      : tabTasks.map((task) => ({
+          key: task.itemId,
+          title: task.title,
+          task,
+          sectionId: sectionIdByItem.get(task.itemId) ?? null,
+        }));
+  const groups = detail ? groupRows(detail, rows) : [];
+
+  const notice = (text: string, tone: 'muted' | 'alert' = 'muted') => (
+    <Text
+      style={{
+        fontFamily: theme.fonts.bodyMedium,
+        color: tone === 'alert' ? theme.colors.coral : theme.colors.inkMuted,
+        fontSize: theme.typography.bodySmall.fontSize,
+        lineHeight: theme.typography.bodySmall.lineHeight,
+      }}
+      allowFontScaling
+    >
+      {text}
+    </Text>
+  );
+
   return (
     <Screen scroll>
-      <View style={{ paddingTop: theme.space.sm, gap: theme.space.lg }}>
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}
-        >
-          <Pressable
-            onPress={() => goBackOr('/(app)/(tabs)/templates')}
-            hitSlop={12}
-          >
-            <Text
-              style={{
-                fontFamily: theme.fonts.bodyMedium,
-                color: theme.colors.primary,
-                fontSize: theme.typography.body.fontSize,
-              }}
-              allowFontScaling
-            >
-              {t().common.back}
-            </Text>
-          </Pressable>
+      <View style={{ gap: theme.space.xl }}>
+        <View style={{ gap: theme.space.xs }}>
+          <BackLink label={t().tabs.templates} fallback="/(app)/(tabs)/templates" />
+          <ScreenHeader
+            size="display"
+            eyebrow={copy.hubTitle}
+            title={detail?.title ?? copy.hubTitle}
+          />
           <Text
             style={{
-              fontFamily: theme.fonts.displayRegular,
-              fontSize: theme.typography.heading.fontSize,
-              color: theme.colors.ink,
+              fontFamily: theme.fonts.bodyMedium,
+              fontSize: theme.typography.bodySmall.fontSize,
+              color: theme.colors.inkMuted,
             }}
             allowFontScaling
           >
-            {copy.hubTitle}
-          </Text>
-          <View style={{ width: 48 }} />
-        </View>
-
-        <View style={{ gap: theme.space.sm }}>
-          <Text
-            style={{
-              fontFamily: theme.fonts.display,
-              fontSize: theme.typography.title.fontSize,
-              color: theme.colors.ink,
-            }}
-            allowFontScaling
-          >
-            {detail?.title ?? copy.hubTitle}
+            {[
+              detail && detail.state !== 'active' ? stateLabel(detail.state) : null,
+              detail ? itemLabel : null,
+              sectionCount > 0 ? sectionLabel : null,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
           </Text>
           {detail?.description ? (
             <Text
               style={{
                 fontFamily: theme.fonts.body,
                 fontSize: theme.typography.body.fontSize,
-                color: theme.colors.inkMuted,
                 lineHeight: theme.typography.body.lineHeight,
+                color: theme.colors.inkMuted,
+                marginTop: theme.space.xs,
               }}
               allowFontScaling
             >
               {detail.description}
             </Text>
           ) : null}
-          <Text
-            style={{
-              fontFamily: theme.fonts.bodyMedium,
-              fontSize: theme.typography.caption.fontSize,
-              color: theme.colors.inkMuted,
-            }}
-            allowFontScaling
-          >
-            {detail ? stateLabel(detail.state) : ''}
-            {detail ? ` · ${itemLabel}` : ''}
-            {sectionCount > 0 ? ` · ${sectionLabel}` : ''}
-          </Text>
         </View>
 
-        {detail?.state === 'archived' ? (
-          <Text
-            style={{
-              fontFamily: theme.fonts.body,
-              color: theme.colors.coral,
-              fontSize: theme.typography.caption.fontSize,
-            }}
-            allowFontScaling
-          >
-            {copy.hubArchivedHint}
-          </Text>
-        ) : null}
-
-        {hasOpenRun ? (
-          <Text
-            style={{
-              fontFamily: theme.fonts.body,
-              color: theme.colors.inkMuted,
-              fontSize: theme.typography.body.fontSize,
-            }}
-            allowFontScaling
-          >
-            {copy.hubOpenRunHint}
-          </Text>
-        ) : null}
-
-        {!canStart && !hasOpenRun && detail?.state !== 'archived' ? (
-          <Text
-            style={{
-              fontFamily: theme.fonts.body,
-              color: theme.colors.inkMuted,
-              fontSize: theme.typography.body.fontSize,
-            }}
-            allowFontScaling
-          >
-            {copy.hubNoPublished}
-          </Text>
-        ) : null}
-
-        {error ? (
-          <Text
-            style={{
-              fontFamily: theme.fonts.body,
-              color: theme.colors.coral,
-              fontSize: theme.typography.caption.fontSize,
-            }}
-            allowFontScaling
-          >
-            {error}
-          </Text>
-        ) : null}
-
-        <View style={{ gap: theme.space.sm }}>
-          <Button
-            label={hasOpenRun ? copy.continueRun : copy.useNow}
-            loading={starting}
-            disabled={!hasOpenRun && !canStart}
-            onPress={() => void onPrimary()}
-          />
-          <Button
-            label={copy.hubEdit}
-            variant="secondary"
-            onPress={() => router.push(`/(app)/(tabs)/templates/${templateId}`)}
-          />
+        <View style={{ gap: theme.space.md }}>
+          <View style={{ flexDirection: 'row', gap: theme.space.md }}>
+            <Button
+              label={hasOpenRun ? copy.continueRun : copy.useNow}
+              icon="play"
+              loading={starting}
+              disabled={!hasOpenRun && !canStart}
+              onPress={() => void onPrimary()}
+              style={{ flex: 1 }}
+            />
+            <Button
+              label={copy.hubEditShort}
+              icon="pencil"
+              variant="secondary"
+              onPress={() => router.push(`/(app)/(tabs)/templates/${templateId}`)}
+              style={{ flex: 1 }}
+            />
+          </View>
           {!libraryCopy ? (
             <Button
               label={copy.addSchedule}
-              variant="secondary"
+              icon="calendar-outline"
+              variant="ghost"
+              compact
               onPress={() =>
                 router.push(`/(app)/(tabs)/templates/${templateId}/schedule`)
               }
             />
           ) : null}
+          {detail?.state === 'archived' ? notice(copy.hubArchivedHint, 'alert') : null}
+          {hasOpenRun ? notice(copy.hubOpenRunHint) : null}
+          {!canStart && !hasOpenRun && detail?.state !== 'archived'
+            ? notice(copy.hubNoPublished)
+            : null}
+          {error ? notice(error, 'alert') : null}
         </View>
 
         {itemCount > 0 ? (
-          <View style={{ gap: theme.space.sm }}>
+          <View style={{ gap: theme.space.xl }}>
             {frequencyTabs.length > 1 ? (
               <FrequencyTabs tabs={frequencyTabs} value={activeTab} onChange={setTab} />
             ) : null}
-            {activeTab === 'all'
-              ? detail?.items.map((item) => {
-                  const task = recurringById.get(item.id);
-                  const section = item.sectionId
-                    ? sectionTitleById.get(item.sectionId)
-                    : null;
-                  const frequencyLabel = task
-                    ? recurringCopy[task.frequency]
-                    : recurringCopy.oneOff;
-                  return (
+            {groups.map((group) => (
+              <View key={group.key} style={{ gap: theme.space.md }}>
+                {group.title ? (
+                  <View style={{ paddingHorizontal: theme.space.xs }}>
+                    <SectionLabel>{group.title}</SectionLabel>
+                  </View>
+                ) : null}
+                <PaperCard>
+                  {group.rows.map((row, index) => (
                     <RecurringTaskRow
-                      key={item.id}
-                      title={item.title}
-                      caption={[frequencyLabel, section].filter(Boolean).join(' · ')}
-                      done={task?.done ?? false}
-                      onToggle={task ? () => void recurring.toggle(task) : undefined}
+                      key={row.key}
+                      title={row.title}
+                      caption={frequencyLabel(row.task)}
+                      done={row.task?.done ?? false}
+                      accent={
+                        row.task ? theme.colors.frequency[row.task.frequency] : undefined
+                      }
+                      grouped
+                      divider={index < group.rows.length - 1}
+                      onToggle={
+                        row.task
+                          ? () => {
+                              const task = row.task;
+                              if (task) void recurring.toggle(task);
+                            }
+                          : undefined
+                      }
                     />
-                  );
-                })
-              : tabTasks.map((task) => (
-                  <RecurringTaskRow
-                    key={task.itemId}
-                    title={task.title}
-                    caption={task.sectionTitle}
-                    done={task.done}
-                    onToggle={() => void recurring.toggle(task)}
-                  />
-                ))}
+                  ))}
+                </PaperCard>
+              </View>
+            ))}
             {recurring.tasks.length > 0 ? (
               <Text
                 style={{
-                  fontFamily: theme.fonts.body,
+                  fontFamily: theme.fonts.bodyMedium,
                   fontSize: theme.typography.caption.fontSize,
+                  lineHeight: theme.typography.caption.lineHeight,
                   color: theme.colors.inkSubtle,
                 }}
                 allowFontScaling

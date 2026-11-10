@@ -7,6 +7,8 @@ type Props = {
   title: string;
   eyebrow?: string;
   right?: ReactNode;
+  /** `display` is the large italic serif used on tab home pages. */
+  size?: 'title' | 'display';
   style?: StyleProp<ViewStyle>;
 };
 
@@ -14,20 +16,21 @@ type Props = {
  * Shared page header. Trailing action aligns to the title row (not the
  * eyebrow+title stack), so gear/add icons sit on the title centerline.
  */
-export function ScreenHeader({ title, eyebrow, right, style }: Props) {
+export function ScreenHeader({ title, eyebrow, right, size = 'title', style }: Props) {
   const theme = useTheme();
+  const titleType = size === 'display' ? theme.typography.display : theme.typography.title;
 
   return (
-    <View style={[{ gap: 2, width: '100%' }, style]}>
+    <View style={[{ gap: theme.space.xs, width: '100%' }, style]}>
       {eyebrow ? (
         <Text
           style={{
             fontFamily: theme.fonts.label,
-            fontSize: theme.typography.label.fontSize,
-            lineHeight: theme.typography.label.lineHeight,
-            color: theme.colors.inkSubtle,
+            fontSize: theme.typography.chip.fontSize,
+            lineHeight: theme.typography.chip.lineHeight,
+            color: theme.colors.inkMuted,
             textTransform: 'uppercase',
-            letterSpacing: 0.6,
+            letterSpacing: 1.6,
             paddingRight: right ? 52 : 0,
           }}
           numberOfLines={1}
@@ -57,8 +60,9 @@ export function ScreenHeader({ title, eyebrow, right, style }: Props) {
           <Text
             style={{
               fontFamily: theme.fonts.display,
-              fontSize: theme.typography.title.fontSize,
-              lineHeight: theme.typography.title.lineHeight,
+              fontSize: titleType.fontSize,
+              lineHeight: titleType.lineHeight,
+              letterSpacing: -0.4,
               color: theme.colors.ink,
             }}
             numberOfLines={2}

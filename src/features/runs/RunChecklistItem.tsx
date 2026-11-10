@@ -10,6 +10,8 @@ type Props = {
   item: RunItemView;
   busy?: boolean;
   instructionsOpen?: boolean;
+  /** Hairline under the row when more rows follow in the same card. */
+  divider?: boolean;
   onToggleDone: () => void;
   onNotApplicable: () => void;
   onBlocked: () => void;
@@ -17,80 +19,49 @@ type Props = {
   onResolveIssue?: () => void;
 };
 
-function CheckboxGlyph({
-  outcome,
-}: {
-  outcome: RunItemView['outcome'];
-}) {
+function CheckboxGlyph({ outcome }: { outcome: RunItemView['outcome'] }) {
   const theme = useTheme();
-  const size = 22;
+  const base = {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  };
 
   if (outcome === 'done') {
     return (
-      <View
-        style={{
-          width: 26,
-          height: 26,
-          borderRadius: 7,
-          backgroundColor: theme.colors.primary,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <Ionicons name="checkmark" size={size - 4} color="#FFFFFF" />
+      <View style={{ ...base, backgroundColor: theme.colors.primary }}>
+        <Ionicons name="checkmark" size={18} color="#FFFFFF" />
       </View>
     );
   }
-
   if (outcome === 'not_applicable') {
     return (
-      <View
-        style={{
-          width: 26,
-          height: 26,
-          borderRadius: 7,
-          borderWidth: 2,
-          borderColor: theme.colors.inkSubtle,
-          backgroundColor: theme.colors.sand,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <Ionicons name="remove" size={size - 4} color={theme.colors.inkSubtle} />
+      <View style={{ ...base, backgroundColor: theme.colors.sand }}>
+        <Ionicons name="remove" size={18} color={theme.colors.inkMuted} />
       </View>
     );
   }
-
   if (outcome === 'blocked') {
     return (
       <View
         style={{
-          width: 26,
-          height: 26,
-          borderRadius: 7,
-          borderWidth: 2,
+          ...base,
+          borderWidth: 1.5,
           borderColor: theme.colors.coral,
           backgroundColor: theme.colors.white,
-          alignItems: 'center',
-          justifyContent: 'center',
         }}
       >
-        <Ionicons
-          name="alert"
-          size={size - 6}
-          color={theme.colors.coral}
-        />
+        <Ionicons name="alert" size={16} color={theme.colors.coral} />
       </View>
     );
   }
-
   return (
     <View
       style={{
-        width: 26,
-        height: 26,
-        borderRadius: 7,
-        borderWidth: 2,
+        ...base,
+        borderWidth: 1.5,
         borderColor: theme.colors.borderStrong,
         backgroundColor: theme.colors.white,
       }}
@@ -98,52 +69,90 @@ function CheckboxGlyph({
   );
 }
 
-function ActionIcon({
-  name,
+function ActionPill({
   label,
-  active,
+  icon,
+  accessibilityLabel,
   danger,
   onPress,
   disabled,
 }: {
-  name: ComponentProps<typeof Ionicons>['name'];
-  label: string;
-  active?: boolean;
+  label?: string;
+  icon?: ComponentProps<typeof Ionicons>['name'];
+  accessibilityLabel: string;
   danger?: boolean;
   onPress: () => void;
   disabled?: boolean;
 }) {
   const theme = useTheme();
-  const color = danger
-    ? theme.colors.coral
-    : active
-      ? theme.colors.primary
-      : theme.colors.inkSubtle;
-
+  const color = danger ? theme.colors.coral : theme.colors.inkMuted;
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ selected: Boolean(active), disabled }}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={onPress}
-      hitSlop={6}
+      hitSlop={{ top: 8, bottom: 8, left: 2, right: 2 }}
       style={({ pressed }) => ({
-        width: 40,
-        height: 40,
-        borderRadius: theme.radii.sm,
+        minWidth: 36,
+        height: 30,
+        paddingHorizontal: theme.space.md - 2,
+        borderRadius: theme.radii.pill,
+        borderWidth: 0.5,
+        borderColor: theme.colors.border,
+        backgroundColor: pressed ? theme.colors.sand : theme.colors.white,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: active
-          ? danger
-            ? 'rgba(225, 29, 72, 0.1)'
-            : 'rgba(15, 118, 110, 0.1)'
-          : 'transparent',
-        opacity: disabled ? 0.4 : pressed ? 0.7 : 1,
+        opacity: disabled ? 0.4 : 1,
       })}
     >
-      <Ionicons name={name} size={20} color={color} />
+      {icon ? (
+        <Ionicons name={icon} size={15} color={color} />
+      ) : (
+        <Text
+          style={{
+            fontFamily: theme.fonts.label,
+            fontSize: 10,
+            lineHeight: 13,
+            letterSpacing: 0.4,
+            color,
+          }}
+          allowFontScaling
+        >
+          {label}
+        </Text>
+      )}
     </Pressable>
+  );
+}
+
+function StatusTag({ label, danger }: { label: string; danger?: boolean }) {
+  const theme = useTheme();
+  return (
+    <View
+      style={{
+        alignSelf: 'flex-start',
+        paddingHorizontal: theme.space.sm,
+        paddingVertical: 2,
+        borderRadius: theme.radii.pill,
+        backgroundColor: danger ? theme.colors.coral : theme.colors.sand,
+      }}
+    >
+      <Text
+        style={{
+          fontFamily: theme.fonts.label,
+          fontSize: 10,
+          lineHeight: 13,
+          letterSpacing: 0.6,
+          textTransform: 'uppercase',
+          color: danger ? '#FFFFFF' : theme.colors.inkMuted,
+        }}
+        allowFontScaling
+      >
+        {label}
+      </Text>
+    </View>
   );
 }
 
@@ -151,6 +160,7 @@ export function RunChecklistItem({
   item,
   busy = false,
   instructionsOpen = false,
+  divider = false,
   onToggleDone,
   onNotApplicable,
   onBlocked,
@@ -162,7 +172,6 @@ export function RunChecklistItem({
   const isDone = item.outcome === 'done';
   const isNa = item.outcome === 'not_applicable';
   const isBlocked = item.outcome === 'blocked';
-  const titleMuted = isDone || isNa;
 
   const checkboxLabel =
     item.outcome === 'pending'
@@ -174,34 +183,27 @@ export function RunChecklistItem({
   return (
     <View
       style={{
-        borderBottomWidth: 1,
+        paddingVertical: theme.space.lg,
+        paddingHorizontal: theme.space.xl - 4,
+        gap: theme.space.md,
+        borderBottomWidth: divider ? 0.5 : 0,
         borderBottomColor: theme.colors.border,
-        paddingVertical: theme.space.sm,
+        backgroundColor: isBlocked ? theme.colors.alertTint : 'transparent',
         opacity: busy ? 0.65 : 1,
-        gap: theme.space.xs,
       }}
     >
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: theme.space.sm,
-        }}
-      >
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.space.md }}>
         <Pressable
           accessibilityRole="checkbox"
-          accessibilityState={{
-            checked: isDone,
-            busy,
-            disabled: busy,
-          }}
-          accessibilityLabel={checkboxLabel}
+          accessibilityState={{ checked: isDone, busy, disabled: busy }}
+          accessibilityLabel={`${item.title}, ${checkboxLabel}`}
           disabled={busy}
           onPress={onToggleDone}
           hitSlop={8}
           style={{
-            width: 44,
+            width: 36,
             height: 44,
+            marginLeft: -4,
             alignItems: 'center',
             justifyContent: 'center',
           }}
@@ -212,121 +214,109 @@ export function RunChecklistItem({
         <Pressable
           onPress={item.instructions ? onToggleInstructions : undefined}
           disabled={!item.instructions}
-          style={{ flex: 1, minWidth: 0, gap: 2 }}
+          accessibilityHint={
+            item.instructions
+              ? instructionsOpen
+                ? copy.hideInstructions
+                : copy.showInstructions
+              : undefined
+          }
+          style={{ flex: 1, minWidth: 0, gap: 2, opacity: isDone ? 0.45 : isNa ? 0.55 : 1 }}
         >
           <Text
             style={{
-              fontFamily: theme.fonts.bodyMedium,
+              fontFamily: theme.fonts.bodyBold,
               fontSize: theme.typography.body.fontSize,
               lineHeight: theme.typography.body.lineHeight,
-              color: titleMuted ? theme.colors.inkMuted : theme.colors.ink,
+              color: theme.colors.ink,
               textDecorationLine: isDone ? 'line-through' : 'none',
             }}
             allowFontScaling
           >
             {item.title}
           </Text>
-          {item.instructions && !instructionsOpen ? (
+          {item.instructions ? (
             <Text
               style={{
                 fontFamily: theme.fonts.body,
                 fontSize: theme.typography.caption.fontSize,
                 lineHeight: theme.typography.caption.lineHeight,
-                color: theme.colors.primary,
+                color: theme.colors.inkMuted,
               }}
-              numberOfLines={1}
+              numberOfLines={instructionsOpen ? undefined : 1}
               allowFontScaling
             >
-              {copy.showInstructions}
+              {item.instructions}
             </Text>
           ) : null}
-          {isNa || isBlocked ? (
-            <Text
-              style={{
-                fontFamily: theme.fonts.label,
-                fontSize: theme.typography.label.fontSize,
-                color: isBlocked ? theme.colors.coral : theme.colors.inkSubtle,
-                textTransform: 'uppercase',
-              }}
-              allowFontScaling
-            >
-              {isBlocked ? copy.blocked : copy.notApplicable}
-            </Text>
-          ) : null}
+          {isNa ? <StatusTag label={copy.notApplicableShort} /> : null}
         </Pressable>
 
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <ActionIcon
-            name="ban-outline"
-            label={copy.notApplicable}
-            active={isNa}
-            onPress={onNotApplicable}
-            disabled={busy || isNa}
-          />
-          <ActionIcon
-            name="warning-outline"
-            label={copy.blocked}
-            active={isBlocked}
-            danger
-            onPress={onBlocked}
-            disabled={busy || isBlocked}
-          />
-        </View>
+        {isBlocked ? (
+          <StatusTag label={copy.blocked} danger />
+        ) : (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <ActionPill
+              label={copy.notApplicableShort}
+              accessibilityLabel={copy.notApplicable}
+              onPress={onNotApplicable}
+              disabled={busy || isNa}
+            />
+            <ActionPill
+              icon="warning-outline"
+              accessibilityLabel={copy.blocked}
+              danger
+              onPress={onBlocked}
+              disabled={busy}
+            />
+          </View>
+        )}
       </View>
 
-      {instructionsOpen && item.instructions ? (
-        <Pressable
-          onPress={onToggleInstructions}
-          style={{ marginLeft: 52, gap: 2 }}
-        >
-          <Text
-            style={{
-              fontFamily: theme.fonts.body,
-              color: theme.colors.inkMuted,
-              fontSize: theme.typography.bodySmall.fontSize,
-              lineHeight: theme.typography.bodySmall.lineHeight,
-            }}
-            allowFontScaling
-          >
-            {item.instructions}
-          </Text>
-          <Text
-            style={{
-              fontFamily: theme.fonts.bodyMedium,
-              color: theme.colors.primary,
-              fontSize: theme.typography.caption.fontSize,
-            }}
-            allowFontScaling
-          >
-            {copy.hideInstructions}
-          </Text>
-        </Pressable>
-      ) : null}
-
       {item.note ? (
-        <Text
+        <View
           style={{
-            marginLeft: 52,
-            fontFamily: theme.fonts.body,
-            color: theme.colors.inkMuted,
-            fontSize: theme.typography.caption.fontSize,
-            lineHeight: theme.typography.caption.lineHeight,
+            marginLeft: 44,
+            flexDirection: 'row',
+            alignItems: 'flex-start',
+            gap: theme.space.sm,
+            padding: theme.space.sm + 2,
+            borderRadius: theme.radii.sm,
+            backgroundColor: isBlocked ? theme.colors.white : theme.colors.sand,
           }}
-          allowFontScaling
         >
-          {item.note}
-        </Text>
+          <Ionicons
+            name="chatbox-ellipses"
+            size={14}
+            color={isBlocked ? theme.colors.coral : theme.colors.inkMuted}
+            style={{ marginTop: 2 }}
+          />
+          <Text
+            style={{
+              flex: 1,
+              fontFamily: theme.fonts.bodyMedium,
+              color: isBlocked ? theme.colors.coral : theme.colors.inkMuted,
+              fontSize: theme.typography.caption.fontSize,
+              lineHeight: theme.typography.caption.lineHeight,
+            }}
+            allowFontScaling
+          >
+            {item.note}
+          </Text>
+        </View>
       ) : null}
 
       {item.issueId && item.issueState === 'open' && onResolveIssue ? (
         <Pressable
+          accessibilityRole="button"
           onPress={onResolveIssue}
           disabled={busy}
-          style={{ marginLeft: 52, paddingVertical: theme.space.xs }}
+          hitSlop={8}
+          style={{ marginLeft: 44, minHeight: 32, justifyContent: 'center' }}
         >
           <Text
             style={{
-              fontFamily: theme.fonts.bodyMedium,
+              fontFamily: theme.fonts.bodyExtraBold,
               color: theme.colors.coral,
               fontSize: theme.typography.caption.fontSize,
             }}

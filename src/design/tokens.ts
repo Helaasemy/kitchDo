@@ -1,41 +1,70 @@
+import type { TaskFrequency } from '@/features/recurring/period';
+
+export type FrequencyColors = {
+  /** Fills: checkbox, dot. */
+  base: string;
+  /** Chip and tile background. */
+  tint: string;
+  /** Text on `tint` or the canvas; meets AA at small sizes. */
+  text: string;
+};
+
 export const colors = {
-  primary: '#0F766E',
-  primaryMuted: '#0D9488',
-  canvas: '#F2FBF8',
-  ink: '#14302C',
-  inkMuted: '#3D5A55',
-  inkSubtle: '#6B857F',
-  coral: '#E11D48',
-  sand: '#FFF8F1',
-  border: '#C5DDD7',
-  borderStrong: '#9BC4BB',
+  primary: '#C4452A',
+  primaryMuted: '#A93A22',
+  canvas: '#FBF6EE',
+  ink: '#2B211C',
+  inkMuted: '#7A6A5F',
+  inkSubtle: '#7D6C61',
+  coral: '#C43E2A',
+  sand: '#F7EEE3',
+  border: '#EADFD2',
+  borderStrong: '#D9C9B8',
   white: '#FFFFFF',
-  overlay: 'rgba(20, 48, 44, 0.45)',
+  card: '#FFFDF9',
+  alertTint: '#FFF5F5',
+  primaryTint: '#FBE5DE',
+  overlay: 'rgba(43, 33, 28, 0.45)',
+  frequency: {
+    daily: { base: '#F4A261', tint: '#FFF1E8', text: '#A65A1E' },
+    weekly: { base: '#9C8FD9', tint: '#EFEBFA', text: '#6253B8' },
+    monthly: { base: '#7FB08A', tint: '#E6F1E8', text: '#3A7149' },
+  } satisfies Record<TaskFrequency, FrequencyColors>,
 } as const;
 
 export const colorsDark = {
-  primary: '#2DD4BF',
-  primaryMuted: '#14B8A6',
-  canvas: '#0B1F1C',
-  ink: '#E8F5F1',
-  inkMuted: '#A8C5BE',
-  inkSubtle: '#6B857F',
-  coral: '#FB7185',
-  sand: '#1A2E2A',
-  border: '#1F3D38',
-  borderStrong: '#2A524B',
-  white: '#14302C',
+  primary: '#F07A55',
+  primaryMuted: '#E0623C',
+  canvas: '#1A1512',
+  ink: '#F5EDE4',
+  inkMuted: '#C2B2A5',
+  inkSubtle: '#A08F82',
+  coral: '#FF7A66',
+  sand: '#2A221D',
+  border: '#3A302A',
+  borderStrong: '#4A3E36',
+  white: '#231C18',
+  card: '#211A16',
+  alertTint: '#3A2220',
+  primaryTint: '#3D251C',
   overlay: 'rgba(0, 0, 0, 0.55)',
+  frequency: {
+    daily: { base: '#F4A261', tint: '#3A2A1E', text: '#F7BC8A' },
+    weekly: { base: '#A99BFF', tint: '#2B2740', text: '#C3B9FF' },
+    monthly: { base: '#8CC7A1', tint: '#22312A', text: '#A6D8B6' },
+  } satisfies Record<TaskFrequency, FrequencyColors>,
 } as const;
 
 export const fonts = {
-  display: 'Fraunces_600SemiBold',
-  displayRegular: 'Fraunces_500Medium',
-  body: 'DMSans_400Regular',
-  bodyMedium: 'DMSans_500Medium',
-  bodySemiBold: 'DMSans_600SemiBold',
-  label: 'IBMPlexMono_500Medium',
-  labelRegular: 'IBMPlexMono_400Regular',
+  display: 'InstrumentSerif_400Regular_Italic',
+  displayRegular: 'InstrumentSerif_400Regular',
+  body: 'PlusJakartaSans_400Regular',
+  bodyMedium: 'PlusJakartaSans_500Medium',
+  bodySemiBold: 'PlusJakartaSans_600SemiBold',
+  bodyBold: 'PlusJakartaSans_700Bold',
+  bodyExtraBold: 'PlusJakartaSans_800ExtraBold',
+  label: 'PlusJakartaSans_800ExtraBold',
+  labelRegular: 'PlusJakartaSans_600SemiBold',
 } as const;
 
 export const space = {
@@ -43,8 +72,8 @@ export const space = {
   sm: 8,
   md: 12,
   lg: 16,
-  /** Screen content gutter — 20pt reads more balanced on modern iPhones. */
-  screen: 20,
+  /** Screen content gutter. */
+  screen: 24,
   xl: 24,
   xxl: 32,
   xxxl: 48,
@@ -54,6 +83,8 @@ export const radii = {
   sm: 12,
   md: 14,
   lg: 16,
+  xl: 20,
+  xxl: 28,
   pill: 999,
 } as const;
 
@@ -64,13 +95,16 @@ export const motion = {
 } as const;
 
 export const typography = {
+  display: { fontSize: 42, lineHeight: 46 },
   brand: { fontSize: 36, lineHeight: 42 },
-  title: { fontSize: 28, lineHeight: 34 },
+  title: { fontSize: 32, lineHeight: 36 },
   heading: { fontSize: 22, lineHeight: 28 },
+  cardTitle: { fontSize: 18, lineHeight: 24 },
   body: { fontSize: 16, lineHeight: 24 },
   bodySmall: { fontSize: 14, lineHeight: 20 },
   label: { fontSize: 12, lineHeight: 16 },
   caption: { fontSize: 13, lineHeight: 18 },
+  chip: { fontSize: 11, lineHeight: 14 },
 } as const;
 
 export type ColorTokens = typeof colors;

@@ -1,21 +1,27 @@
 import { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Pressable,
   ScrollView,
+  Text,
   View,
 } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect } from 'expo-router';
 import { DateTime } from 'luxon';
 
 import {
   Chip,
+  ChipScroller,
   EmptyState,
-  ListRow,
+  IconButton,
+  PaperCard,
   Screen,
   ScreenHeader,
+  SectionChip,
   SyncBanner,
 } from '@/components/ui';
-import { useTheme } from '@/design';
+import { useTheme, type AppTheme } from '@/design';
 import { useAuth } from '@/features/auth';
 import { listHistory, type HistoryRow } from '@/features/history/api';
 import { listRecentTicks, type TaskTick } from '@/features/recurring';
@@ -53,9 +59,144 @@ function mergeEntries(rows: HistoryRow[], ticks: TaskTick[]): Entry[] {
   return entries.sort((a, b) => b.localDate.localeCompare(a.localDate));
 }
 
+type Day = { localDate: string; entries: Entry[] };
+
+function groupByDay(entries: Entry[]): Day[] {
+  const days: Day[] = [];
+  for (const entry of entries) {
+    const last = days[days.length - 1];
+    if (last && last.localDate === entry.localDate) last.entries.push(entry);
+    else days.push({ localDate: entry.localDate, entries: [entry] });
+  }
+  return days;
+}
+
+function dayLabel(localDate: string): string {
+  const copy = t().history;
+  const zone = getDeviceTimeZone();
+  const day = DateTime.fromISO(localDate, { zone });
+  if (!day.isValid) return localDate;
+  const today = DateTime.now().setZone(zone).startOf('day');
+  const diff = Math.round(today.diff(day.startOf('day'), 'days').days);
+  const formatted = day.toFormat('ccc d LLL');
+  if (diff === 0) return `${copy.today} · ${formatted}`;
+  if (diff === 1) return copy.yesterday;
+  return formatted;
+}
+
+function EntryRow({
+  entry,
+  theme,
+  divider,
+}: {
+  entry: Entry;
+  theme: AppTheme;
+  divider: boolean;
+}) {
+  const recurringCopy = t().recurring;
+  let leading;
+  let title: string;
+  let subtitle: string;
+  let alert = false;
+  let onPress: (() => void) | undefined;
+
+  if (entry.kind === 'run') {
+    const { row } = entry;
+    const finished = row.state === 'finished';
+    alert = row.blocked > 0;
+    title = row.title;
+    subtitle = row.summary;
+    onPress = () => router.push(`/(app)/runs/${row.id}`);
+    leading = (
+      <Ionicons
+        name={alert ? 'alert-circle' : finished ? 'checkmark-circle' : 'time-outline'}
+        size={24}
+        color={
+          alert
+            ? theme.colors.coral
+            : finished
+              ? theme.colors.frequency.monthly.text
+              : theme.colors.inkMuted
+        }
+      />
+    );
+  } else {
+    const { tick } = entry;
+    title = tick.title;
+    subtitle = [
+      tick.templateTitle,
+      recurringCopy[tick.frequency],
+      recurringCopy.historyTicked.replace('{time}', entry.time),
+    ].join(' · ');
+    leading = (
+      <View style={{ width: 24, alignItems: 'center' }}>
+        <View
+          style={{
+            width: 10,
+            height: 10,
+            borderRadius: 5,
+            backgroundColor: theme.colors.frequency[tick.frequency].base,
+          }}
+        />
+      </View>
+    );
+  }
+
+  return (
+    <Pressable
+      accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityLabel={`${title}, ${subtitle}`}
+      disabled={!onPress}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        minHeight: entry.kind === 'run' ? 72 : 64,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: theme.space.lg,
+        paddingVertical: theme.space.md,
+        paddingHorizontal: theme.space.xl - 4,
+        borderBottomWidth: divider ? 0.5 : 0,
+        borderBottomColor: theme.colors.border,
+        backgroundColor: pressed ? theme.colors.sand : 'transparent',
+      })}
+    >
+      {leading}
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text
+          style={{
+            fontFamily: theme.fonts.bodyBold,
+            fontSize: theme.typography.body.fontSize,
+            lineHeight: 22,
+            color: theme.colors.ink,
+          }}
+          numberOfLines={2}
+          allowFontScaling
+        >
+          {title}
+        </Text>
+        <Text
+          style={{
+            fontFamily: alert ? theme.fonts.bodySemiBold : theme.fonts.bodyMedium,
+            fontSize: theme.typography.label.fontSize,
+            lineHeight: theme.typography.label.lineHeight,
+            color: alert ? theme.colors.coral : theme.colors.inkMuted,
+          }}
+          numberOfLines={2}
+          allowFontScaling
+        >
+          {subtitle}
+        </Text>
+      </View>
+      {onPress ? (
+        <Ionicons name="chevron-forward" size={14} color={theme.colors.inkSubtle} />
+      ) : null}
+    </Pressable>
+  );
+}
+
 export default function HistoryScreen() {
   const theme = useTheme();
-  const { kitchenMode, user, kitchenId } = useAuth();
+  const { kitchenMode, onboarding, user, kitchenId } = useAuth();
   const { refresh } = useSync();
   const copy = t().history;
 
@@ -101,20 +242,27 @@ export default function HistoryScreen() {
     { id: 'unfinished', label: copy.filterUnfinished },
   ];
 
+  const days = groupByDay(rows);
+
   return (
     <Screen>
-      <View style={{ gap: theme.space.md, flex: 1 }}>
-        <ScreenHeader title={copy.title} />
+      <View style={{ gap: theme.space.lg, flex: 1 }}>
+        <ScreenHeader
+          size="display"
+          eyebrow={onboarding?.kitchenName || undefined}
+          title={copy.title}
+          right={
+            <IconButton
+              name="settings-outline"
+              accessibilityLabel={t().settings.title}
+              onPress={() => router.push('/(app)/settings')}
+            />
+          }
+        />
 
         <SyncBanner />
 
-        <View
-          style={{
-            flexDirection: 'row',
-            flexWrap: 'wrap',
-            gap: theme.space.sm,
-          }}
-        >
+        <ChipScroller scroll>
           {chips.map((chip) => (
             <Chip
               key={chip.id}
@@ -123,7 +271,7 @@ export default function HistoryScreen() {
               onPress={() => setFilter(chip.id)}
             />
           ))}
-        </View>
+        </ChipScroller>
 
         {loading ? (
           <View style={{ paddingTop: theme.space.xl, alignItems: 'center' }}>
@@ -138,32 +286,26 @@ export default function HistoryScreen() {
           <ScrollView
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{
-              gap: theme.space.sm,
-              paddingBottom: theme.space.xxl,
+              gap: theme.space.xxl,
+              paddingBottom: theme.space.xxxl,
               alignItems: 'stretch',
             }}
           >
-            {rows.map((entry) =>
-              entry.kind === 'run' ? (
-                <ListRow
-                  key={entry.key}
-                  title={entry.row.title}
-                  subtitle={`${entry.localDate} · ${entry.row.summary}`}
-                  onPress={() => router.push(`/(app)/runs/${entry.row.id}`)}
-                />
-              ) : (
-                <ListRow
-                  key={entry.key}
-                  title={entry.tick.title}
-                  subtitle={[
-                    entry.localDate,
-                    entry.tick.templateTitle,
-                    t().recurring[entry.tick.frequency],
-                    t().recurring.historyTicked.replace('{time}', entry.time),
-                  ].join(' · ')}
-                />
-              ),
-            )}
+            {days.map((day) => (
+              <View key={day.localDate} style={{ gap: theme.space.md }}>
+                <SectionChip label={dayLabel(day.localDate)} />
+                <PaperCard>
+                  {day.entries.map((entry, index) => (
+                    <EntryRow
+                      key={entry.key}
+                      entry={entry}
+                      theme={theme}
+                      divider={index < day.entries.length - 1}
+                    />
+                  ))}
+                </PaperCard>
+              </View>
+            ))}
           </ScrollView>
         )}
       </View>

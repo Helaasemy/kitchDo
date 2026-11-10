@@ -30,8 +30,8 @@ export function EmptyState({ title, body, actionLabel, onAction }: Props) {
       <Text
         style={{
           fontFamily: theme.fonts.display,
-          fontSize: theme.typography.heading.fontSize,
-          lineHeight: theme.typography.heading.lineHeight,
+          fontSize: 28,
+          lineHeight: 32,
           color: theme.colors.ink,
         }}
         allowFontScaling

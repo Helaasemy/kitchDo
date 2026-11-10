@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, type ComponentProps } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -7,6 +7,7 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Haptics from 'expo-haptics';
 
 import { useTheme } from '@/design';
@@ -21,6 +22,7 @@ type Props = {
   loading?: boolean;
   style?: StyleProp<ViewStyle>;
   compact?: boolean;
+  icon?: ComponentProps<typeof Ionicons>['name'];
 };
 
 export function Button({
@@ -31,6 +33,7 @@ export function Button({
   loading = false,
   style,
   compact = false,
+  icon,
 }: Props) {
   const theme = useTheme();
   const scale = useRef(new Animated.Value(1)).current;
@@ -39,11 +42,11 @@ export function Button({
   const palette = {
     primary: {
       bg: theme.colors.primary,
-      fg: theme.colors.white,
+      fg: '#FFFFFF',
       border: theme.colors.primary,
     },
     secondary: {
-      bg: theme.colors.sand,
+      bg: theme.colors.white,
       fg: theme.colors.ink,
       border: theme.colors.border,
     },
@@ -54,7 +57,7 @@ export function Button({
     },
     danger: {
       bg: theme.colors.coral,
-      fg: theme.colors.white,
+      fg: '#FFFFFF',
       border: theme.colors.coral,
     },
   }[variant];
@@ -67,6 +70,10 @@ export function Button({
       bounciness: theme.reduceMotion ? 0 : 6,
     }).start();
   };
+
+  const textSize = compact
+    ? theme.typography.bodySmall.fontSize
+    : theme.typography.body.fontSize;
 
   return (
     <Animated.View style={[{ transform: [{ scale }], alignSelf: 'stretch' }, style]}>
@@ -83,13 +90,15 @@ export function Button({
           onPress();
         }}
         style={{
-          minHeight: compact ? 40 : 48,
-          paddingHorizontal: compact ? theme.space.md : theme.space.lg,
+          minHeight: compact ? 44 : 52,
+          paddingHorizontal: compact ? theme.space.lg : theme.space.xl,
           paddingVertical: compact ? theme.space.sm : theme.space.md,
-          borderRadius: theme.radii.md,
+          borderRadius: theme.radii.pill,
           backgroundColor: palette.bg,
-          borderWidth: variant === 'secondary' ? 1 : 0,
+          borderWidth: variant === 'secondary' ? 0.5 : 0,
           borderColor: palette.border,
+          boxShadow:
+            variant === 'primary' || variant === 'secondary' ? theme.shadows.soft : undefined,
           alignItems: 'center',
           justifyContent: 'center',
           opacity: busy ? 0.55 : 1,
@@ -100,21 +109,22 @@ export function Button({
         {loading ? (
           <ActivityIndicator color={palette.fg} />
         ) : (
-          <Text
-            style={{
-              fontFamily: theme.fonts.bodySemiBold,
-              fontSize: compact
-                ? theme.typography.bodySmall.fontSize
-                : theme.typography.body.fontSize,
-              // Avoid extra lineHeight — it vertically offsets text inside flex-centered buttons.
-              color: palette.fg,
-              textAlign: 'center',
-              includeFontPadding: false,
-            }}
-            allowFontScaling
-          >
-            {label}
-          </Text>
+          <>
+            {icon ? <Ionicons name={icon} size={textSize + 2} color={palette.fg} /> : null}
+            <Text
+              style={{
+                fontFamily: theme.fonts.bodyBold,
+                fontSize: textSize,
+                // Avoid extra lineHeight — it vertically offsets text inside flex-centered buttons.
+                color: palette.fg,
+                textAlign: 'center',
+                includeFontPadding: false,
+              }}
+              allowFontScaling
+            >
+              {label}
+            </Text>
+          </>
         )}
       </Pressable>
     </Animated.View>

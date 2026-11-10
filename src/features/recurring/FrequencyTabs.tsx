@@ -1,10 +1,12 @@
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text } from 'react-native';
 
 import { useTheme } from '@/design';
 
+import { isTaskFrequency } from './period';
+
 export type FrequencyTab<K extends string> = { key: K; label: string; badge?: string };
 
-/** Segmented tabs: All plus the frequencies that have tasks. */
+/** Pill tabs: All plus the frequencies that have tasks, each in its own tint. */
 export function FrequencyTabs<K extends string>({
   tabs,
   value,
@@ -16,42 +18,41 @@ export function FrequencyTabs<K extends string>({
 }) {
   const theme = useTheme();
   return (
-    <View
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
       accessibilityRole="tablist"
-      style={{
-        flexDirection: 'row',
-        padding: 4,
-        gap: 4,
-        borderRadius: theme.radii.sm,
-        borderWidth: 1,
-        borderColor: theme.colors.border,
-        backgroundColor: theme.colors.white,
-      }}
+      style={{ marginHorizontal: -theme.space.screen, flexGrow: 0 }}
+      contentContainerStyle={{ gap: theme.space.sm, paddingHorizontal: theme.space.screen }}
     >
       {tabs.map((tab) => {
         const selected = tab.key === value;
+        const accent = isTaskFrequency(tab.key) ? theme.colors.frequency[tab.key] : null;
+        const background = selected ? theme.colors.ink : (accent?.tint ?? theme.colors.sand);
+        const color = selected ? theme.colors.canvas : (accent?.text ?? theme.colors.ink);
         return (
           <Pressable
             key={tab.key}
             accessibilityRole="tab"
             accessibilityState={{ selected }}
             onPress={() => onChange(tab.key)}
-            style={{
-              flex: 1,
+            style={({ pressed }) => ({
               minHeight: 40,
-              paddingHorizontal: 4,
-              borderRadius: theme.radii.sm - 2,
+              paddingHorizontal: theme.space.lg,
+              borderRadius: theme.radii.pill,
+              flexDirection: 'row',
               alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: selected ? theme.colors.primary : 'transparent',
-            }}
+              gap: 6,
+              backgroundColor: background,
+              opacity: pressed ? 0.85 : 1,
+            })}
           >
             <Text
               numberOfLines={1}
               style={{
-                fontFamily: theme.fonts.bodyMedium,
-                fontSize: theme.typography.bodySmall.fontSize,
-                color: selected ? '#FFFFFF' : theme.colors.inkMuted,
+                fontFamily: theme.fonts.bodyExtraBold,
+                fontSize: theme.typography.caption.fontSize,
+                color,
               }}
               allowFontScaling
             >
@@ -61,9 +62,10 @@ export function FrequencyTabs<K extends string>({
               <Text
                 numberOfLines={1}
                 style={{
-                  fontFamily: theme.fonts.body,
-                  fontSize: theme.typography.caption.fontSize,
-                  color: selected ? 'rgba(255, 255, 255, 0.85)' : theme.colors.inkSubtle,
+                  fontFamily: theme.fonts.bodyBold,
+                  fontSize: theme.typography.label.fontSize,
+                  color,
+                  opacity: 0.7,
                 }}
                 allowFontScaling
               >
@@ -73,6 +75,6 @@ export function FrequencyTabs<K extends string>({
           </Pressable>
         );
       })}
-    </View>
+    </ScrollView>
   );
 }

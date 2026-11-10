@@ -33,11 +33,12 @@ export function TextField({
       <Text
         style={{
           fontFamily: theme.fonts.label,
-          fontSize: theme.typography.label.fontSize,
-          lineHeight: theme.typography.label.lineHeight,
-          color: theme.colors.inkSubtle,
+          fontSize: theme.typography.chip.fontSize,
+          lineHeight: theme.typography.chip.lineHeight,
+          color: theme.colors.inkMuted,
           textTransform: 'uppercase',
-          letterSpacing: 0.6,
+          letterSpacing: 0.9,
+          paddingLeft: theme.space.xs,
         }}
         allowFontScaling
       >
@@ -58,12 +59,12 @@ export function TextField({
         }}
         style={{
           width: '100%',
-          minHeight: multiline ? 96 : 48,
-          paddingHorizontal: theme.space.md,
+          minHeight: multiline ? 96 : 52,
+          paddingHorizontal: theme.space.lg,
           paddingTop: multiline ? theme.space.md : 0,
           paddingBottom: multiline ? theme.space.md : 0,
-          borderRadius: theme.radii.sm,
-          borderWidth: 1,
+          borderRadius: theme.radii.xl,
+          borderWidth: focused || error ? 1.5 : 1,
           borderColor: error
             ? theme.colors.coral
             : focused

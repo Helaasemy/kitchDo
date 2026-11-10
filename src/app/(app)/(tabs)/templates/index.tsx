@@ -1,26 +1,36 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Modal,
+  Pressable,
   ScrollView,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect } from 'expo-router';
 
 import {
   Button,
   Chip,
+  ChipScroller,
   EmptyState,
   IconButton,
+  IconTile,
   ListRow,
   Screen,
   ScreenHeader,
 } from '@/components/ui';
 import { useTheme } from '@/design';
 import { useAuth } from '@/features/auth';
+import { catalog } from '@/features/catalog';
+import {
+  TASK_FREQUENCIES,
+  useRecurringTasks,
+  type TaskFrequency,
+} from '@/features/recurring';
 import {
   archiveCategory,
   listCategories,
@@ -38,10 +48,145 @@ import { t, tone } from '@/i18n';
 type CategoryFilter = 'all' | 'uncategorized' | string;
 type StateFilter = 'all' | TemplateState;
 
+function TemplateCard({
+  template,
+  frequencies,
+  stateLabel,
+  onPress,
+}: {
+  template: TemplateSummary;
+  frequencies: TaskFrequency[];
+  stateLabel: string;
+  onPress: () => void;
+}) {
+  const theme = useTheme();
+  const showBadge = template.state !== 'active';
+  const meta = [showBadge ? null : stateLabel, template.description]
+    .filter(Boolean)
+    .join(' · ');
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${template.title}, ${stateLabel}`}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: theme.space.lg,
+        padding: theme.space.xl - 4,
+        borderRadius: 24,
+        borderWidth: 0.5,
+        borderColor: theme.colors.border,
+        backgroundColor: pressed ? theme.colors.sand : theme.colors.card,
+        boxShadow: theme.shadows.soft,
+        opacity: template.state === 'archived' ? 0.7 : 1,
+      })}
+    >
+      <View style={{ flex: 1, gap: theme.space.sm }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.space.sm }}>
+          <Text
+            style={{
+              flexShrink: 1,
+              fontFamily: theme.fonts.bodyExtraBold,
+              fontSize: theme.typography.cardTitle.fontSize,
+              lineHeight: theme.typography.cardTitle.lineHeight,
+              color: theme.colors.ink,
+            }}
+            numberOfLines={2}
+            allowFontScaling
+          >
+            {template.title}
+          </Text>
+          {showBadge ? (
+            <View
+              style={{
+                paddingHorizontal: theme.space.sm,
+                paddingVertical: 2,
+                borderRadius: 6,
+                backgroundColor: theme.colors.sand,
+              }}
+            >
+              <Text
+                style={{
+                  fontFamily: theme.fonts.label,
+                  fontSize: 10,
+                  lineHeight: 14,
+                  letterSpacing: 0.8,
+                  textTransform: 'uppercase',
+                  color: theme.colors.inkMuted,
+                }}
+                allowFontScaling
+              >
+                {stateLabel}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.space.md }}>
+          <View style={{ flexDirection: 'row', gap: 6 }}>
+            {frequencies.length > 0 ? (
+              frequencies.map((frequency) => (
+                <View
+                  key={frequency}
+                  style={{
+                    width: 10,
+                    height: 10,
+                    borderRadius: 5,
+                    backgroundColor: theme.colors.frequency[frequency].base,
+                  }}
+                />
+              ))
+            ) : (
+              <View
+                style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: 5,
+                  backgroundColor: theme.colors.border,
+                }}
+              />
+            )}
+          </View>
+          {meta ? (
+            <Text
+              style={{
+                flex: 1,
+                fontFamily: theme.fonts.bodySemiBold,
+                fontSize: theme.typography.caption.fontSize,
+                lineHeight: theme.typography.caption.lineHeight,
+                color: theme.colors.inkMuted,
+              }}
+              numberOfLines={1}
+              allowFontScaling
+            >
+              {meta}
+            </Text>
+          ) : null}
+        </View>
+      </View>
+      <Ionicons name="chevron-forward" size={16} color={theme.colors.inkSubtle} />
+    </Pressable>
+  );
+}
+
 export default function TemplatesScreen() {
   const theme = useTheme();
-  const { kitchenMode, kitchenId } = useAuth();
+  const { kitchenMode, kitchenId, onboarding, user } = useAuth();
   const copy = t().templates;
+  const recurring = useRecurringTasks(user?.id, kitchenId);
+  const reloadRecurring = recurring.reload;
+  const frequenciesByTemplate = useMemo(() => {
+    const found = new Map<string, Set<TaskFrequency>>();
+    for (const task of recurring.tasks) {
+      const set = found.get(task.templateId) ?? new Set<TaskFrequency>();
+      set.add(task.frequency);
+      found.set(task.templateId, set);
+    }
+    return new Map(
+      [...found].map(([id, set]) => [id, TASK_FREQUENCIES.filter((f) => set.has(f))]),
+    );
+  }, [recurring.tasks]);
   const catCopy = t().categories;
 
   const [categories, setCategories] = useState<Category[]>([]);
@@ -89,7 +234,8 @@ export default function TemplatesScreen() {
   useFocusEffect(
     useCallback(() => {
       void load();
-    }, [load]),
+      reloadRecurring().catch(() => undefined);
+    }, [load, reloadRecurring]),
   );
 
   const onRenameCategory = (cat: Category) => {
@@ -179,70 +325,68 @@ export default function TemplatesScreen() {
     );
   }
 
+  const libraryCount = catalog.presets.length;
+
   return (
     <Screen>
       <View style={{ flex: 1 }}>
-        <View style={{ gap: 10, flexGrow: 0, flexShrink: 0 }}>
+        <View style={{ gap: theme.space.lg, flexGrow: 0, flexShrink: 0 }}>
           <ScreenHeader
+            size="display"
+            eyebrow={onboarding?.kitchenName || undefined}
             title={tone(kitchenMode, copy.titleHome, copy.titleBusiness)}
             right={
-              <View style={{ flexDirection: 'row', gap: theme.space.sm }}>
-                <IconButton
-                  name="library-outline"
-                  accessibilityLabel={copy.browseTemplates}
-                  onPress={openCatalog}
-                />
-                <IconButton
-                  name="add"
-                  accessibilityLabel={copy.emptyAction}
-                  onPress={() => router.push('/(app)/(tabs)/templates/new')}
-                />
-              </View>
+              <IconButton
+                name="add"
+                accessibilityLabel={copy.emptyAction}
+                onPress={() => router.push('/(app)/(tabs)/templates/new')}
+              />
             }
           />
 
-          <Button
-            label={copy.browseTemplates}
-            variant="secondary"
-            compact
+          <ListRow
+            title={copy.browseTemplates}
+            subtitle={copy.libraryCount.replace('{count}', String(libraryCount))}
+            left={<IconTile name="book-outline" />}
             onPress={openCatalog}
+            style={{ borderRadius: theme.radii.xxl, backgroundColor: theme.colors.white }}
           />
 
-          <TextInput
-            value={search}
-            onChangeText={setSearch}
-            onEndEditing={() => void load()}
-            placeholder={copy.searchPlaceholder}
-            placeholderTextColor={theme.colors.inkSubtle}
-            allowFontScaling
-            style={{
-              width: '100%',
-              minHeight: 44,
-              paddingHorizontal: theme.space.md,
-              borderRadius: theme.radii.sm,
-              borderWidth: 1,
-              borderColor: theme.colors.border,
-              backgroundColor: theme.colors.white,
-              fontFamily: theme.fonts.body,
-              fontSize: theme.typography.body.fontSize,
-              color: theme.colors.ink,
-              textAlignVertical: 'center',
-              includeFontPadding: false,
-            }}
-          />
-
-          {/* marginRight on chips — more reliable than gap on wrapped rows */}
           <View
             style={{
               flexDirection: 'row',
-              flexWrap: 'wrap',
-              justifyContent: 'flex-start',
-              alignItems: 'flex-start',
-              alignContent: 'flex-start',
-              width: '100%',
-              flexGrow: 0,
+              alignItems: 'center',
+              gap: theme.space.sm,
+              minHeight: 52,
+              paddingHorizontal: theme.space.lg,
+              borderRadius: theme.radii.xl,
+              borderWidth: 0.5,
+              borderColor: theme.colors.border,
+              backgroundColor: theme.colors.white,
             }}
           >
+            <Ionicons name="search-outline" size={20} color={theme.colors.inkMuted} />
+            <TextInput
+              value={search}
+              onChangeText={setSearch}
+              onEndEditing={() => void load()}
+              placeholder={copy.searchPlaceholder}
+              placeholderTextColor={theme.colors.inkSubtle}
+              returnKeyType="search"
+              allowFontScaling
+              style={{
+                flex: 1,
+                minHeight: 48,
+                fontFamily: theme.fonts.bodyMedium,
+                fontSize: theme.typography.body.fontSize,
+                color: theme.colors.ink,
+                textAlignVertical: 'center',
+                includeFontPadding: false,
+              }}
+            />
+          </View>
+
+          <ChipScroller scroll>
             {(
               [
                 ['all', copy.filterAll],
@@ -259,21 +403,18 @@ export default function TemplatesScreen() {
               />
             ))}
             <Chip
-              label={catCopy.all}
-              selected={categoryFilter === 'all'}
-              onPress={() => setCategoryFilter('all')}
-            />
-            <Chip
               label={catCopy.uncategorized}
               selected={categoryFilter === 'uncategorized'}
-              onPress={() => setCategoryFilter('uncategorized')}
+              onPress={() =>
+                setCategoryFilter(categoryFilter === 'uncategorized' ? 'all' : 'uncategorized')
+              }
             />
             {categories.map((cat, index) => (
               <Chip
                 key={cat.id}
                 label={cat.name}
                 selected={categoryFilter === cat.id}
-                onPress={() => setCategoryFilter(cat.id)}
+                onPress={() => setCategoryFilter(categoryFilter === cat.id ? 'all' : cat.id)}
                 onLongPress={() => {
                   Alert.alert(cat.name, undefined, [
                     {
@@ -298,15 +439,16 @@ export default function TemplatesScreen() {
                 }}
               />
             ))}
-          </View>
+          </ChipScroller>
         </View>
 
         {error ? (
           <Text
             style={{
-              fontFamily: theme.fonts.body,
+              fontFamily: theme.fonts.bodyMedium,
               color: theme.colors.coral,
               fontSize: theme.typography.caption.fontSize,
+              marginTop: theme.space.sm,
             }}
             allowFontScaling
           >
@@ -314,7 +456,7 @@ export default function TemplatesScreen() {
           </Text>
         ) : null}
 
-        <View style={{ flex: 1, minHeight: 0, marginTop: 12 }}>
+        <View style={{ flex: 1, minHeight: 0, marginTop: theme.space.sm }}>
           {loading ? (
             <ActivityIndicator
               color={theme.colors.primary}
@@ -346,18 +488,18 @@ export default function TemplatesScreen() {
             <ScrollView
               style={{ flex: 1 }}
               contentContainerStyle={{
-                gap: theme.space.sm,
-                paddingBottom: theme.space.xxl,
+                gap: theme.space.lg,
+                paddingTop: theme.space.sm,
+                paddingBottom: theme.space.xxxl,
               }}
               showsVerticalScrollIndicator={false}
             >
               {templates.map((tmpl) => (
-                <ListRow
+                <TemplateCard
                   key={tmpl.id}
-                  title={tmpl.title}
-                  subtitle={`${stateLabel(tmpl.state)}${
-                    tmpl.description ? ` · ${tmpl.description}` : ''
-                  }`}
+                  template={tmpl}
+                  frequencies={frequenciesByTemplate.get(tmpl.id) ?? []}
+                  stateLabel={stateLabel(tmpl.state)}
                   onPress={() =>
                     router.push(
                       tmpl.publishedRevision != null
@@ -384,15 +526,16 @@ export default function TemplatesScreen() {
           <View
             style={{
               backgroundColor: theme.colors.canvas,
-              borderRadius: theme.radii.lg,
+              borderRadius: theme.radii.xxl,
               padding: theme.space.xl,
               gap: theme.space.md,
             }}
           >
             <Text
               style={{
-                fontFamily: theme.fonts.displayRegular,
-                fontSize: theme.typography.heading.fontSize,
+                fontFamily: theme.fonts.display,
+                fontSize: 28,
+                lineHeight: 32,
                 color: theme.colors.ink,
               }}
               allowFontScaling
@@ -405,9 +548,9 @@ export default function TemplatesScreen() {
               autoFocus
               allowFontScaling
               style={{
-                minHeight: 48,
-                paddingHorizontal: theme.space.md,
-                borderRadius: theme.radii.sm,
+                minHeight: 52,
+                paddingHorizontal: theme.space.lg,
+                borderRadius: theme.radii.xl,
                 borderWidth: 1,
                 borderColor: theme.colors.border,
                 backgroundColor: theme.colors.white,
