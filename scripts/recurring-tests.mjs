@@ -25,6 +25,7 @@ const load = async (relPath, outName) => {
 };
 const period = await load('src/features/recurring/period.ts', 'period.mjs');
 const grouping = await load('src/features/recurring/grouping.ts', 'grouping.mjs');
+const matchCatalog = await load('src/features/recurring/matchCatalog.ts', 'matchCatalog.mjs');
 
 let passed = 0;
 const test = (name, fn) => {
@@ -109,6 +110,57 @@ test('Today groups tasks by frequency, then template, keeping order', () => {
   );
   assert.deepEqual(groups.monthly, []);
   assert.equal(grouping.countDone(groups.daily[0].tasks), 1);
+});
+
+const preset = (id, title, frequency, tasks, aliases = []) => ({
+  id,
+  title,
+  frequency,
+  aliases,
+  sections: [{ title: null, tasks }],
+});
+
+test('library templates match a unique title even after tasks are edited', () => {
+  const presets = [
+    preset('H01', 'Evening kitchen reset', 'daily', ['Wipe the hob.', 'Rinse the sink.']),
+    preset('H02', 'Weekly home reset', 'weekly', ['Vacuum.', 'Change sheets.']),
+  ];
+  const found = matchCatalog.matchPresetForTemplate(presets, {
+    title: 'Evening kitchen reset',
+    items: [{ title: 'My own extra step' }],
+  });
+  assert.equal(found?.id, 'H01');
+  assert.equal(found?.frequency, 'daily');
+});
+
+test('untitled copies still match when most task names overlap', () => {
+  const presets = [
+    preset('H01', 'Evening kitchen reset', 'daily', [
+      'Put away food.',
+      'Wash dishes.',
+      'Wipe counters.',
+      'Rinse the sink.',
+    ]),
+    preset('H03', 'Fridge tidy', 'weekly', ['Bin old food.', 'Wipe shelves.']),
+  ];
+  const found = matchCatalog.matchPresetForTemplate(presets, {
+    title: 'Copy of kitchen',
+    items: [
+      { title: 'Put away food.' },
+      { title: 'Wash dishes.' },
+      { title: 'Wipe counters.' },
+      { title: 'Something extra' },
+    ],
+  });
+  assert.equal(found?.id, 'H01');
+});
+
+test('one-off presets never match Today sections', () => {
+  const found = matchCatalog.matchPresetForTemplate(
+    [preset('H16', 'Dinner party', null, ['Set the table.', 'Cook.'])],
+    { title: 'Dinner party', items: [{ title: 'Set the table.' }] },
+  );
+  assert.equal(found, undefined);
 });
 
 console.log(`\n${passed} recurring checks passed`);

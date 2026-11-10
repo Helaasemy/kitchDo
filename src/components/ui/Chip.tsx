@@ -1,4 +1,4 @@
-import { Pressable, Text } from 'react-native';
+import { Pressable, Text, type PressableProps } from 'react-native';
 
 import { useTheme } from '@/design';
 
@@ -7,24 +7,37 @@ type Props = {
   selected?: boolean;
   onPress: () => void;
   onLongPress?: () => void;
+  accessibilityHint?: string;
+  accessibilityActions?: PressableProps['accessibilityActions'];
+  onAccessibilityAction?: PressableProps['onAccessibilityAction'];
 };
 
-/** Pill filter chip — fixed min height, centered label, 8pt+ gaps via parent. */
-export function Chip({ label, selected = false, onPress, onLongPress }: Props) {
+/** Pill filter chip: 36pt visual, 44pt touch target via hitSlop; the parent owns the gaps. */
+export function Chip({
+  label,
+  selected = false,
+  onPress,
+  onLongPress,
+  accessibilityHint,
+  accessibilityActions,
+  onAccessibilityAction,
+}: Props) {
   const theme = useTheme();
 
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ selected }}
+      accessibilityHint={accessibilityHint}
+      accessibilityActions={accessibilityActions}
+      onAccessibilityAction={onAccessibilityAction}
       onPress={onPress}
       onLongPress={onLongPress}
-      hitSlop={{ top: 4, bottom: 4 }}
+      hitSlop={4}
       style={({ pressed }) => ({
-        height: 36,
+        minHeight: 44,
         paddingHorizontal: 16,
-        marginRight: 8,
-        marginBottom: 8,
+        paddingVertical: 4,
         borderRadius: theme.radii.pill,
         borderWidth: selected ? 0 : 0.5,
         borderColor: theme.colors.border,
@@ -46,7 +59,7 @@ export function Chip({ label, selected = false, onPress, onLongPress }: Props) {
           lineHeight: theme.typography.label.lineHeight,
           letterSpacing: 0.6,
           textTransform: 'uppercase',
-          color: selected ? '#FFFFFF' : theme.colors.inkMuted,
+          color: selected ? theme.colors.onPrimary : theme.colors.inkMuted,
           textAlign: 'center',
           includeFontPadding: false,
         }}

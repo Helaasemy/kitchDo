@@ -5,7 +5,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '@/design';
-import { t } from '@/i18n';
+import { useT } from '@/i18n';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -37,6 +37,7 @@ function TabIcon({
 }
 
 export default function AppTabsLayout() {
+  const t = useT();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const tabs = t().tabs;

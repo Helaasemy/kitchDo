@@ -100,22 +100,14 @@
       "icon": "restaurant-outline",
       "guidance": "For food businesses, adapt each checklist to the site's own procedures, equipment instructions, and applicable local guidance.",
       "featured": [
-        "B01",
         "B02",
         "B03",
         "B04",
+        "B06",
         "B08",
         "B12"
       ],
       "groups": [
-        {
-          "key": "launch",
-          "label": "Launch and setup",
-          "icon": "rocket-outline",
-          "presetIds": [
-            "B01"
-          ]
-        },
         {
           "key": "shifts",
           "label": "Opening and closing shifts",
@@ -863,72 +855,6 @@
       "notes": []
     },
     {
-      "id": "B01",
-      "category": "kitchen",
-      "group": "launch",
-      "title": "Open a new café",
-      "cadence": "One-time project",
-      "frequency": null,
-      "searchTerms": [
-        "starting a coffee shop",
-        "opening a restaurant business",
-        "launch",
-        "café setup"
-      ],
-      "aliases": [
-        "open a cafe",
-        "new restaurant",
-        "start a food business"
-      ],
-      "sections": [
-        {
-          "title": "Plan the business",
-          "tasks": [
-            "Define who the café will serve and what you will sell.",
-            "Sketch a starter menu and hours.",
-            "Estimate startup costs and money needed through the first months.",
-            "Set a target opening date and list what could move it."
-          ]
-        },
-        {
-          "title": "Check the premises and paperwork",
-          "tasks": [
-            "Check whether the premises suit the intended menu and service.",
-            "Confirm relevant premises, ventilation, utility, and fit-out questions before signing commitments.",
-            "Find the relevant local authorities and their startup checklist.",
-            "Confirm which registrations, approvals, or inspections apply.",
-            "Check extra requirements if adding outdoor seating, signs, music, or alcohol.",
-            "Submit applicable paperwork and track responses, dates, and reference numbers.",
-            "Arrange insurance and accounting setup appropriate to the business."
-          ]
-        },
-        {
-          "title": "Set up the operation",
-          "tasks": [
-            "List equipment needed at each station and confirm installation or servicing.",
-            "Choose suppliers and confirm initial delivery dates and ordering contacts.",
-            "Cost and price the starter menu.",
-            "Document ingredients and where to keep current allergen information.",
-            "Set up the food safety, cleaning, and recordkeeping procedures for the site.",
-            "Set up the POS, menu, payment terminal, and receipt flow.",
-            "Write the first opening and closing checklists.",
-            "Agree shift coverage and train staff on the routines they will use."
-          ]
-        },
-        {
-          "title": "Rehearse and open",
-          "tasks": [
-            "Place the first stock order and confirm delivery access.",
-            "Run a practice service from order to cleanup.",
-            "Confirm that all required approvals or startup conditions are met before trading.",
-            "Publish the address and confirmed opening hours.",
-            "Capture the changes to make after the first week."
-          ]
-        }
-      ],
-      "notes": []
-    },
-    {
       "id": "B02",
       "category": "kitchen",
       "group": "shifts",
@@ -941,6 +867,7 @@
         "barista opening"
       ],
       "aliases": [
+        "open a cafe",
         "open the cafe",
         "open cafe",
         "morning opening"

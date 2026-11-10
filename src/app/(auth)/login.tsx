@@ -1,32 +1,55 @@
-import { useState } from 'react';
-import { Link, router } from 'expo-router';
-import { Pressable, Text, View } from 'react-native';
+import { useRef, useState, type ComponentRef } from 'react';
+import { Link } from 'expo-router';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 
-import { BrandMark, Button, Screen, TextField } from '@/components/ui';
+import {
+  Button,
+  PaperCard,
+  PasswordField,
+  Screen,
+  TextField,
+  Wordmark,
+} from '@/components/ui';
 import { useTheme } from '@/design';
 import { useAuth } from '@/features/auth';
-import { t } from '@/i18n';
+import { useT } from '@/i18n';
 
 export default function LoginScreen() {
+  const t = useT();
   const theme = useTheme();
   const { signIn, status, configError } = useAuth();
   const copy = t().auth;
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const passwordRef = useRef<ComponentRef<typeof TextInput>>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const contentStyle = {
+    paddingHorizontal: theme.space.xxl,
+    paddingTop: theme.space.xxxl + theme.space.xxl,
+  };
+
   if (status === 'misconfigured') {
     return (
-      <Screen scroll>
-        <View style={{ marginTop: theme.space.xxl, gap: theme.space.lg }}>
-          <BrandMark size="lg" />
+      <Screen scroll contentStyle={contentStyle}>
+        <View style={{ alignItems: 'center', gap: theme.space.xl }}>
+          <Wordmark size="lg" />
           <Text
             style={{
-              fontFamily: theme.fonts.body,
+              fontFamily: theme.fonts.bodyMedium,
               fontSize: theme.typography.body.fontSize,
               lineHeight: theme.typography.body.lineHeight,
               color: theme.colors.coral,
+              textAlign: 'center',
             }}
             allowFontScaling
           >
@@ -38,6 +61,7 @@ export default function LoginScreen() {
   }
 
   const onSubmit = async () => {
+    if (loading) return;
     setError(null);
     if (!email.trim()) {
       setError(copy.emailRequired);
@@ -50,31 +74,28 @@ export default function LoginScreen() {
     setLoading(true);
     const result = await signIn(email, password);
     setLoading(false);
-    if (result.error) {
-      setError(result.error);
-      return;
-    }
-    router.replace('/');
+    if (result.error) setError(result.error);
   };
 
   return (
-    <Screen scroll>
-      <View
-        style={{
-          marginTop: theme.space.xxl,
-          gap: theme.space.xl,
-          width: '100%',
-          alignItems: 'stretch',
-        }}
-      >
-        <BrandMark size="lg" />
-        <View style={{ gap: theme.space.sm, width: '100%' }}>
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: theme.colors.canvas }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <Screen scroll contentStyle={contentStyle}>
+        <View style={{ alignItems: 'center', marginBottom: theme.space.xxxl }}>
+          <Wordmark size="lg" />
+        </View>
+
+        <View style={{ gap: theme.space.sm, marginBottom: theme.space.xxl }}>
           <Text
+            accessibilityRole="header"
             style={{
               fontFamily: theme.fonts.display,
-              fontSize: theme.typography.title.fontSize,
-              lineHeight: theme.typography.title.lineHeight,
+              fontSize: theme.typography.display.fontSize,
+              lineHeight: theme.typography.display.lineHeight,
               color: theme.colors.ink,
+              textAlign: 'center',
             }}
             allowFontScaling
           >
@@ -86,6 +107,7 @@ export default function LoginScreen() {
               fontSize: theme.typography.body.fontSize,
               lineHeight: theme.typography.body.lineHeight,
               color: theme.colors.inkMuted,
+              textAlign: 'center',
             }}
             allowFontScaling
           >
@@ -93,52 +115,94 @@ export default function LoginScreen() {
           </Text>
         </View>
 
-        <View style={{ gap: theme.space.md, width: '100%' }}>
+        <PaperCard
+          style={{
+            borderRadius: theme.radii.xxl,
+            padding: theme.space.xl,
+            gap: theme.space.lg + theme.space.xs,
+          }}
+        >
           <TextField
             label={t().common.email}
+            placeholder={copy.emailPlaceholder}
             autoCapitalize="none"
+            autoCorrect={false}
             autoComplete="email"
             keyboardType="email-address"
             textContentType="emailAddress"
+            returnKeyType="next"
+            submitBehavior="submit"
+            onSubmitEditing={() => passwordRef.current?.focus()}
             value={email}
             onChangeText={setEmail}
           />
-          <TextField
+          <PasswordField
+            ref={passwordRef}
             label={t().common.password}
-            secureTextEntry
             autoComplete="password"
             textContentType="password"
+            returnKeyType="go"
+            onSubmitEditing={() => void onSubmit()}
             value={password}
             onChangeText={setPassword}
           />
           {error ? (
-            <Text
+            <View
+              accessibilityLiveRegion="polite"
               style={{
-                fontFamily: theme.fonts.body,
-                color: theme.colors.coral,
-                fontSize: theme.typography.caption.fontSize,
-                lineHeight: theme.typography.caption.lineHeight,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: theme.space.sm,
+                padding: theme.space.md,
+                borderRadius: theme.radii.sm,
+                backgroundColor: theme.colors.alertTint,
               }}
-              allowFontScaling
             >
-              {error}
-            </Text>
+              <Ionicons
+                name="alert-circle"
+                size={18}
+                color={theme.colors.coral}
+              />
+              <Text
+                style={{
+                  flex: 1,
+                  fontFamily: theme.fonts.bodySemiBold,
+                  fontSize: theme.typography.caption.fontSize,
+                  lineHeight: theme.typography.caption.lineHeight,
+                  color: theme.colors.coral,
+                }}
+                allowFontScaling
+              >
+                {error}
+              </Text>
+            </View>
           ) : null}
-          <Button label={copy.loginAction} onPress={onSubmit} loading={loading} />
+          <Button
+            label={copy.loginAction}
+            onPress={onSubmit}
+            loading={loading || status === 'loading'}
+          />
+        </PaperCard>
+
+        <View style={{ flexGrow: 1, minHeight: theme.space.xxl }} />
+
+        <View style={{ gap: theme.space.xxl, alignItems: 'center' }}>
           <Link href="/(auth)/forgot-password" asChild>
             <Pressable
               accessibilityRole="link"
               style={{
                 minHeight: 44,
+                paddingHorizontal: theme.space.md,
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
               <Text
                 style={{
-                  fontFamily: theme.fonts.bodyMedium,
-                  color: theme.colors.primary,
+                  fontFamily: theme.fonts.bodySemiBold,
                   fontSize: theme.typography.bodySmall.fontSize,
+                  lineHeight: theme.typography.bodySmall.lineHeight,
+                  color: theme.colors.primary,
                   textAlign: 'center',
                 }}
                 allowFontScaling
@@ -152,6 +216,7 @@ export default function LoginScreen() {
               accessibilityRole="link"
               style={{
                 minHeight: 44,
+                paddingHorizontal: theme.space.md,
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
@@ -159,8 +224,9 @@ export default function LoginScreen() {
               <Text
                 style={{
                   fontFamily: theme.fonts.body,
+                  fontSize: 15,
+                  lineHeight: 22,
                   color: theme.colors.inkMuted,
-                  fontSize: theme.typography.bodySmall.fontSize,
                   textAlign: 'center',
                 }}
                 allowFontScaling
@@ -168,8 +234,8 @@ export default function LoginScreen() {
                 {copy.noAccount}{' '}
                 <Text
                   style={{
+                    fontFamily: theme.fonts.bodyBold,
                     color: theme.colors.primary,
-                    fontFamily: theme.fonts.bodySemiBold,
                   }}
                 >
                   {copy.signupAction}
@@ -178,7 +244,7 @@ export default function LoginScreen() {
             </Pressable>
           </Link>
         </View>
-      </View>
-    </Screen>
+      </Screen>
+    </KeyboardAvoidingView>
   );
 }

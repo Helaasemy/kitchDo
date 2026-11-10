@@ -9,9 +9,10 @@ import {
   countLabel,
   PresetRow,
 } from '@/features/catalog/components';
-import { t } from '@/i18n';
+import { useT } from '@/i18n';
 
 export default function CatalogGroupScreen() {
+  const t = useT();
   const theme = useTheme();
   const { groupId } = useLocalSearchParams<{ groupId: string }>();
   const found = findGroup(String(groupId));

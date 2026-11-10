@@ -52,6 +52,35 @@ export const en = {
     emailRequired: 'Enter your email.',
     passwordRequired: 'Enter a password.',
     passwordTooShort: 'Use at least 8 characters.',
+    showPassword: 'Show password',
+    hidePassword: 'Hide password',
+    requirementMet: 'done',
+    emailPlaceholder: 'you@example.com',
+    ruleLength: 'At least 8 characters',
+    ruleMatch: 'Passwords match',
+    passwordsDontMatch: 'Passwords don’t match.',
+    newPassword: 'New password',
+    confirmPassword: 'Confirm password',
+    resetSubtitle: 'Use at least 8 characters to keep your kitchen routines secure.',
+    resetGoToday: 'Go to Today',
+    resetOpenOnDevice: 'Open the reset link from your email on this device.',
+    backToLogin: 'Back to sign in',
+    forgotSentTitle: 'Check your email',
+    forgotSentBody: 'We sent a reset link to {email}. It may take a minute.',
+    forgotNoEmail: 'Didn’t get it?',
+    forgotResend: 'Resend link',
+    benefitFrequencies: 'Daily, weekly and monthly checklists',
+    benefitTemplates: 'Ready-made templates',
+    benefitOffline: 'Works offline',
+    callbackFailed: 'That link didn’t work. Request a new one.',
+    signupCheckTitle: 'Confirm your email',
+    signupCheckBody: 'We sent a confirmation link to {email}. Open it on this phone to finish signing up.',
+    alreadyRegistered: 'An account with this email already exists. Sign in instead.',
+    notSignedIn: 'You’re not signed in.',
+    onboardingFailed: 'Couldn’t finish setup. Try again.',
+    offlineUnknownTitle: 'Can’t reach KitchDo',
+    offlineUnknownBody: 'Connect to the internet so we can load your kitchen.',
+    linkExpired: 'This link has expired or was already used. Request a new one.',
     setupMissing:
       'Supabase is not configured. Add EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY to your .env file, then restart Expo.',
   },
@@ -71,6 +100,8 @@ export const en = {
     kitchenPlaceholderBusiness: 'Main kitchen',
     finish: 'Start using Kdo',
     timezoneNote: 'Times follow this device’s local timezone.',
+    chooseMode: 'Choose where you’ll use KitchDo.',
+    namesRequired: 'Add your name and a kitchen name.',
   },
   today: {
     titleHome: 'Today',
@@ -97,6 +128,8 @@ export const en = {
     allDoneToday: '{date} · all done today',
   },
   recurring: {
+    toggleFailed: 'Couldn’t save that tick. Try again.',
+    loadFailed: 'Couldn’t load repeating tasks. Try again.',
     tabAll: 'All',
     daily: 'Daily',
     weekly: 'Weekly',
@@ -206,6 +239,7 @@ export const en = {
     searchPlaceholder: 'What do you need to do?',
     scopeAll: 'All results',
     scopeAllShort: 'All',
+    clearSearch: 'Clear search',
     categoriesTitle: 'Categories',
     featuredTitle: 'Popular',
     templateCount: '{count} templates',
@@ -265,6 +299,7 @@ export const en = {
     yesterday: 'Yesterday',
   },
   runs: {
+    screenTitle: 'Run',
     progress: '{done} of {total}',
     markDone: 'Mark done',
     uncheckDone: 'Mark as not done',
@@ -318,18 +353,56 @@ export const en = {
     saveProfile: 'Save profile',
     saveKitchen: 'Save kitchen',
     comingSoon: 'Available after data sync lands.',
+    invitePeople: 'Invite people',
+    invitePeopleHint: 'Share your kitchen — coming soon',
+    accountSection: 'Account',
+    appSection: 'App',
+    language: 'Language',
+    languageSystem: 'System',
+    languageHint: 'Library checklists stay in English for now.',
+    restoreRoutines: 'Restore routines',
+    restoreRoutinesHint: 'Bring back checklists saved on this phone',
+    restoreConfirmTitle: 'Restore routines?',
+    restoreConfirmBody: 'Brings back the checklists and frequencies from the backup taken {when}. Nothing current is removed.',
+    restoreConfirmAction: 'Restore',
+    restoreNone: 'No backups on this phone yet.',
+    restoreDone: 'Routines restored.',
+    signOutFailed: 'Couldn’t sign out cleanly. Try again.',
+  },
+  invite: {
+    title: 'Invite people',
+    subtitle: 'Share your checklists so everyone can tick tasks off together.',
+    comingSoonTitle: 'Coming soon',
+    comingSoonBody:
+      'Shared kitchens are on the way. For now KitchDo is just for you — here’s a preview of how inviting will work.',
+    linkLabel: 'Invite link',
+    linkPlaceholder: 'kitchdo.app/join/••••-••',
+    shareLink: 'Share link',
+    copy: 'Copy',
+    linkNote: 'Anyone with the link can join. Links expire after 7 days.',
+    byEmail: 'Invite by email',
+    emailPlaceholder: 'Enter email address',
+    send: 'Send',
+    members: 'Members · {count}',
+    owner: 'Owner',
+    you: 'You',
   },
   sync: {
     offline: 'You’re offline. Completions will sync when you’re back.',
     syncing: 'Syncing…',
     changesWaiting: '{count} change(s) waiting to sync',
     error: 'Couldn’t sync. Tap Retry.',
+    failedChanges: '{count} change(s) couldn’t sync and were set aside.',
     networkRequired:
       'Editing templates needs a connection. Completions still work offline.',
   },
 } as const;
 
-export type Strings = typeof en;
+type DeepStringify<T> = T extends string
+  ? string
+  : { [K in keyof T]: DeepStringify<T[K]> };
+
+export type Strings = DeepStringify<typeof en>;
 export type KitchenMode = 'home' | 'business';
 
 export function tone<T extends string>(

@@ -1,5 +1,6 @@
 import { memo, useEffect, useMemo } from 'react';
-import { Stack } from 'expo-router';
+import { Platform, View } from 'react-native';
+import { LocaleProvider, Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useFonts } from 'expo-font';
 import {
@@ -18,6 +19,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { ThemeProvider, useTheme } from '@/design';
 import { AuthProvider, useAuth } from '@/features/auth';
+import { I18nProvider, useI18n } from '@/i18n';
 import { ReminderResponseBridge } from '@/features/runs/ReminderResponseBridge';
 import { SyncProvider } from '@/lib/sync';
 
@@ -39,7 +41,8 @@ const SplashController = memo(function SplashController() {
 });
 
 const RootNavigator = memo(function RootNavigator() {
-  const { status } = useAuth();
+  const { status, recoveryPending } = useAuth();
+  const { direction } = useI18n();
   const theme = useTheme();
 
   // Must be stable — a new screenOptions object each render makes
@@ -56,28 +59,38 @@ const RootNavigator = memo(function RootNavigator() {
   const showAuth =
     status === 'misconfigured' ||
     status === 'unauthenticated' ||
-    status === 'loading';
-  const showOnboarding = status === 'needs_onboarding';
-  const showApp = status === 'authenticated';
+    status === 'loading' ||
+    recoveryPending;
+  const showOnboarding = status === 'needs_onboarding' && !recoveryPending;
+  const showApp = status === 'authenticated' && !recoveryPending;
 
   return (
-    <Stack screenOptions={screenOptions}>
-      <Stack.Screen name="index" />
+    <LocaleProvider direction={direction}>
+      <View
+        style={{ flex: 1 }}
+        {...(Platform.OS === 'web'
+          ? ({ dir: direction } as { dir: 'ltr' | 'rtl' })
+          : null)}
+      >
+        <Stack screenOptions={screenOptions}>
+          <Stack.Screen name="index" />
 
-      <Stack.Protected guard={showAuth}>
-        <Stack.Screen name="(auth)" />
-      </Stack.Protected>
+          <Stack.Protected guard={showAuth}>
+            <Stack.Screen name="(auth)" />
+          </Stack.Protected>
 
-      <Stack.Protected guard={showOnboarding}>
-        <Stack.Screen name="(onboarding)" />
-      </Stack.Protected>
+          <Stack.Protected guard={showOnboarding}>
+            <Stack.Screen name="(onboarding)" />
+          </Stack.Protected>
 
-      <Stack.Protected guard={showApp}>
-        <Stack.Screen name="(app)" />
-      </Stack.Protected>
+          <Stack.Protected guard={showApp}>
+            <Stack.Screen name="(app)" />
+          </Stack.Protected>
 
-      <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
-    </Stack>
+          <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
+        </Stack>
+      </View>
+    </LocaleProvider>
   );
 });
 
@@ -106,13 +119,15 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <ThemeProvider>
-          <AuthProvider>
-            <SyncProvider>
-              <SplashController />
-              <ReminderResponseBridge />
-              <RootNavigator />
-            </SyncProvider>
-          </AuthProvider>
+          <I18nProvider>
+            <AuthProvider>
+              <SyncProvider>
+                <SplashController />
+                <ReminderResponseBridge />
+                <RootNavigator />
+              </SyncProvider>
+            </AuthProvider>
+          </I18nProvider>
         </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

@@ -1,14 +1,14 @@
 import { useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { router } from 'expo-router';
 
-import { BrandMark, Button, Screen, TextField } from '@/components/ui';
+import { Button, ErrorText, Screen, TextField, Wordmark } from '@/components/ui';
 import { useTheme } from '@/design';
 import { useAuth } from '@/features/auth';
 import { getDeviceTimeZone } from '@/lib/dates';
-import { t, type KitchenMode } from '@/i18n';
+import { useT, type KitchenMode } from '@/i18n';
 
 export default function OnboardingScreen() {
+  const t = useT();
   const theme = useTheme();
   const { finishOnboarding, user } = useAuth();
   const copy = t().onboarding;
@@ -21,30 +21,16 @@ export default function OnboardingScreen() {
 
   const applyMode = (next: KitchenMode) => {
     setMode(next);
-    if (!displayName) {
-      setDisplayName(
-        next === 'home'
-          ? copy.displayNamePlaceholderHome
-          : copy.displayNamePlaceholderBusiness,
-      );
-    }
-    if (!kitchenName) {
-      setKitchenName(
-        next === 'home'
-          ? copy.kitchenPlaceholderHome
-          : copy.kitchenPlaceholderBusiness,
-      );
-    }
   };
 
   const onFinish = async () => {
     setError(null);
     if (!mode) {
-      setError('Choose Home or Business to continue.');
+      setError(copy.chooseMode);
       return;
     }
     if (!displayName.trim() || !kitchenName.trim()) {
-      setError('Add your name and a kitchen name.');
+      setError(copy.namesRequired);
       return;
     }
     setLoading(true);
@@ -56,15 +42,13 @@ export default function OnboardingScreen() {
     setLoading(false);
     if (result.error) {
       setError(result.error);
-      return;
     }
-    router.replace('/(app)/(tabs)/today');
   };
 
   return (
     <Screen scroll>
       <View style={{ marginTop: theme.space.xl, gap: theme.space.xl }}>
-        <BrandMark size="md" />
+        <Wordmark size="md" />
 
         <View style={{ gap: theme.space.sm }}>
           <Text
@@ -134,6 +118,11 @@ export default function OnboardingScreen() {
               label={t().common.displayName}
               value={displayName}
               onChangeText={setDisplayName}
+              placeholder={
+                mode === 'home'
+                  ? copy.displayNamePlaceholderHome
+                  : copy.displayNamePlaceholderBusiness
+              }
               autoComplete="name"
               textContentType="name"
             />
@@ -141,6 +130,11 @@ export default function OnboardingScreen() {
               label={t().common.kitchenName}
               value={kitchenName}
               onChangeText={setKitchenName}
+              placeholder={
+                mode === 'home'
+                  ? copy.kitchenPlaceholderHome
+                  : copy.kitchenPlaceholderBusiness
+              }
             />
             <Text
               style={{
@@ -156,18 +150,7 @@ export default function OnboardingScreen() {
           </View>
         ) : null}
 
-        {error ? (
-          <Text
-            style={{
-              fontFamily: theme.fonts.body,
-              color: theme.colors.coral,
-              fontSize: theme.typography.caption.fontSize,
-            }}
-            allowFontScaling
-          >
-            {error}
-          </Text>
-        ) : null}
+        <ErrorText message={error} boxed />
 
         <Button
           label={copy.finish}

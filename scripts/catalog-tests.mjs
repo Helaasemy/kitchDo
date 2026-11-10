@@ -50,25 +50,27 @@ const tasksOf = (p) => p.sections.flatMap((s) => s.tasks);
 
 // --- catalog data ---
 
-test('42 presets with unique IDs H01–H22 and B01–B20', () => {
-  assert.equal(presets.length, 42);
-  assert.equal(new Set(presets.map((p) => p.id)).size, 42);
+test('41 presets with unique IDs H01–H22 and B02–B20', () => {
+  assert.equal(presets.length, 41);
+  assert.equal(new Set(presets.map((p) => p.id)).size, 41);
+  assert.equal(byId.has('B01'), false);
   const expected = [
     ...Array.from({ length: 22 }, (_, i) => `H${String(i + 1).padStart(2, '0')}`),
-    ...Array.from({ length: 20 }, (_, i) => `B${String(i + 1).padStart(2, '0')}`),
+    ...Array.from({ length: 20 }, (_, i) => `B${String(i + 1).padStart(2, '0')}`).filter(
+      (id) => id !== 'B01',
+    ),
   ].sort();
   assert.deepEqual(presets.map((p) => p.id).sort(), expected);
 });
 
-test('321 tasks in total; Home has 22 presets, Kitchen has 20', () => {
-  assert.equal(presets.reduce((n, p) => n + tasksOf(p).length, 0), 321);
+test('297 tasks in total; Home has 22 presets, Kitchen has 19', () => {
+  assert.equal(presets.reduce((n, p) => n + tasksOf(p).length, 0), 297);
   assert.equal(presets.filter((p) => p.category === 'home').length, 22);
-  assert.equal(presets.filter((p) => p.category === 'kitchen').length, 20);
+  assert.equal(presets.filter((p) => p.category === 'kitchen').length, 19);
 });
 
 test('every Kitchen preset sits in its agreed group', () => {
   const expected = {
-    launch: ['B01'],
     shifts: ['B02', 'B03', 'B16', 'B17', 'B18'],
     cleaning: ['B04', 'B05', 'B06', 'B19'],
     prep: ['B07'],
@@ -81,7 +83,6 @@ test('every Kitchen preset sits in its agreed group', () => {
   assert.deepEqual(
     kitchen.groups.map((g) => g.label),
     [
-      'Launch and setup',
       'Opening and closing shifts',
       'Cleaning and equipment maintenance',
       'Food preparation',
@@ -128,25 +129,11 @@ test('titles, task wording and order match the Markdown source', () => {
   }
 });
 
-test('B01 Open a new café has 24 tasks in four ordered sections', () => {
-  const b01 = byId.get('B01');
-  assert.equal(b01.title, 'Open a new café');
-  assert.deepEqual(
-    b01.sections.map((s) => [s.title, s.tasks.length]),
-    [
-      ['Plan the business', 4],
-      ['Check the premises and paperwork', 7],
-      ['Set up the operation', 8],
-      ['Rehearse and open', 5],
-    ],
-  );
-});
-
 test('starting task frequency follows the cadence label', () => {
   const expected = {
     H01: 'daily', H02: 'weekly', H04: 'weekly', H06: 'monthly', H08: 'monthly',
     H11: 'monthly', H15: null, H20: null, H22: 'weekly',
-    B01: null, B02: 'daily', B03: 'daily', B05: 'weekly', B06: 'daily', B08: null,
+    B02: 'daily', B03: 'daily', B05: 'weekly', B06: 'daily', B08: null,
     B13: null, B14: 'weekly', B15: null, B16: null, B19: 'monthly', B12: 'weekly',
   };
   for (const [id, frequency] of Object.entries(expected)) {
@@ -228,10 +215,8 @@ test('normalizes case, accents, whitespace and punctuation', () => {
   assert.deepEqual(top('open a cafe', 5), top('Open  a café?', 5));
 });
 
-test('"open a cafe" puts both café openings near the top', () => {
-  const first = top('open a cafe', 3);
-  assert.ok(first.includes('Open a new café'), first.join(' | '));
-  assert.ok(first.includes('Open the café for service'), first.join(' | '));
+test('"open a cafe" finds Open the café for service first', () => {
+  assert.equal(top('open a cafe', 1)[0], 'Open the café for service');
 });
 
 test('"Sunday meal prep" finds Prep meals for the week first', () => {
@@ -259,6 +244,7 @@ test('"clean the bathroom" finds Clean the bathroom', () => {
 
 test('source document examples return their useful first results', () => {
   const examples = {
+    'open a café': ['Open the café for service', 'Close the café after service'],
     'weekly cleaning': ['Weekly home reset', 'Clean the bathroom', 'Deep-clean the café'],
     paperwork: [
       'Monthly household paperwork',

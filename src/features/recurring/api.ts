@@ -132,13 +132,66 @@ export async function clearTemplateFrequencies(
   templateId: string,
 ): Promise<void> {
   const db = await getLocalDb();
+  try {
+    const { snapshotLocalOnly } = await import('@/lib/storage/localBackup');
+    await snapshotLocalOnly(userId, 'archive');
+  } catch {
+    /* backup is best-effort */
+  }
   await db.runAsync(
-    `DELETE FROM local_recurring_tasks
-     WHERE user_id = ? AND kitchen_id = ? AND template_id = ?`,
+    `UPDATE local_recurring_tasks SET hidden_at = ?
+     WHERE user_id = ? AND kitchen_id = ? AND template_id = ? AND hidden_at IS NULL`,
+    new Date().toISOString(),
     userId,
     kitchenId,
     templateId,
   );
+}
+
+async function loadRecurringRows(
+  userId: string,
+  kitchenId: string,
+  templateId?: string,
+): Promise<TaskRow[]> {
+  const db = await getLocalDb();
+  const hidden = 'AND COALESCE(hidden_at, \'\') = \'\'';
+  try {
+    return templateId
+      ? await db.getAllAsync<TaskRow>(
+          `SELECT * FROM local_recurring_tasks
+           WHERE user_id = ? AND kitchen_id = ? AND template_id = ? ${hidden}
+           ORDER BY sort_order`,
+          userId,
+          kitchenId,
+          templateId,
+        )
+      : await db.getAllAsync<TaskRow>(
+          `SELECT * FROM local_recurring_tasks
+           WHERE user_id = ? AND kitchen_id = ? ${hidden}
+           ORDER BY template_title, sort_order`,
+          userId,
+          kitchenId,
+        );
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    if (!/no such column: hidden_at/i.test(message)) throw e;
+    return templateId
+      ? await db.getAllAsync<TaskRow>(
+          `SELECT * FROM local_recurring_tasks
+           WHERE user_id = ? AND kitchen_id = ? AND template_id = ?
+           ORDER BY sort_order`,
+          userId,
+          kitchenId,
+          templateId,
+        )
+      : await db.getAllAsync<TaskRow>(
+          `SELECT * FROM local_recurring_tasks
+           WHERE user_id = ? AND kitchen_id = ?
+           ORDER BY template_title, sort_order`,
+          userId,
+          kitchenId,
+        );
+  }
 }
 
 /** Recurring tasks with their done state for the current periods. */
@@ -147,25 +200,10 @@ export async function listRecurringTasks(
   kitchenId: string,
   templateId?: string,
 ): Promise<RecurringTaskState[]> {
-  const db = await getLocalDb();
-  const rows = templateId
-    ? await db.getAllAsync<TaskRow>(
-        `SELECT * FROM local_recurring_tasks
-         WHERE user_id = ? AND kitchen_id = ? AND template_id = ?
-         ORDER BY sort_order`,
-        userId,
-        kitchenId,
-        templateId,
-      )
-    : await db.getAllAsync<TaskRow>(
-        `SELECT * FROM local_recurring_tasks
-         WHERE user_id = ? AND kitchen_id = ?
-         ORDER BY template_title, sort_order`,
-        userId,
-        kitchenId,
-      );
+  const rows = await loadRecurringRows(userId, kitchenId, templateId);
   if (rows.length === 0) return [];
 
+  const db = await getLocalDb();
   const keys = currentPeriodKeys(localNow());
   const ticks = await db.getAllAsync<{ item_id: string; period_key: string }>(
     `SELECT item_id, period_key FROM local_task_ticks
@@ -252,4 +290,60 @@ export async function listRecentTicks(
     templateTitle: r.template_title_snapshot,
     tickedAt: r.ticked_at,
   }));
+}
+
+/** Copy frequencies onto a duplicated template by matching item sort_order (then title). */
+export async function copyTemplateFrequencies(input: {
+  userId: string;
+  kitchenId: string;
+  fromTemplateId: string;
+  toTemplateId: string;
+}): Promise<void> {
+  const { getTemplate } = await import('@/features/templates/api');
+  const [from, to] = await Promise.all([
+    getTemplate(input.fromTemplateId),
+    getTemplate(input.toTemplateId),
+  ]);
+  if (!from || !to) return;
+  const frequencies = await getTemplateFrequencies(
+    input.userId,
+    input.kitchenId,
+    input.fromTemplateId,
+  );
+  const unused = new Set(to.items.map((i) => i.id));
+  const mapped: {
+    itemId: string;
+    frequency: TaskFrequency | null;
+    title: string;
+    sectionTitle: string | null;
+    sortOrder: number;
+  }[] = [];
+  for (const source of from.items) {
+    const freq = frequencies[source.id];
+    if (!freq) continue;
+    const byOrder = to.items.find(
+      (i) => unused.has(i.id) && i.sortOrder === source.sortOrder,
+    );
+    const byTitle = to.items.find(
+      (i) => unused.has(i.id) && i.title === source.title,
+    );
+    const match = byOrder ?? byTitle;
+    if (!match) continue;
+    unused.delete(match.id);
+    mapped.push({
+      itemId: match.id,
+      frequency: freq,
+      title: match.title,
+      sectionTitle: null,
+      sortOrder: match.sortOrder,
+    });
+  }
+  if (mapped.length === 0) return;
+  await saveTemplateFrequencies({
+    userId: input.userId,
+    kitchenId: input.kitchenId,
+    templateId: input.toTemplateId,
+    templateTitle: to.title,
+    tasks: mapped,
+  });
 }

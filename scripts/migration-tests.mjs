@@ -80,7 +80,12 @@ async function migrateTo(db, version) {
   }
 }
 
-const EXPECTED_LOCAL = ['local_recurring_tasks', 'local_task_ticks', 'local_template_sources'];
+const EXPECTED_LOCAL = [
+  'local_recurring_tasks',
+  'local_task_ticks',
+  'local_template_sources',
+  'local_backups',
+];
 
 let passed = 0;
 const test = async (name, fn) => {
@@ -166,9 +171,52 @@ await test('every table cleared on sign-out exists after migration', async () =>
   const db = openDb();
   await applyMigrations(db);
   const source = readFileSync(join(root, 'src/lib/storage/db.ts'), 'utf8');
+  const syncedFn = source.slice(
+    source.indexOf('export async function clearSyncedCache'),
+    source.indexOf('export async function clearAccountLocalData'),
+  );
+  assert.ok(!/local_recurring_tasks|local_task_ticks|local_template_sources|local_backups/.test(syncedFn));
   const cleared = [...source.matchAll(/DELETE FROM (\w+) WHERE user_id/g)].map((m) => m[1]);
   assert.ok(cleared.length >= 9);
   for (const name of cleared) assert.ok(tables(db).includes(name), name);
+});
+
+await test('migrations never drop local-only tables', () => {
+  const banned = /(DROP|DELETE FROM)\s+(IF EXISTS\s+)?local_(recurring_tasks|task_ticks|template_sources|backups)/i;
+  for (const m of SQLITE_MIGRATIONS) {
+    assert.ok(!banned.test(m.sql), `migration v${m.version} mutates local-only data`);
+  }
+});
+
+await test('v5 devices gain hidden_at and local_backups', async () => {
+  const db = openDb();
+  await migrateTo(db, 5);
+  db.raw.exec(`INSERT INTO local_recurring_tasks VALUES
+    ('u', 'k', 't', 'i', 'daily', 'Wipe', NULL, 'Close', 0)`);
+  await applyMigrations(db);
+  assert.ok(tables(db).includes('local_backups'));
+  const cols = db.raw.prepare('PRAGMA table_info(local_recurring_tasks)').all().map((c) => c.name);
+  assert.ok(cols.includes('hidden_at'));
+  assert.equal(count(db, 'SELECT COUNT(*) n FROM local_recurring_tasks'), 1);
+});
+
+await test('v6 is a no-op if hidden_at already exists', async () => {
+  const db = openDb();
+  await migrateTo(db, 5);
+  db.raw.exec('ALTER TABLE local_recurring_tasks ADD COLUMN hidden_at TEXT');
+  await applyMigrations(db);
+  assert.equal(versions(db).at(-1), LATEST_SQLITE_VERSION);
+  const cols = db.raw.prepare('PRAGMA table_info(local_recurring_tasks)').all().map((c) => c.name);
+  assert.equal(cols.filter((c) => c === 'hidden_at').length, 1);
+});
+
+await test('hidden_at is added even when v6 is already recorded', async () => {
+  const db = openDb();
+  await migrateTo(db, 6);
+  db.raw.exec('ALTER TABLE local_recurring_tasks DROP COLUMN hidden_at');
+  await applyMigrations(db);
+  const cols = db.raw.prepare('PRAGMA table_info(local_recurring_tasks)').all().map((c) => c.name);
+  assert.ok(cols.includes('hidden_at'));
 });
 
 console.log(`\n${passed} migration checks passed`);

@@ -66,7 +66,7 @@ export async function listPendingOutbox(
   const rows = await db.getAllAsync<Record<string, unknown>>(
     `SELECT * FROM outbox
      WHERE user_id = ? AND kitchen_id = ? AND status = 'pending'
-     ORDER BY created_at ASC`,
+     ORDER BY created_at ASC, rowid ASC`,
     userId,
     kitchenId,
   );
@@ -96,22 +96,47 @@ export async function countPendingOutbox(
 
 export async function markOutboxDone(id: string): Promise<void> {
   const db = await getLocalDb();
-  await db.runAsync(
-    `UPDATE outbox SET status = 'done', last_error = NULL WHERE id = ?`,
-    id,
+  await db.runAsync(`DELETE FROM outbox WHERE id = ?`, id);
+}
+
+export async function countFailedOutbox(
+  userId: string,
+  kitchenId?: string | null,
+): Promise<number> {
+  const db = await getLocalDb();
+  if (kitchenId) {
+    const row = await db.getFirstAsync<{ c: number }>(
+      `SELECT COUNT(*) as c FROM outbox
+       WHERE user_id = ? AND kitchen_id = ? AND status = 'failed'`,
+      userId,
+      kitchenId,
+    );
+    return row?.c ?? 0;
+  }
+  const row = await db.getFirstAsync<{ c: number }>(
+    `SELECT COUNT(*) as c FROM outbox WHERE user_id = ? AND status = 'failed'`,
+    userId,
   );
+  return row?.c ?? 0;
 }
 
 export async function markOutboxFailed(
   id: string,
   error: string,
+  opts?: { permanent?: boolean },
 ): Promise<void> {
   const db = await getLocalDb();
   await db.runAsync(
     `UPDATE outbox
-     SET attempts = attempts + 1, last_error = ?, status = 'pending'
+     SET attempts = attempts + 1,
+         last_error = ?,
+         status = CASE
+           WHEN ? = 1 OR attempts + 1 >= 5 THEN 'failed'
+           ELSE 'pending'
+         END
      WHERE id = ?`,
     error.slice(0, 500),
+    opts?.permanent ? 1 : 0,
     id,
   );
 }

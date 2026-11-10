@@ -15,7 +15,7 @@ export type CatalogSection = {
 };
 
 export type CatalogPreset = {
-  /** Stable source ID, `H01`–`H22` or `B01`–`B20`. */
+  /** Stable source ID, `H01`–`H22` or `B02`–`B20`. */
   id: string;
   category: CatalogCategoryKey;
   group: string;

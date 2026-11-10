@@ -15,10 +15,11 @@ import {
   presetTaskCount,
 } from '@/features/catalog';
 import { CatalogBackLink } from '@/features/catalog/components';
-import { t } from '@/i18n';
+import { useT } from '@/i18n';
 
 /** Preview of a bundled preset; Use saves and publishes a copy in one step. */
 export default function CatalogPresetScreen() {
+  const t = useT();
   const theme = useTheme();
   const { presetId } = useLocalSearchParams<{ presetId: string }>();
   const preset = getPreset(String(presetId));

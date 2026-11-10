@@ -35,7 +35,7 @@ import {
 import type { RunItemOutcome } from '@/domain/runProgress';
 import { getDeviceTimeZone } from '@/lib/dates';
 import { goBackOr } from '@/lib/navigation';
-import { t } from '@/i18n';
+import { useT } from '@/i18n';
 
 type NoteModal =
   | {
@@ -48,6 +48,7 @@ type NoteModal =
   | null;
 
 export default function RunExecutionScreen() {
+  const t = useT();
   const theme = useTheme();
   const params = useLocalSearchParams<{ id: string | string[] }>();
   const runId = Array.isArray(params.id) ? params.id[0] : params.id;

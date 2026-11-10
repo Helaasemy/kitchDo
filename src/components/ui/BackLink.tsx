@@ -3,7 +3,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import type { Href } from 'expo-router';
 
 import { useTheme } from '@/design';
-import { t } from '@/i18n';
+import { useT } from '@/i18n';
 import { goBackOr } from '@/lib/navigation';
 
 /** Chevron + label back control for pushed screens. */
@@ -16,6 +16,7 @@ export function BackLink({
   fallback: Href;
   onPress?: () => void;
 }) {
+  const t = useT();
   const theme = useTheme();
   return (
     <Pressable

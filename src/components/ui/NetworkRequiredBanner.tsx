@@ -1,10 +1,11 @@
 import { Text, View } from 'react-native';
 
 import { useTheme } from '@/design';
-import { t } from '@/i18n';
+import { useT } from '@/i18n';
 
 /** Shown on template/category/schedule editors that require a live connection. */
 export function NetworkRequiredBanner({ visible }: { visible?: boolean }) {
+  const t = useT();
   const theme = useTheme();
   if (visible === false) return null;
 

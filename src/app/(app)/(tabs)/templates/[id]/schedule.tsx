@@ -10,7 +10,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 
 import { Button, Screen, TextField } from '@/components/ui';
 import { useTheme } from '@/design';
-import { getTemplate } from '@/features/templates/api';
+import { getTemplate, type TemplateDetail } from '@/features/templates/api';
 import {
   listActiveSchedulesForTemplate,
   pauseSchedule,
@@ -19,20 +19,20 @@ import {
   type Weekday,
 } from '@/features/schedules/api';
 import { goBackOr } from '@/lib/navigation';
-import { t } from '@/i18n';
-
-const WEEKDAYS: { value: Weekday; label: string }[] = [
-  { value: 1, label: t().schedules.weekdayMon },
-  { value: 2, label: t().schedules.weekdayTue },
-  { value: 3, label: t().schedules.weekdayWed },
-  { value: 4, label: t().schedules.weekdayThu },
-  { value: 5, label: t().schedules.weekdayFri },
-  { value: 6, label: t().schedules.weekdaySat },
-  { value: 7, label: t().schedules.weekdaySun },
-];
+import { useT } from '@/i18n';
 
 export default function TemplateScheduleScreen() {
+  const t = useT();
   const theme = useTheme();
+  const weekdaysCopy: { value: Weekday; label: string }[] = [
+    { value: 1, label: t().schedules.weekdayMon },
+    { value: 2, label: t().schedules.weekdayTue },
+    { value: 3, label: t().schedules.weekdayWed },
+    { value: 4, label: t().schedules.weekdayThu },
+    { value: 5, label: t().schedules.weekdayFri },
+    { value: 6, label: t().schedules.weekdaySat },
+    { value: 7, label: t().schedules.weekdaySun },
+  ];
   const { id } = useLocalSearchParams<{ id: string }>();
   const templateId = String(id);
   const copy = t().schedules;
@@ -50,35 +50,52 @@ export default function TemplateScheduleScreen() {
   const [reminderEnabled, setReminderEnabled] = useState(false);
   const [reminderLead, setReminderLead] = useState('15');
 
+  const applyLoaded = ([detail, schedules]: [TemplateDetail | null, Schedule[]]) => {
+    setPublished(Boolean(detail?.publishedRevision));
+    const current = schedules[0] ?? null;
+    setActive(current);
+    if (current) {
+      setWeekdays(current.weekdays);
+      setStartTime(current.localStartTime.slice(0, 5));
+      setDueAfter(String(current.dueAfterMinutes));
+      setReminderEnabled(current.reminderEnabled);
+      setReminderLead(String(current.reminderLeadMinutes || 15));
+    }
+  };
+
+  const fetchData = useCallback(
+    () => Promise.all([getTemplate(templateId), listActiveSchedulesForTemplate(templateId)]),
+    [templateId],
+  );
+
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [detail, schedules] = await Promise.all([
-        getTemplate(templateId),
-        listActiveSchedulesForTemplate(templateId),
-      ]);
-      const isPublished = Boolean(detail?.publishedRevision);
-      setPublished(isPublished);
-      const current = schedules[0] ?? null;
-      setActive(current);
-      if (current) {
-        setWeekdays(current.weekdays);
-        setStartTime(current.localStartTime.slice(0, 5));
-        setDueAfter(String(current.dueAfterMinutes));
-        setReminderEnabled(current.reminderEnabled);
-        setReminderLead(String(current.reminderLeadMinutes || 15));
-      }
+      applyLoaded(await fetchData());
     } catch (e) {
       setError(e instanceof Error ? e.message : t().common.errorGeneric);
     } finally {
       setLoading(false);
     }
-  }, [templateId]);
+  }, [fetchData, t]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    let cancelled = false;
+    fetchData()
+      .then((data) => {
+        if (!cancelled) applyLoaded(data);
+      })
+      .catch((e: unknown) => {
+        if (!cancelled) setError(e instanceof Error ? e.message : t().common.errorGeneric);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchData, t]);
 
   const toggleDay = (day: Weekday) => {
     setWeekdays((prev) =>
@@ -230,7 +247,7 @@ export default function TemplateScheduleScreen() {
           {copy.weekdays}
         </Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.sm }}>
-          {WEEKDAYS.map((day) => {
+          {weekdaysCopy.map((day) => {
             const selected = weekdays.includes(day.value);
             return (
               <Pressable

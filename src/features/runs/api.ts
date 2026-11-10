@@ -364,7 +364,7 @@ export async function createManualRun(input: {
   });
 
   const flush = await flushOutbox(input.userId, input.kitchenId);
-  if (!flush.offline && !flush.error) {
+  if (!flush.offline && !flush.error && !flush.skipped) {
     await pullKitchenCache(input.userId, input.kitchenId, {
       fromDate: localDate,
       toDate: localDate,
@@ -631,19 +631,19 @@ export async function cancelRun(input: {
   const items = await listCachedItemsForRun(input.userId, run.id);
   const itemIds = new Set(items.map((i) => i.id));
 
-  const pending = await listPendingOutbox(input.userId, input.kitchenId);
-  const createStillQueued = pending.some((row) => {
-    if (row.operation !== 'create_manual_run') return false;
-    try {
-      const payload = JSON.parse(row.payloadJson) as { run_id?: string };
-      return payload.run_id === run.id;
-    } catch {
-      return false;
-    }
-  });
-
   const db = await getLocalDb();
   await db.withTransactionAsync(async () => {
+    const pending = await listPendingOutbox(input.userId, input.kitchenId);
+    const createRow = pending.find((row) => {
+      if (row.operation !== 'create_manual_run') return false;
+      try {
+        const payload = JSON.parse(row.payloadJson) as { run_id?: string };
+        return payload.run_id === run.id;
+      } catch {
+        return false;
+      }
+    });
+    const createStillQueued = Boolean(createRow);
     await upsertCachedRun({
       ...run,
       state: 'cancelled',

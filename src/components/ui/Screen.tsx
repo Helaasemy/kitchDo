@@ -41,6 +41,8 @@ export function Screen({
         contentStyle,
       ]}
       keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="interactive"
+      automaticallyAdjustKeyboardInsets
       showsVerticalScrollIndicator={false}
     >
       {children}

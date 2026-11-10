@@ -2,7 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Pressable, Text, View } from 'react-native';
 
 import { useTheme } from '@/design';
-import { t } from '@/i18n';
+import { useT } from '@/i18n';
 
 import type { RecurringTaskState } from './api';
 import type { TaskFrequency } from './period';
@@ -24,6 +24,7 @@ export function RecurringGroupCard({
   onOpenTemplate?: () => void;
   onToggle: (task: RecurringTaskState) => void;
 }) {
+  const t = useT();
   const theme = useTheme();
   const copy = t().recurring;
   const accent = theme.colors.frequency[frequency];

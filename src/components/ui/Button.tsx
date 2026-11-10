@@ -1,4 +1,4 @@
-import { useRef, type ComponentProps } from 'react';
+import { useState, type ComponentProps } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -36,13 +36,13 @@ export function Button({
   icon,
 }: Props) {
   const theme = useTheme();
-  const scale = useRef(new Animated.Value(1)).current;
+  const [scale] = useState(() => new Animated.Value(1));
   const busy = disabled || loading;
 
   const palette = {
     primary: {
       bg: theme.colors.primary,
-      fg: '#FFFFFF',
+      fg: theme.colors.onPrimary,
       border: theme.colors.primary,
     },
     secondary: {
@@ -57,7 +57,7 @@ export function Button({
     },
     danger: {
       bg: theme.colors.coral,
-      fg: '#FFFFFF',
+      fg: theme.colors.onCoral,
       border: theme.colors.coral,
     },
   }[variant];

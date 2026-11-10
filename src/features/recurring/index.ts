@@ -1,5 +1,6 @@
 export {
   clearTemplateFrequencies,
+  copyTemplateFrequencies,
   getTemplateFrequencies,
   listRecentTicks,
   listRecurringTasks,
@@ -9,6 +10,7 @@ export {
   type RecurringTaskState,
   type TaskTick,
 } from './api';
+export { hydrateRecurringTasks } from './hydrate';
 export { countDone, groupByFrequencyAndTemplate, type TemplateTaskGroup } from './grouping';
 export {
   isTaskFrequency,

@@ -1,90 +1,40 @@
-import { useEffect, useState } from 'react';
-import * as Linking from 'expo-linking';
-import { router } from 'expo-router';
-import { Text, View } from 'react-native';
+import { useState } from 'react';
+import { Redirect, router } from 'expo-router';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 
-import { BrandMark, Button, Screen, TextField } from '@/components/ui';
+import {
+  Button,
+  ErrorText,
+  IconTile,
+  PaperCard,
+  PasswordField,
+  RequirementRow,
+  Screen,
+} from '@/components/ui';
 import { useTheme } from '@/design';
 import { useAuth } from '@/features/auth';
-import { getSupabase } from '@/lib/supabase';
-import { t } from '@/i18n';
-
-async function exchangeUrl(url: string): Promise<string | null> {
-  const parsed = Linking.parse(url);
-  const params = {
-    ...parsed.queryParams,
-  } as Record<string, string | undefined>;
-
-  // Supabase may return tokens in the hash fragment.
-  const hash = url.split('#')[1];
-  if (hash) {
-    for (const part of hash.split('&')) {
-      const [k, v] = part.split('=');
-      if (k && v) params[k] = decodeURIComponent(v);
-    }
-  }
-
-  if (params.error_description || params.error) {
-    return params.error_description ?? params.error ?? 'Auth callback failed.';
-  }
-
-  const access_token = params.access_token;
-  const refresh_token = params.refresh_token;
-  if (access_token && refresh_token) {
-    const { error } = await getSupabase().auth.setSession({
-      access_token,
-      refresh_token,
-    });
-    return error?.message ?? null;
-  }
-
-  const code = params.code;
-  if (code) {
-    const { error } = await getSupabase().auth.exchangeCodeForSession(code);
-    return error?.message ?? null;
-  }
-
-  return null;
-}
+import { useT } from '@/i18n';
 
 export default function AuthCallbackScreen() {
+  const t = useT();
   const theme = useTheme();
-  const { updatePassword, status } = useAuth();
+  const { updatePassword, status, recoveryPending, authLinkError } = useAuth();
   const copy = t().auth;
-  const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
-
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      const initial = await Linking.getInitialURL();
-      const url = initial ?? Linking.createURL('auth/callback');
-      const err = await exchangeUrl(url);
-      if (!active) return;
-      if (err) setError(err);
-      setReady(true);
-    })();
-
-    const sub = Linking.addEventListener('url', ({ url }) => {
-      void exchangeUrl(url).then((err) => {
-        if (err) setError(err);
-        setReady(true);
-      });
-    });
-
-    return () => {
-      active = false;
-      sub.remove();
-    };
-  }, []);
 
   const onSubmit = async () => {
     setError(null);
     if (password.length < 8) {
       setError(copy.passwordTooShort);
+      return;
+    }
+    if (confirm !== password) {
+      setError(copy.passwordsDontMatch);
       return;
     }
     setLoading(true);
@@ -95,88 +45,161 @@ export default function AuthCallbackScreen() {
       return;
     }
     setDone(true);
-    router.replace('/');
   };
 
-  if (!ready) {
+  const displayError = error ?? authLinkError;
+
+  if (status === 'loading') {
     return (
       <Screen>
-        <View style={{ flex: 1, justifyContent: 'center' }}>
-          <Text
-            style={{
-              fontFamily: theme.fonts.body,
-              color: theme.colors.inkMuted,
-            }}
-            allowFontScaling
-          >
-            {t().common.loading}
-          </Text>
+        <View
+          style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
+          accessible
+          accessibilityLabel={t().common.loading}
+        >
+          <ActivityIndicator color={theme.colors.primary} />
         </View>
       </Screen>
     );
   }
 
+  if (!recoveryPending && status === 'authenticated' && !done) {
+    return <Redirect href="/" />;
+  }
+
+  const monthly = theme.colors.frequency.monthly;
+  const needsDevice = status === 'unauthenticated' && !displayError && !recoveryPending;
+
   return (
     <Screen scroll>
-      <View style={{ marginTop: theme.space.xxl, gap: theme.space.xl }}>
-        <BrandMark size="md" />
-        <View style={{ gap: theme.space.sm }}>
-          <Text
-            style={{
-              fontFamily: theme.fonts.display,
-              fontSize: theme.typography.title.fontSize,
-              lineHeight: theme.typography.title.lineHeight,
-              color: theme.colors.ink,
-            }}
-            allowFontScaling
-          >
-            {copy.resetTitle}
-          </Text>
-          {done ? (
+      <View style={{ flex: 1, paddingTop: 80, gap: theme.space.xl }}>
+        <View style={{ alignItems: 'center', gap: theme.space.lg }}>
+          <IconTile name="lock-closed" size={64} />
+          <View style={{ alignItems: 'center', gap: theme.space.sm }}>
+            <Text
+              style={{
+                fontFamily: theme.fonts.display,
+                fontSize: theme.typography.display.fontSize,
+                lineHeight: theme.typography.display.lineHeight,
+                color: theme.colors.ink,
+                textAlign: 'center',
+              }}
+              accessibilityRole="header"
+              allowFontScaling
+            >
+              {copy.resetTitle}
+            </Text>
             <Text
               style={{
                 fontFamily: theme.fonts.body,
+                fontSize: theme.typography.body.fontSize,
+                lineHeight: theme.typography.body.lineHeight,
                 color: theme.colors.inkMuted,
+                textAlign: 'center',
               }}
               allowFontScaling
             >
-              {copy.resetSuccess}
+              {needsDevice ? copy.resetOpenOnDevice : copy.resetSubtitle}
             </Text>
-          ) : null}
+          </View>
         </View>
 
-        {status === 'unauthenticated' && !error ? (
-          <Text
+        {done ? (
+          <View
             style={{
-              fontFamily: theme.fonts.body,
-              color: theme.colors.inkMuted,
+              backgroundColor: monthly.tint,
+              borderRadius: theme.radii.xl + theme.space.xs,
+              padding: 20,
+              borderWidth: 0.5,
+              borderColor: `${monthly.base}33`,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: theme.space.md,
             }}
-            allowFontScaling
           >
-            Open the reset link from your email on this device.
-          </Text>
-        ) : (
-          <View style={{ gap: theme.space.md }}>
-            <TextField
-              label={t().common.password}
-              secureTextEntry
-              autoComplete="new-password"
-              textContentType="newPassword"
-              value={password}
-              onChangeText={setPassword}
-            />
-            {error ? (
+            <View
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                backgroundColor: monthly.base,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Ionicons name="checkmark" size={22} color="#FFFFFF" />
+            </View>
+            <View style={{ flex: 1 }}>
               <Text
                 style={{
-                  fontFamily: theme.fonts.body,
-                  color: theme.colors.coral,
-                  fontSize: theme.typography.caption.fontSize,
+                  fontFamily: theme.fonts.bodyBold,
+                  fontSize: 15,
+                  lineHeight: 20,
+                  color: monthly.text,
                 }}
+                accessibilityLiveRegion="polite"
                 allowFontScaling
               >
-                {error}
+                {copy.resetSuccess}
               </Text>
-            ) : null}
+              <Pressable
+                accessibilityRole="link"
+                onPress={() => router.replace('/')}
+                hitSlop={4}
+                style={({ pressed }) => ({
+                  minHeight: 44,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  alignSelf: 'flex-start',
+                  gap: theme.space.xs,
+                  opacity: pressed ? 0.7 : 1,
+                })}
+              >
+                <Text
+                  style={{
+                    fontFamily: theme.fonts.bodyExtraBold,
+                    fontSize: theme.typography.caption.fontSize,
+                    lineHeight: theme.typography.caption.lineHeight,
+                    color: monthly.text,
+                    textTransform: 'uppercase',
+                    letterSpacing: 1,
+                  }}
+                  allowFontScaling
+                >
+                  {copy.resetGoToday}
+                </Text>
+                <Ionicons name="arrow-forward" size={16} color={monthly.text} />
+              </Pressable>
+            </View>
+          </View>
+        ) : needsDevice ? null : (
+          <View style={{ gap: theme.space.lg }}>
+            <PaperCard style={{ borderRadius: theme.radii.xxl, padding: theme.space.xl, gap: theme.space.xl }}>
+              <PasswordField
+                label={copy.newPassword}
+                autoComplete="new-password"
+                textContentType="newPassword"
+                value={password}
+                onChangeText={setPassword}
+              />
+              <PasswordField
+                label={copy.confirmPassword}
+                autoComplete="new-password"
+                textContentType="newPassword"
+                returnKeyType="done"
+                onSubmitEditing={onSubmit}
+                value={confirm}
+                onChangeText={setConfirm}
+              />
+              <View style={{ gap: theme.space.sm }}>
+                <RequirementRow label={copy.ruleLength} met={password.length >= 8} />
+                <RequirementRow
+                  label={copy.ruleMatch}
+                  met={confirm.length > 0 && confirm === password}
+                />
+              </View>
+            </PaperCard>
+            <ErrorText message={displayError} boxed />
             <Button
               label={copy.resetAction}
               onPress={onSubmit}
@@ -185,6 +208,36 @@ export default function AuthCallbackScreen() {
             />
           </View>
         )}
+
+        {!done ? (
+          <Pressable
+            accessibilityRole="link"
+            onPress={() => router.replace('/(auth)/login')}
+            hitSlop={4}
+            style={({ pressed }) => ({
+              minHeight: 44,
+              alignSelf: 'center',
+              justifyContent: 'center',
+              paddingHorizontal: theme.space.md,
+              marginTop: 'auto',
+              opacity: pressed ? 0.7 : 1,
+            })}
+          >
+            <Text
+              style={{
+                fontFamily: theme.fonts.bodyExtraBold,
+                fontSize: theme.typography.caption.fontSize,
+                lineHeight: theme.typography.caption.lineHeight,
+                color: theme.colors.inkMuted,
+                textTransform: 'uppercase',
+                letterSpacing: 1,
+              }}
+              allowFontScaling
+            >
+              {copy.backToLogin}
+            </Text>
+          </Pressable>
+        ) : null}
       </View>
     </Screen>
   );

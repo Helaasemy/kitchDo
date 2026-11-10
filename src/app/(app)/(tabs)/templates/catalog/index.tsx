@@ -29,13 +29,14 @@ import {
   PresetRow,
   ScopeChips,
 } from '@/features/catalog/components';
-import { t } from '@/i18n';
+import { useT } from '@/i18n';
 
 const openPreset = (id: string) =>
   router.push(`/(app)/(tabs)/templates/catalog/preset/${id}`);
 
 /** Temporary library entry: search plus icon categories over the bundled catalog. */
 export default function TemplateCatalogScreen() {
+  const t = useT();
   const theme = useTheme();
   const { kitchenMode } = useAuth();
   const copy = t().catalog;

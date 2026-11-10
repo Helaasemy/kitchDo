@@ -29,15 +29,49 @@ export async function applyMigrations(db: MigratableDb): Promise<number> {
 
   for (const migration of [...SQLITE_MIGRATIONS].sort((a, b) => a.version - b.version)) {
     if (applied.has(migration.version)) continue;
-    await db.withTransactionAsync(async () => {
-      await db.execAsync(migration.sql);
-      await db.runAsync(
-        'INSERT INTO schema_migrations (version) VALUES (?)',
-        migration.version,
-      );
-    });
+    try {
+      await db.withTransactionAsync(async () => {
+        await db.execAsync(migration.sql);
+        await db.runAsync(
+          'INSERT INTO schema_migrations (version) VALUES (?)',
+          migration.version,
+        );
+      });
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      // v6 ADD COLUMN fails if LOCAL_SCHEMA_SQL already created hidden_at.
+      if (migration.version === 6 && /duplicate column name/i.test(message)) {
+        await db.runAsync(
+          'INSERT OR IGNORE INTO schema_migrations (version) VALUES (?)',
+          migration.version,
+        );
+        continue;
+      }
+      throw e;
+    }
   }
 
   await db.execAsync(LOCAL_SCHEMA_SQL);
+  await ensureColumn(db, 'local_recurring_tasks', 'hidden_at', 'TEXT');
   return LATEST_SQLITE_VERSION;
+}
+
+async function ensureColumn(
+  db: MigratableDb,
+  table: string,
+  column: string,
+  type: string,
+): Promise<void> {
+  try {
+    const cols = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(${table})`);
+    if (cols.some((c) => c.name === column)) return;
+  } catch {
+    /* some adapters reject PRAGMA via getAllAsync */
+  }
+  try {
+    await db.execAsync(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    if (!/duplicate column name/i.test(message)) throw e;
+  }
 }

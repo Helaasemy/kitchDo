@@ -43,7 +43,7 @@ import {
   type TemplateState,
   type TemplateSummary,
 } from '@/features/templates/api';
-import { t, tone } from '@/i18n';
+import { useT, tone } from '@/i18n';
 
 type CategoryFilter = 'all' | 'uncategorized' | string;
 type StateFilter = 'all' | TemplateState;
@@ -171,6 +171,7 @@ function TemplateCard({
 }
 
 export default function TemplatesScreen() {
+  const t = useT();
   const theme = useTheme();
   const { kitchenMode, kitchenId, onboarding, user } = useAuth();
   const copy = t().templates;
@@ -229,7 +230,7 @@ export default function TemplatesScreen() {
     } finally {
       setLoading(false);
     }
-  }, [kitchenId, stateFilter, categoryFilter, search]);
+  }, [kitchenId, stateFilter, categoryFilter, search, t]);
 
   useFocusEffect(
     useCallback(() => {

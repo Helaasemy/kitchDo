@@ -4,7 +4,7 @@ import { Pressable, Text, View } from 'react-native';
 
 import { useTheme } from '@/design';
 import type { RunItemView } from '@/features/runs/types';
-import { t } from '@/i18n';
+import { useT } from '@/i18n';
 
 type Props = {
   item: RunItemView;
@@ -167,6 +167,7 @@ export function RunChecklistItem({
   onToggleInstructions,
   onResolveIssue,
 }: Props) {
+  const t = useT();
   const theme = useTheme();
   const copy = t().runs;
   const isDone = item.outcome === 'done';

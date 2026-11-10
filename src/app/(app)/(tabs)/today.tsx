@@ -16,6 +16,7 @@ import { DateTime } from 'luxon';
 
 import {
   EmptyState,
+  ErrorText,
   IconButton,
   Screen,
   ScreenHeader,
@@ -37,7 +38,7 @@ import {
 import { cancelRun, listTodayRuns, type RunSummary } from '@/features/runs';
 import { getDeviceTimeZone } from '@/lib/dates';
 import { useSync } from '@/lib/sync';
-import { t, tone } from '@/i18n';
+import { t, useT, tone } from '@/i18n';
 
 function openRun(runId: string) {
   router.push(`/(app)/runs/${runId}`);
@@ -64,6 +65,7 @@ function RunCard({
   theme: AppTheme;
   onRequestDelete: (run: RunSummary) => void;
 }) {
+  const t = useT();
   const copy = t().today;
   const alert = run.urgency || run.blocked > 0;
 
@@ -177,6 +179,7 @@ function SummaryTiles({
   theme: AppTheme;
   tasks: RecurringTaskState[];
 }) {
+  const t = useT();
   const copy = t().today;
   const labels: Record<TaskFrequency, string> = {
     daily: copy.summaryToday,
@@ -258,6 +261,7 @@ function dateLine(tasks: RecurringTaskState[]): string {
 }
 
 export default function TodayScreen() {
+  const t = useT();
   const theme = useTheme();
   const { kitchenMode, onboarding, user, kitchenId } = useAuth();
   const userId = user?.id;
@@ -364,12 +368,13 @@ export default function TodayScreen() {
         </View>
 
         <SyncBanner />
+        <ErrorText message={recurring.error} />
 
         {loading ? (
           <View style={{ paddingTop: theme.space.xl, alignItems: 'center' }}>
             <ActivityIndicator color={theme.colors.primary} />
           </View>
-        ) : empty ? (
+        ) : empty && !recurring.error ? (
           <EmptyState
             title={tone(kitchenMode, copy.emptyTitleHome, copy.emptyTitleBusiness)}
             body={tone(kitchenMode, copy.emptyBodyHome, copy.emptyBodyBusiness)}

@@ -13,8 +13,13 @@ export async function getLocalDb(): Promise<SQLite.SQLiteDatabase> {
   if (!dbPromise) {
     const opening = (async () => {
       const db = await SQLite.openDatabaseAsync(DB_NAME);
-      migratedTo = await applyMigrations(db);
-      return db;
+      try {
+        migratedTo = await applyMigrations(db);
+        return db;
+      } catch (e) {
+        await db.closeAsync().catch(() => undefined);
+        throw e;
+      }
     })();
     dbPromise = opening;
     // A failed open is retried on the next call instead of sticking.
@@ -38,6 +43,24 @@ export async function getLocalDb(): Promise<SQLite.SQLiteDatabase> {
 }
 
 /** Drop all account-scoped rows for a user (sign-out / account switch). */
+/**
+ * Sign-out: drops server-backed caches only. Recurring tasks, ticks and
+ * library sources exist only on this device, so they are kept for next sign-in.
+ */
+export async function clearSyncedCache(userId: string): Promise<void> {
+  const db = await getLocalDb();
+  await db.withTransactionAsync(async () => {
+    await db.runAsync('DELETE FROM outbox WHERE user_id = ?', userId);
+    await db.runAsync('DELETE FROM cached_run_items WHERE user_id = ?', userId);
+    await db.runAsync('DELETE FROM cached_issues WHERE user_id = ?', userId);
+    await db.runAsync('DELETE FROM cached_runs WHERE user_id = ?', userId);
+    await db.runAsync('DELETE FROM cached_revisions WHERE user_id = ?', userId);
+    await db.runAsync('DELETE FROM sync_meta WHERE user_id = ?', userId);
+    await db.runAsync('DELETE FROM notification_map WHERE user_id = ?', userId);
+  });
+}
+
+/** Account deletion: removes everything stored for this user on the device. */
 export async function clearAccountLocalData(userId: string): Promise<void> {
   const db = await getLocalDb();
   await db.withTransactionAsync(async () => {
@@ -51,6 +74,7 @@ export async function clearAccountLocalData(userId: string): Promise<void> {
     await db.runAsync('DELETE FROM local_recurring_tasks WHERE user_id = ?', userId);
     await db.runAsync('DELETE FROM local_task_ticks WHERE user_id = ?', userId);
     await db.runAsync('DELETE FROM local_template_sources WHERE user_id = ?', userId);
+    await db.runAsync('DELETE FROM local_backups WHERE user_id = ?', userId);
   });
 }
 

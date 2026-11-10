@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS local_recurring_tasks (
   section_title TEXT,
   template_title TEXT NOT NULL,
   sort_order INTEGER NOT NULL,
+  hidden_at TEXT,
   PRIMARY KEY (user_id, kitchen_id, item_id)
 );
 
@@ -48,6 +49,17 @@ CREATE TABLE IF NOT EXISTS local_template_sources (
 
 CREATE INDEX IF NOT EXISTS local_template_sources_preset_idx
   ON local_template_sources (user_id, kitchen_id, preset_id);
+
+CREATE TABLE IF NOT EXISTS local_backups (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  reason TEXT NOT NULL,
+  payload_json TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS local_backups_user_idx
+  ON local_backups (user_id, id);
 `;
 
 /** Versioned SQLite migrations for device-local cache / outbox. Append only. */
@@ -288,6 +300,23 @@ CREATE TABLE IF NOT EXISTS local_template_sources (
 
 CREATE INDEX IF NOT EXISTS local_template_sources_preset_idx
   ON local_template_sources (user_id, kitchen_id, preset_id);
+`,
+  },
+  {
+    version: 6,
+    sql: `
+ALTER TABLE local_recurring_tasks ADD COLUMN hidden_at TEXT;
+
+CREATE TABLE IF NOT EXISTS local_backups (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  reason TEXT NOT NULL,
+  payload_json TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS local_backups_user_idx
+  ON local_backups (user_id, id);
 `,
   },
 ];

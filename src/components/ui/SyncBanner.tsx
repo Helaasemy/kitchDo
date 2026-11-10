@@ -2,26 +2,29 @@ import { Pressable, Text, View } from 'react-native';
 
 import { useTheme } from '@/design';
 import { useSync } from '@/lib/sync';
-import { t } from '@/i18n';
+import { useT } from '@/i18n';
 
 export function SyncBanner() {
+  const t = useT();
   const theme = useTheme();
   const { status, retry } = useSync();
   const copy = t().sync;
 
-  if (status.kind === 'idle') return null;
+  if (status.kind === 'idle' && status.failedCount === 0) return null;
 
   const label =
-    status.kind === 'offline'
-      ? copy.offline
-      : status.kind === 'syncing'
-        ? copy.syncing
-        : status.kind === 'changes_waiting'
-          ? copy.changesWaiting.replace(
-              '{count}',
-              String(status.pendingCount),
-            )
-          : copy.error;
+    status.failedCount > 0 && (status.kind === 'idle' || status.kind === 'error')
+      ? copy.failedChanges.replace('{count}', String(status.failedCount))
+      : status.kind === 'offline'
+        ? copy.offline
+        : status.kind === 'syncing'
+          ? copy.syncing
+          : status.kind === 'changes_waiting'
+            ? copy.changesWaiting.replace(
+                '{count}',
+                String(status.pendingCount),
+              )
+            : copy.error;
 
   const showRetry =
     status.kind === 'offline' ||
@@ -64,6 +67,7 @@ export function SyncBanner() {
           accessibilityRole="button"
           onPress={() => void retry()}
           hitSlop={8}
+          style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 8 }}
         >
           <Text
             style={{

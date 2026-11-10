@@ -27,7 +27,7 @@ import { listHistory, type HistoryRow } from '@/features/history/api';
 import { listRecentTicks, type TaskTick } from '@/features/recurring';
 import { getDeviceTimeZone } from '@/lib/dates';
 import { useSync } from '@/lib/sync';
-import { t, tone } from '@/i18n';
+import { t, useT, tone } from '@/i18n';
 
 type Filter = 'all' | 'finished' | 'unfinished';
 
@@ -93,6 +93,7 @@ function EntryRow({
   theme: AppTheme;
   divider: boolean;
 }) {
+  const t = useT();
   const recurringCopy = t().recurring;
   let leading;
   let title: string;
@@ -195,6 +196,7 @@ function EntryRow({
 }
 
 export default function HistoryScreen() {
+  const t = useT();
   const theme = useTheme();
   const { kitchenMode, onboarding, user, kitchenId } = useAuth();
   const { refresh } = useSync();

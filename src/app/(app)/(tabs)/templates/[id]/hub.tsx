@@ -28,7 +28,7 @@ import {
   startManualRunFromTemplate,
 } from '@/features/runs';
 import { getTemplate, type TemplateDetail } from '@/features/templates/api';
-import { t } from '@/i18n';
+import { t, useT } from '@/i18n';
 
 type TabKey = 'all' | TaskFrequency;
 
@@ -65,6 +65,7 @@ function stateLabel(state: TemplateDetail['state']): string {
 }
 
 export default function TemplateHubScreen() {
+  const t = useT();
   const theme = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const templateId = String(id);
@@ -111,7 +112,7 @@ export default function TemplateHubScreen() {
     } finally {
       setLoading(false);
     }
-  }, [templateId, userId, kitchenId, reloadRecurring]);
+  }, [templateId, userId, kitchenId, reloadRecurring, t]);
 
   useFocusEffect(
     useCallback(() => {

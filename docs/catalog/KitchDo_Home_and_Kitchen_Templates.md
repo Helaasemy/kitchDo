@@ -5,7 +5,7 @@ Product concept and researched starter content for the existing mobile app
 
 **How the catalog works**
 
-Someone should be able to type what they need to do and see a useful checklist immediately. A person searching “clean the bathroom” should find a short bathroom routine. Someone typing “open a café” should see separate results for getting a new business ready and opening for today's shift.
+Someone should be able to type what they need to do and see a useful checklist immediately. A person searching “clean the bathroom” should find a short bathroom routine. Someone typing “open a café” should find the opening-shift checklist.
 
 | Element | Proposed behavior |
 | --- | --- |
@@ -21,7 +21,7 @@ Someone should be able to type what they need to do and see a useful checklist i
 
 | What someone types | Useful first results |
 | --- | --- |
-| open a café | Open a new café · Open the café for service |
+| open a café | Open the café for service · Close the café after service |
 | weekly cleaning | Weekly home reset · Clean the bathroom · Deep-clean the café |
 | paperwork | Monthly household paperwork · Weekly café paperwork · Prepare for a food safety visit |
 | Sunday meal prep | Plan meals for the week · Prep meals for the week · Batch-cook and freeze |
@@ -30,7 +30,7 @@ Someone should be able to type what they need to do and see a useful checklist i
 
 **Suggested featured templates**  
 **Home** — Weekly home reset, Clean the bathroom, Plan meals for the week, Prep meals for the week, Monthly home deep clean, and Monthly household paperwork.  
-**Kitchen** — Open a new café, Open the café for service, Close the café after service, Clean the café daily, Receive a café delivery, and Weekly café paperwork.
+**Kitchen** — Open the café for service, Close the café after service, Clean the café daily, Clean the espresso station, Receive a café delivery, and Weekly café paperwork.
 
 The checklists below use original wording. The reference notes explain where the research informed the checklist design. Suggested frequencies are editable defaults. For food businesses, adapt each checklist to the site's own procedures, equipment instructions, and applicable local guidance. Location-specific startup requirements belong in clearly labeled local notes or editions.
 
@@ -310,7 +310,6 @@ An example recipe with ingredient quantities and oven timing is available from G
 
 Checklists for running a café, restaurant, or food truck.
 
-- [Launch and setup](#launch-and-setup)
 - [Opening and closing shifts](#opening-and-closing-shifts)
 - [Cleaning and equipment maintenance](#cleaning-and-equipment-maintenance)
 - [Food preparation](#food-preparation)
@@ -318,48 +317,6 @@ Checklists for running a café, restaurant, or food truck.
 - [Food safety and inspections](#food-safety-and-inspections)
 - [Team training and handovers](#team-training-and-handovers)
 - [Cash and paperwork](#cash-and-paperwork)
-
-### Launch and setup
-
-#### B01 · Open a new café
-
-*One-time project · Search terms — starting a coffee shop, opening a restaurant business, launch, café setup*
-
-**Plan the business**
-
-- [ ] Define who the café will serve and what you will sell.
-- [ ] Sketch a starter menu and hours.
-- [ ] Estimate startup costs and money needed through the first months.
-- [ ] Set a target opening date and list what could move it.
-
-**Check the premises and paperwork**
-
-- [ ] Check whether the premises suit the intended menu and service.
-- [ ] Confirm relevant premises, ventilation, utility, and fit-out questions before signing commitments.
-- [ ] Find the relevant local authorities and their startup checklist.
-- [ ] Confirm which registrations, approvals, or inspections apply.
-- [ ] Check extra requirements if adding outdoor seating, signs, music, or alcohol.
-- [ ] Submit applicable paperwork and track responses, dates, and reference numbers.
-- [ ] Arrange insurance and accounting setup appropriate to the business.
-
-**Set up the operation**
-
-- [ ] List equipment needed at each station and confirm installation or servicing.
-- [ ] Choose suppliers and confirm initial delivery dates and ordering contacts.
-- [ ] Cost and price the starter menu.
-- [ ] Document ingredients and where to keep current allergen information.
-- [ ] Set up the food safety, cleaning, and recordkeeping procedures for the site.
-- [ ] Set up the POS, menu, payment terminal, and receipt flow.
-- [ ] Write the first opening and closing checklists.
-- [ ] Agree shift coverage and train staff on the routines they will use.
-
-**Rehearse and open**
-
-- [ ] Place the first stock order and confirm delivery access.
-- [ ] Run a practice service from order to cleanup.
-- [ ] Confirm that all required approvals or startup conditions are met before trading.
-- [ ] Publish the address and confirmed opening hours.
-- [ ] Capture the changes to make after the first week.
 
 ### Opening and closing shifts
 

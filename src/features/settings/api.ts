@@ -5,7 +5,7 @@ import {
   reconcileReminders,
   requestNotificationPermission,
 } from '@/lib/notifications';
-import { countPendingOutbox, discardPendingOutbox } from '@/lib/storage';
+import { clearAccountLocalData, countPendingOutbox, discardPendingOutbox } from '@/lib/storage';
 import { getSupabase, rpcErrorMessage } from '@/lib/supabase';
 
 const REMINDERS_KEY = 'kdo_reminders_enabled_v1:';
@@ -43,6 +43,18 @@ export async function setRemindersEnabled(input: {
 export async function deleteMyAccount(): Promise<void> {
   const { error } = await getSupabase().rpc('delete_my_account');
   if (error) throw new Error(rpcErrorMessage(error));
+}
+
+/** Server delete first. Local wipe only after the account is gone. */
+export async function deleteAccountCompletely(userId: string): Promise<void> {
+  await deleteMyAccount();
+  try {
+    await cancelAllMappedReminders(userId);
+  } catch {
+    /* best-effort */
+  }
+  await clearAccountLocalData(userId);
+  await getSupabase().auth.signOut();
 }
 
 export async function pendingMutationCount(userId: string): Promise<number> {

@@ -44,6 +44,7 @@ import {
 } from '@/features/catalog';
 import {
   clearTemplateFrequencies,
+  copyTemplateFrequencies,
   getTemplateFrequencies,
   saveTemplateFrequencies,
   TASK_FREQUENCIES,
@@ -51,7 +52,7 @@ import {
 } from '@/features/recurring';
 import { newId } from '@/lib/ids';
 import { goBackOr } from '@/lib/navigation';
-import { t } from '@/i18n';
+import { useT } from '@/i18n';
 
 type DraftItem = {
   key: string;
@@ -72,6 +73,7 @@ type DraftSection = {
 type AfterAction = 'saved' | 'published' | null;
 
 export default function TemplateBuilderScreen() {
+  const t = useT();
   const theme = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const templateId = String(id);
@@ -105,65 +107,71 @@ export default function TemplateBuilderScreen() {
   const readOnly = state === 'archived';
   const alreadyUsed = publishedRevision != null;
 
-  const load = useCallback(async () => {
-    if (!kitchenId) {
-      setLoading(false);
-      return;
-    }
+  const loadKey = `${kitchenId}:${templateId}:${userId}`;
+  const [loadedKey, setLoadedKey] = useState(loadKey);
+  if (loadedKey !== loadKey) {
+    setLoadedKey(loadKey);
     setLoading(true);
     setError(null);
-    try {
-      const [cats, detail, frequencies, fromLibrary] = await Promise.all([
-        listCategories(kitchenId),
-        getTemplate(templateId),
-        userId
-          ? getTemplateFrequencies(userId, kitchenId, templateId)
-          : Promise.resolve({} as Record<string, TaskFrequency>),
-        userId ? isLibraryCopy(userId, kitchenId, templateId) : Promise.resolve(false),
-      ]);
-      setLibraryCopy(fromLibrary);
-      setCategories(cats);
-      if (detail) {
-        setExists(true);
-        setTitle(detail.title);
-        setDescription(detail.description ?? '');
-        setCategoryId(detail.categoryId);
-        setRevision(detail.revision);
-        setState(detail.state);
-        setPublishedRevision(detail.publishedRevision);
-        setSections(
-          detail.sections.map((s) => ({
-            key: s.id,
-            id: s.id,
-            title: s.title,
-          })),
-        );
-        setItems(
-          detail.items.map((i) => ({
-            key: i.id,
-            id: i.id,
-            sectionId: i.sectionId,
-            title: i.title,
-            instructions: i.instructions ?? '',
-            frequency: frequencies[i.id] ?? null,
-          })),
-        );
-      } else {
-        setExists(false);
-        setRevision(0);
-        setState('draft');
-        setPublishedRevision(null);
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t().common.errorGeneric);
-    } finally {
-      setLoading(false);
-    }
-  }, [kitchenId, templateId, userId]);
+  }
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    if (!kitchenId) return;
+    let cancelled = false;
+    Promise.all([
+      listCategories(kitchenId),
+      getTemplate(templateId),
+      userId
+        ? getTemplateFrequencies(userId, kitchenId, templateId)
+        : Promise.resolve({} as Record<string, TaskFrequency>),
+      userId ? isLibraryCopy(userId, kitchenId, templateId) : Promise.resolve(false),
+    ])
+      .then(([cats, detail, frequencies, fromLibrary]) => {
+        if (cancelled) return;
+        setLibraryCopy(fromLibrary);
+        setCategories(cats);
+        if (detail) {
+          setExists(true);
+          setTitle(detail.title);
+          setDescription(detail.description ?? '');
+          setCategoryId(detail.categoryId);
+          setRevision(detail.revision);
+          setState(detail.state);
+          setPublishedRevision(detail.publishedRevision);
+          setSections(
+            detail.sections.map((s) => ({
+              key: s.id,
+              id: s.id,
+              title: s.title,
+            })),
+          );
+          setItems(
+            detail.items.map((i) => ({
+              key: i.id,
+              id: i.id,
+              sectionId: i.sectionId,
+              title: i.title,
+              instructions: i.instructions ?? '',
+              frequency: frequencies[i.id] ?? null,
+            })),
+          );
+        } else {
+          setExists(false);
+          setRevision(0);
+          setState('draft');
+          setPublishedRevision(null);
+        }
+      })
+      .catch((e: unknown) => {
+        if (!cancelled) setError(e instanceof Error ? e.message : t().common.errorGeneric);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [kitchenId, templateId, userId, t]);
 
   const pastePreview = useMemo(() => parsePastedItems(pasteRaw), [pasteRaw]);
 
@@ -322,6 +330,14 @@ export default function TemplateBuilderScreen() {
     try {
       if (!exists) await persistDraft();
       const dup = await duplicateTemplate(templateId);
+      if (userId && kitchenId) {
+        await copyTemplateFrequencies({
+          userId,
+          kitchenId,
+          fromTemplateId: templateId,
+          toTemplateId: dup.templateId,
+        }).catch(() => undefined);
+      }
       router.replace(`/(app)/(tabs)/templates/${dup.templateId}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : t().common.errorGeneric);

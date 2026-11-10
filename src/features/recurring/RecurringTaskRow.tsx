@@ -2,7 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Pressable, Text, View } from 'react-native';
 
 import { useTheme, type FrequencyColors } from '@/design';
-import { t } from '@/i18n';
+import { useT } from '@/i18n';
 
 /** One tickable recurring task; a tick counts for the current period. */
 export function RecurringTaskRow({
@@ -26,6 +26,7 @@ export function RecurringTaskRow({
   grouped?: boolean;
   divider?: boolean;
 }) {
+  const t = useT();
   const theme = useTheme();
   const copy = t().recurring;
   const tickable = Boolean(onToggle) && !disabled;

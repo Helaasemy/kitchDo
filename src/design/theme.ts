@@ -25,6 +25,10 @@ export type ThemeColors = {
   border: string;
   borderStrong: string;
   white: string;
+  /** Text/icons drawn on a primary fill. */
+  onPrimary: string;
+  /** Text/icons drawn on a coral fill. */
+  onCoral: string;
   card: string;
   alertTint: string;
   primaryTint: string;

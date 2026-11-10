@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { DateTime } from 'luxon';
 import {
   Alert,
   Modal,
@@ -7,10 +8,19 @@ import {
   Text,
   View,
 } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
 
-import { Button, ListRow, Screen, SyncBanner, TextField } from '@/components/ui';
+import {
+  Button,
+  IconTile,
+  ListRow,
+  Screen,
+  Sheet,
+  SyncBanner,
+  TextField,
+} from '@/components/ui';
 import { useTheme } from '@/design';
 import { useAuth } from '@/features/auth';
 import {
@@ -18,17 +28,28 @@ import {
   updateProfileDisplayName,
 } from '@/features/kitchens/api';
 import {
-  deleteMyAccount,
+  deleteAccountCompletely,
   getRemindersEnabled,
   setRemindersEnabled,
 } from '@/features/settings/api';
-import { clearAccountLocalData } from '@/lib/storage';
+import { errorMessage } from '@/lib/errors';
 import { goBackOr } from '@/lib/navigation';
-import { cancelAllMappedReminders } from '@/lib/notifications';
+import {
+  listLocalBackups,
+  restoreLocalBackup,
+} from '@/lib/storage';
 import { useSync } from '@/lib/sync';
-import { t, type KitchenMode } from '@/i18n';
+import {
+  APP_LOCALES,
+  LOCALE_LABELS,
+  useI18n,
+  useT,
+  type KitchenMode,
+} from '@/i18n';
 
 export default function SettingsScreen() {
+  const t = useT();
+  const { preference, setPreference } = useI18n();
   const theme = useTheme();
   const {
     signOut,
@@ -40,6 +61,7 @@ export default function SettingsScreen() {
     setOnboardingDraft,
   } = useAuth();
   const { retry } = useSync();
+  const userId = user?.id;
   const copy = t().settings;
   const version =
     Constants.expoConfig?.version ?? Constants.nativeAppVersion ?? '1.0.0';
@@ -47,63 +69,79 @@ export default function SettingsScreen() {
   const [reminders, setReminders] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [kitchenOpen, setKitchenOpen] = useState(false);
+  const [languageOpen, setLanguageOpen] = useState(false);
   const [displayName, setDisplayName] = useState(onboarding?.displayName ?? '');
   const [kitchenName, setKitchenName] = useState(onboarding?.kitchenName ?? '');
   const [kind, setKind] = useState<KitchenMode>(kitchenMode);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (!user?.id) return;
-    void getRemindersEnabled(user.id).then(setReminders);
-  }, [user?.id]);
+    if (!userId) return;
+    void getRemindersEnabled(userId)
+      .then(setReminders)
+      .catch(() => undefined);
+  }, [userId]);
 
-  useEffect(() => {
+  const [syncedOnboarding, setSyncedOnboarding] = useState(onboarding);
+  if (syncedOnboarding !== onboarding) {
+    setSyncedOnboarding(onboarding);
     setDisplayName(onboarding?.displayName ?? '');
     setKitchenName(onboarding?.kitchenName ?? '');
     setKind(onboarding?.mode ?? 'home');
-  }, [onboarding]);
+  }
 
   const onToggleReminders = useCallback(
     async (next: boolean) => {
-      if (!user?.id || !kitchenId) return;
-      const result = await setRemindersEnabled({
-        userId: user.id,
-        kitchenId,
-        enabled: next,
-      });
-      setReminders(result.enabled);
-      if (result.permissionDenied) {
-        Alert.alert(copy.reminders, copy.remindersPermissionDenied);
+      if (!userId || !kitchenId) return;
+      try {
+        const result = await setRemindersEnabled({
+          userId,
+          kitchenId,
+          enabled: next,
+        });
+        setReminders(result.enabled);
+        if (result.permissionDenied) {
+          Alert.alert(copy.reminders, copy.remindersPermissionDenied);
+        }
+      } catch (e) {
+        Alert.alert(t().common.errorGeneric, errorMessage(e));
       }
     },
-    [user?.id, kitchenId, copy.reminders, copy.remindersPermissionDenied],
+    [userId, kitchenId, copy.reminders, copy.remindersPermissionDenied, t],
   );
 
   const handleSignOut = useCallback(async () => {
-    const result = await signOut();
-    if (result.pendingCount && result.pendingCount > 0) {
-      Alert.alert(copy.pendingSignOutTitle, copy.pendingSignOutBody, [
-        {
-          text: copy.staySignedIn,
-          style: 'cancel',
-        },
-        {
-          text: t().common.retry,
-          onPress: () => void retry(),
-        },
-        {
-          text: copy.discardAndSignOut,
-          style: 'destructive',
-          onPress: async () => {
-            await signOut({ discardPending: true });
-            router.replace('/(auth)/login');
+    try {
+      const result = await signOut();
+      if (result.error) {
+        Alert.alert(copy.signOutFailed, result.error);
+        return;
+      }
+      if (result.pendingCount && result.pendingCount > 0) {
+        Alert.alert(copy.pendingSignOutTitle, copy.pendingSignOutBody, [
+          {
+            text: copy.staySignedIn,
+            style: 'cancel',
           },
-        },
-      ]);
-      return;
+          {
+            text: t().common.retry,
+            onPress: () => void retry(),
+          },
+          {
+            text: copy.discardAndSignOut,
+            style: 'destructive',
+            onPress: () => {
+              void signOut({ discardPending: true }).then((r) => {
+                if (r.error) Alert.alert(copy.signOutFailed, r.error);
+              });
+            },
+          },
+        ]);
+      }
+    } catch (e) {
+      Alert.alert(copy.signOutFailed, errorMessage(e));
     }
-    router.replace('/(auth)/login');
-  }, [signOut, copy, retry]);
+  }, [signOut, copy, retry, t]);
 
   const handleDelete = useCallback(() => {
     Alert.alert(copy.deleteConfirmTitle, copy.deleteConfirmBody, [
@@ -112,23 +150,49 @@ export default function SettingsScreen() {
         text: copy.deleteConfirmAction,
         style: 'destructive',
         onPress: async () => {
+          if (!userId) return;
           try {
-            if (user?.id) {
-              await cancelAllMappedReminders(user.id);
-              await clearAccountLocalData(user.id);
-            }
-            await deleteMyAccount();
-            router.replace('/(auth)/login');
+            await deleteAccountCompletely(userId);
           } catch (e) {
-            Alert.alert(
-              t().common.errorGeneric,
-              e instanceof Error ? e.message : t().common.errorGeneric,
-            );
+            Alert.alert(t().common.errorGeneric, errorMessage(e));
           }
         },
       },
     ]);
-  }, [copy, user?.id]);
+  }, [copy, userId, t]);
+
+  const handleRestore = useCallback(async () => {
+    if (!userId) return;
+    try {
+      const backups = await listLocalBackups(userId);
+      const latest = backups[0];
+      if (!latest) {
+        Alert.alert(copy.restoreRoutines, copy.restoreNone);
+        return;
+      }
+      const when = DateTime.fromISO(latest.createdAt).toRelative() ?? latest.createdAt;
+      Alert.alert(
+        copy.restoreConfirmTitle,
+        copy.restoreConfirmBody.replace('{when}', when),
+        [
+          { text: t().common.cancel, style: 'cancel' },
+          {
+            text: copy.restoreConfirmAction,
+            onPress: async () => {
+              try {
+                await restoreLocalBackup(userId, latest.id);
+                Alert.alert(copy.restoreRoutines, copy.restoreDone);
+              } catch (e) {
+                Alert.alert(t().common.errorGeneric, errorMessage(e));
+              }
+            },
+          },
+        ],
+      );
+    } catch (e) {
+      Alert.alert(t().common.errorGeneric, errorMessage(e));
+    }
+  }, [userId, copy, t]);
 
   return (
     <Screen scroll>
@@ -190,6 +254,34 @@ export default function SettingsScreen() {
             }
             onPress={() => setKitchenOpen(true)}
           />
+          <ListRow
+            title={copy.invitePeople}
+            subtitle={copy.invitePeopleHint}
+            left={
+              <IconTile
+                name="people-outline"
+                size={40}
+                round
+                background={theme.colors.frequency.weekly.tint}
+                color={theme.colors.frequency.weekly.text}
+              />
+            }
+            onPress={() => router.push('/(app)/invite')}
+          />
+          <ListRow
+            title={copy.restoreRoutines}
+            subtitle={copy.restoreRoutinesHint}
+            left={
+              <IconTile
+                name="refresh-outline"
+                size={40}
+                round
+                background={theme.colors.frequency.monthly.tint}
+                color={theme.colors.frequency.monthly.text}
+              />
+            }
+            onPress={() => void handleRestore()}
+          />
           <View
             style={{
               minHeight: 52,
@@ -234,6 +326,81 @@ export default function SettingsScreen() {
               thumbColor={theme.colors.white}
             />
           </View>
+          <View
+            style={{
+              paddingVertical: theme.space.md,
+              paddingHorizontal: theme.space.md,
+              borderRadius: theme.radii.sm,
+              borderWidth: 1,
+              borderColor: theme.colors.border,
+              backgroundColor: theme.colors.white,
+              gap: theme.space.md,
+            }}
+          >
+            <View style={{ gap: 2 }}>
+              <Text
+                style={{
+                  fontFamily: theme.fonts.bodyMedium,
+                  color: theme.colors.ink,
+                }}
+              >
+                {copy.language}
+              </Text>
+              <Text
+                style={{
+                  fontFamily: theme.fonts.body,
+                  fontSize: theme.typography.caption.fontSize,
+                  color: theme.colors.inkMuted,
+                }}
+              >
+                {copy.languageHint}
+              </Text>
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={copy.language}
+              accessibilityValue={{
+                text:
+                  preference === 'system'
+                    ? copy.languageSystem
+                    : LOCALE_LABELS[preference],
+              }}
+              onPress={() => setLanguageOpen(true)}
+              style={({ pressed }) => ({
+                minHeight: 44,
+                paddingHorizontal: theme.space.lg,
+                paddingVertical: theme.space.sm,
+                borderRadius: theme.radii.sm,
+                borderWidth: 1,
+                borderColor: theme.colors.border,
+                backgroundColor: pressed ? theme.colors.sand : theme.colors.canvas,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: theme.space.sm,
+              })}
+            >
+              <Text
+                style={{
+                  flex: 1,
+                  fontFamily: theme.fonts.bodyMedium,
+                  fontSize: theme.typography.body.fontSize,
+                  color: theme.colors.ink,
+                }}
+                numberOfLines={1}
+                allowFontScaling
+              >
+                {preference === 'system'
+                  ? copy.languageSystem
+                  : LOCALE_LABELS[preference]}
+              </Text>
+              <Ionicons
+                name="chevron-down"
+                size={18}
+                color={theme.colors.inkSubtle}
+              />
+            </Pressable>
+          </View>
           <ListRow title={copy.version} subtitle={version} />
         </View>
 
@@ -249,6 +416,67 @@ export default function SettingsScreen() {
           onPress={handleDelete}
         />
       </View>
+
+      <Sheet
+        visible={languageOpen}
+        title={copy.language}
+        onClose={() => setLanguageOpen(false)}
+      >
+        {(
+          [
+            { id: 'system' as const, label: copy.languageSystem },
+            ...APP_LOCALES.map((id) => ({ id, label: LOCALE_LABELS[id] })),
+          ] as const
+        ).map((option) => {
+          const selected = preference === option.id;
+          return (
+            <Pressable
+              key={option.id}
+              accessibilityRole="radio"
+              accessibilityState={{ selected }}
+              onPress={() => {
+                void setPreference(option.id);
+                setLanguageOpen(false);
+              }}
+              style={({ pressed }) => ({
+                minHeight: 52,
+                paddingHorizontal: theme.space.md,
+                borderRadius: theme.radii.md,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: theme.space.sm,
+                backgroundColor: selected
+                  ? theme.colors.primaryTint
+                  : pressed
+                    ? theme.colors.sand
+                    : 'transparent',
+              })}
+            >
+              <Text
+                style={{
+                  flex: 1,
+                  fontFamily: selected
+                    ? theme.fonts.bodySemiBold
+                    : theme.fonts.bodyMedium,
+                  fontSize: theme.typography.body.fontSize,
+                  color: theme.colors.ink,
+                }}
+                allowFontScaling
+              >
+                {option.label}
+              </Text>
+              {selected ? (
+                <Ionicons
+                  name="checkmark"
+                  size={20}
+                  color={theme.colors.primary}
+                />
+              ) : null}
+            </Pressable>
+          );
+        })}
+      </Sheet>
 
       <Modal visible={profileOpen} transparent animationType="fade">
         <View

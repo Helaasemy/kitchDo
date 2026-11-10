@@ -5,7 +5,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { BackLink, ListRow } from '@/components/ui';
 import { useTheme, type AppTheme } from '@/design';
 import type { TaskFrequency } from '@/features/recurring/period';
-import { t } from '@/i18n';
+import { useT } from '@/i18n';
 
 import { findGroup, getCategory, groupLabel, presetTaskCount } from './index';
 import type { CatalogGroup, CatalogPreset, CatalogScope } from './types';
@@ -17,6 +17,7 @@ export function countLabel(count: number, one: string, many: string): string {
 }
 
 export function CatalogBackLink() {
+  const t = useT();
   return <BackLink label={t().tabs.templates} fallback="/(app)/(tabs)/templates" />;
 }
 
@@ -28,6 +29,7 @@ export function ScopeChips({
   scope: CatalogScope;
   onChange: (scope: CatalogScope) => void;
 }) {
+  const t = useT();
   const theme = useTheme();
   const options: [CatalogScope, string][] = [
     ['home', getCategory('home').label],
@@ -88,6 +90,7 @@ export function CatalogSearchField({
   value: string;
   onChangeText: (value: string) => void;
 }) {
+  const t = useT();
   const theme = useTheme();
   return (
     <View
@@ -136,7 +139,10 @@ export function CatalogSearchField({
 }
 
 /** Tints for category icons, cycled so neighbours differ. */
-function groupTint(theme: AppTheme, index: number): { background: string; color: string } {
+function groupTint(theme: AppTheme, index: number): {
+  background: string;
+  color: string;
+} {
   const f = theme.colors.frequency;
   const tints = [
     { background: f.daily.tint, color: f.daily.text },
@@ -158,6 +164,7 @@ export function GroupCard({
   index?: number;
   onPress: () => void;
 }) {
+  const t = useT();
   const theme = useTheme();
   const copy = t().catalog;
   const tint = groupTint(theme, index);
@@ -222,6 +229,7 @@ export function GroupCard({
 }
 
 export function FrequencyPill({ frequency }: { frequency: TaskFrequency | null }) {
+  const t = useT();
   const theme = useTheme();
   const copy = t().recurring;
   const accent = frequency ? theme.colors.frequency[frequency] : null;
@@ -260,6 +268,7 @@ export function PresetCard({
   preset: CatalogPreset;
   onPress: () => void;
 }) {
+  const t = useT();
   const theme = useTheme();
   const icon = (findGroup(preset.group)?.group.icon ?? 'list-outline') as IconName;
   return (
@@ -328,6 +337,7 @@ export function PresetRow({
   showContext?: boolean;
   onPress: () => void;
 }) {
+  const t = useT();
   const tasks = t().catalog.taskCount.replace(
     '{count}',
     String(presetTaskCount(preset)),

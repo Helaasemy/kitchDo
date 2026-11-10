@@ -5,6 +5,7 @@ import {
   rpcErrorMessage,
 } from '@/lib/supabase';
 import {
+  countFailedOutbox,
   countPendingOutbox,
   getCachedRun,
   listPendingOutbox,
@@ -31,10 +32,14 @@ export async function buildSyncStatus(
   const pending = kitchenId
     ? await countPendingOutbox(userId, kitchenId)
     : await countPendingOutbox(userId);
+  const failedCount = kitchenId
+    ? await countFailedOutbox(userId, kitchenId)
+    : await countFailedOutbox(userId);
   if (opts?.syncing || flushing) {
     return {
       kind: 'syncing',
       pendingCount: pending,
+      failedCount,
       lastError: opts?.error ?? null,
       lastSyncedAt: null,
     };
@@ -43,6 +48,7 @@ export async function buildSyncStatus(
     return {
       kind: 'offline',
       pendingCount: pending,
+      failedCount,
       lastError: opts.error ?? null,
       lastSyncedAt: null,
     };
@@ -51,6 +57,7 @@ export async function buildSyncStatus(
     return {
       kind: 'error',
       pendingCount: pending,
+      failedCount,
       lastError: opts.error,
       lastSyncedAt: null,
     };
@@ -59,6 +66,7 @@ export async function buildSyncStatus(
     return {
       kind: 'changes_waiting',
       pendingCount: pending,
+      failedCount,
       lastError: null,
       lastSyncedAt: null,
     };
@@ -66,6 +74,7 @@ export async function buildSyncStatus(
   return {
     kind: 'idle',
     pendingCount: 0,
+    failedCount,
     lastError: null,
     lastSyncedAt: null,
   };
@@ -229,14 +238,25 @@ export type FlushResult = {
   flushed: number;
   offline: boolean;
   error: string | null;
+  skipped?: boolean;
 };
+
+function isPermanentOutboxError(message: string): boolean {
+  const lower = message.toLowerCase();
+  return (
+    lower.includes('revision') ||
+    lower.includes('conflict') ||
+    lower.includes('not found') ||
+    lower.includes('does not exist')
+  );
+}
 
 export async function flushOutbox(
   userId: string,
   kitchenId: string,
 ): Promise<FlushResult> {
   if (flushing) {
-    return { flushed: 0, offline: false, error: null };
+    return { flushed: 0, offline: false, error: null, skipped: true };
   }
   flushing = true;
   let flushed = 0;
@@ -252,14 +272,15 @@ export async function flushOutbox(
         flushed += 1;
       } catch (e) {
         const message = rpcErrorMessage(e);
-        await markOutboxFailed(row.id, message);
+        const permanent = isPermanentOutboxError(message);
+        await markOutboxFailed(row.id, message, { permanent });
         if (isNetworkError(e)) {
           offline = true;
           lastError = message;
           break;
         }
         lastError = message;
-        // Permanent/conflict: stop FIFO so dependent ops don't run ahead.
+        if (permanent) continue;
         break;
       }
     }
@@ -331,18 +352,40 @@ export async function pullKitchenCache(
 
     const runIds = (runs ?? []).map((r) => r.id);
     const pendingCancelIds = new Set<string>();
+    const pendingRunIds = new Set<string>();
+    const pendingItemIds = new Set<string>();
+    const pendingIssueIds = new Set<string>();
     for (const row of await listPendingOutbox(userId, kitchenId)) {
-      if (row.operation !== 'cancel_run') continue;
       try {
-        const payload = JSON.parse(row.payloadJson) as { run_id?: string };
-        if (payload.run_id) pendingCancelIds.add(payload.run_id);
+        const payload = JSON.parse(row.payloadJson) as {
+          run_id?: string;
+          run_item_id?: string;
+          issue_id?: string;
+        };
+        if (row.operation === 'cancel_run' && payload.run_id) {
+          pendingCancelIds.add(payload.run_id);
+          pendingRunIds.add(payload.run_id);
+        }
+        if (row.operation === 'create_manual_run' && payload.run_id) {
+          pendingRunIds.add(payload.run_id);
+        }
+        if (row.operation === 'apply_item_outcome' && payload.run_item_id) {
+          pendingItemIds.add(payload.run_item_id);
+        }
+        if (row.operation === 'resolve_issue' && payload.issue_id) {
+          pendingIssueIds.add(payload.issue_id);
+        }
       } catch {
         /* ignore malformed */
       }
     }
 
     for (const run of runs ?? []) {
+      if (pendingRunIds.has(run.id) && !pendingCancelIds.has(run.id)) continue;
       const local = await getCachedRun(userId, run.id);
+      if (local && local.revision > run.revision && !pendingCancelIds.has(run.id)) {
+        continue;
+      }
       // Prefer local cancelled while cancel_run is still queued so refresh
       // does not resurrect a checklist the user just deleted.
       const cancelledPending = pendingCancelIds.has(run.id);
@@ -384,6 +427,7 @@ export async function pullKitchenCache(
       if (itemsErr) throw itemsErr;
 
       for (const item of items ?? []) {
+        if (pendingItemIds.has(item.id) || pendingRunIds.has(item.run_id)) continue;
         await upsertCachedRunItem({
           id: item.id,
           userId,
@@ -413,6 +457,7 @@ export async function pullKitchenCache(
       if (issuesErr) throw issuesErr;
 
       for (const issue of issues ?? []) {
+        if (pendingIssueIds.has(issue.id) || pendingRunIds.has(issue.run_id)) continue;
         await upsertCachedIssue({
           id: issue.id,
           userId,

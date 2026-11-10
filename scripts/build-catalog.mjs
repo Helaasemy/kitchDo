@@ -19,7 +19,6 @@ const KITCHEN_GUIDANCE =
 
 /** Kitchen groups come from the Markdown headings; keys stay stable if labels change. */
 const KITCHEN_GROUPS = [
-  { key: 'launch', label: 'Launch and setup', icon: 'rocket-outline' },
   { key: 'shifts', label: 'Opening and closing shifts', icon: 'time-outline' },
   {
     key: 'cleaning',
@@ -91,7 +90,7 @@ const HOME_GROUPS = [
 
 const FEATURED = {
   home: ['H02', 'H03', 'H12', 'H14', 'H06', 'H18'],
-  kitchen: ['B01', 'B02', 'B03', 'B04', 'B08', 'B12'],
+  kitchen: ['B02', 'B03', 'B04', 'B06', 'B08', 'B12'],
 };
 
 /** Targeted aliases for the agreed search examples and everyday phrasing. */
@@ -105,8 +104,7 @@ const ALIASES = {
   H14: ['meal prep'],
   H15: ['meal prep for the freezer'],
   H18: ['monthly reminders', 'paperwork'],
-  B01: ['open a cafe', 'new restaurant', 'start a food business'],
-  B02: ['open the cafe', 'open cafe', 'morning opening'],
+  B02: ['open a cafe', 'open the cafe', 'open cafe', 'morning opening'],
   B03: ['close the cafe', 'closing checklist'],
   B06: ['clean espresso machine', 'coffee machine cleaning'],
   B08: ['fridge and freezer stock', 'check a delivery'],
