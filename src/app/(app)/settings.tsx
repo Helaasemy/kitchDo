@@ -23,6 +23,7 @@ import {
 } from '@/components/ui';
 import { useTheme } from '@/design';
 import { useAuth } from '@/features/auth';
+import { PLAN_LIMITS, usePlanPaywall } from '@/features/billing';
 import { KitchenSwitcher } from '@/features/membership/KitchenSwitcher';
 import {
   updateKitchen,
@@ -63,8 +64,22 @@ export default function SettingsScreen() {
     setOnboardingDraft,
   } = useAuth();
   const { retry } = useSync();
+  const { plan, openManage, paywall } = usePlanPaywall();
   const userId = user?.id;
   const copy = t().settings;
+  const billing = t().billing;
+  const planName =
+    plan === 'light' ? billing.light : plan === 'pro' ? billing.pro : billing.free;
+  const planLimits = PLAN_LIMITS[plan];
+  const planHint =
+    planLimits.lists == null
+      ? billing.hintUnlimited
+          .replace('{plan}', planName)
+          .replace('{people}', String(planLimits.people))
+      : billing.hintCapped
+          .replace('{plan}', planName)
+          .replace('{lists}', String(planLimits.lists))
+          .replace('{people}', String(planLimits.people));
   const version =
     Constants.expoConfig?.version ?? Constants.nativeAppVersion ?? '1.0.0';
 
@@ -264,6 +279,20 @@ export default function SettingsScreen() {
               onPress={() => setKitchenOpen(true)}
             />
           ) : null}
+          <ListRow
+            title={copy.plan}
+            subtitle={planHint}
+            left={
+              <IconTile
+                name="diamond-outline"
+                size={40}
+                round
+                background={theme.colors.frequency.daily.tint}
+                color={theme.colors.frequency.daily.text}
+              />
+            }
+            onPress={openManage}
+          />
           <ListRow
             title={copy.invitePeople}
             subtitle={copy.invitePeopleHint}
@@ -663,6 +692,7 @@ export default function SettingsScreen() {
         </View>
       </Modal>
       <KitchenSwitcher visible={switcherOpen} onClose={() => setSwitcherOpen(false)} />
+      {paywall}
     </Screen>
   );
 }

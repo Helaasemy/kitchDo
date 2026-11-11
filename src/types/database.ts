@@ -180,6 +180,9 @@ export type Database = {
           kind: string
           name: string
           owner_user_id: string
+          plan: string
+          plan_interval: string | null
+          plan_updated_at: string | null
           revision: number
           updated_at: string
         }
@@ -190,6 +193,9 @@ export type Database = {
           kind: string
           name: string
           owner_user_id: string
+          plan?: string
+          plan_interval?: string | null
+          plan_updated_at?: string | null
           revision?: number
           updated_at?: string
         }
@@ -200,6 +206,9 @@ export type Database = {
           kind?: string
           name?: string
           owner_user_id?: string
+          plan?: string
+          plan_interval?: string | null
+          plan_updated_at?: string | null
           revision?: number
           updated_at?: string
         }
@@ -845,6 +854,14 @@ export type Database = {
       }
       revoke_kitchen_invite: {
         Args: { p_invite_id: string }
+        Returns: Json
+      }
+      set_kitchen_plan: {
+        Args: {
+          p_kitchen_id: string
+          p_plan: string
+          p_interval?: string | null
+        }
         Returns: Json
       }
       update_member_permissions: {

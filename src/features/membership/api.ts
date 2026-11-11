@@ -1,3 +1,4 @@
+import { asKitchenPlan, type PlanInterval } from '@/features/billing/plans';
 import { getSupabase, rpcErrorMessage } from '@/lib/supabase';
 import type { KitchenMode } from '@/i18n';
 import { effectivePermissions } from './permissions';
@@ -23,7 +24,7 @@ export async function listMemberships(userId: string): Promise<KitchenMembership
   const ids = [...new Set(rows.map((row) => row.kitchen_id))];
   const { data: kitchens, error: kitchenErr } = await supabase
     .from('kdo_kitchens')
-    .select('id, name, kind, owner_user_id, revision, archived_at')
+    .select('id, name, kind, owner_user_id, revision, archived_at, plan, plan_interval')
     .in('id', ids)
     .is('archived_at', null);
   if (kitchenErr) throw new Error(rpcErrorMessage(kitchenErr, 'Could not load kitchens.'));
@@ -48,6 +49,8 @@ export async function listMemberships(userId: string): Promise<KitchenMembership
         canComplete: perms.canComplete,
         canEditTemplates: perms.canEditTemplates,
         joinedAt: row.joined_at,
+        plan: asKitchenPlan(kitchen.plan),
+        planInterval: (kitchen.plan_interval as PlanInterval | null) ?? null,
       },
     ];
   });

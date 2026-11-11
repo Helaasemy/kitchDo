@@ -22,6 +22,7 @@ import {
 } from '@/components/ui';
 import { useTheme } from '@/design';
 import { useAuth } from '@/features/auth';
+import { isPeopleLimitError, usePlanPaywall } from '@/features/billing';
 import {
   canLeaveKitchen,
   createKitchenInvite,
@@ -53,6 +54,8 @@ export default function InviteScreen() {
   } = useAuth();
   const copy = t().invite;
   const userId = user?.id;
+  const { guardPeople, paywall, plan } = usePlanPaywall();
+  const paid = plan !== 'free';
 
   const [canComplete, setCanComplete] = useState(true);
   const [canEdit, setCanEdit] = useState(false);
@@ -70,10 +73,10 @@ export default function InviteScreen() {
     const nextMembers = await listKitchenMembers(kitchenId);
     const amAdmin =
       isAdmin || nextMembers.some((member) => member.userId === userId && member.role === 'admin');
-    const invites = amAdmin ? await listKitchenInvites(kitchenId) : [];
+    const invites = amAdmin && plan !== 'free' ? await listKitchenInvites(kitchenId) : [];
     setMembers(nextMembers);
     setInvite(invites[0] ?? null);
-  }, [kitchenId, isAdmin, userId]);
+  }, [kitchenId, isAdmin, userId, plan]);
 
   useFocusEffect(
     useCallback(() => {
@@ -89,6 +92,7 @@ export default function InviteScreen() {
 
   const generate = async () => {
     if (!kitchenId) return;
+    if (!guardPeople(members.length)) return;
     setBusy(true);
     try {
       const next = await createKitchenInvite({
@@ -98,7 +102,12 @@ export default function InviteScreen() {
       });
       setInvite(next);
     } catch (e) {
-      Alert.alert(copy.joinFailed, e instanceof Error ? e.message : copy.networkRequired);
+      const raw = e instanceof Error ? e.message : copy.networkRequired;
+      if (isPeopleLimitError(raw)) {
+        guardPeople(members.length);
+        return;
+      }
+      Alert.alert(copy.joinFailed, raw);
     } finally {
       setBusy(false);
     }
@@ -159,7 +168,7 @@ export default function InviteScreen() {
         </View>
         ) : null}
 
-        {admin && invite && code && deepLink ? (
+        {admin && paid && invite && code && deepLink ? (
           <PaperCard style={{ borderRadius: theme.radii.xxl, padding: theme.space.xl, gap: theme.space.lg }}>
             <Text
               style={{
@@ -223,7 +232,7 @@ export default function InviteScreen() {
           </PaperCard>
         ) : null}
 
-        {admin ? (
+        {admin && paid ? (
         <View style={{ gap: theme.space.md }}>
           <SectionChip label={copy.byEmail} />
           <View style={{ flexDirection: 'row', gap: theme.space.sm, alignItems: 'flex-end' }}>
@@ -265,6 +274,7 @@ export default function InviteScreen() {
           onLeft={onLeft}
         />
       </View>
+      {paywall}
     </Screen>
   );
 }

@@ -6,6 +6,7 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Button, EmptyState, Screen, ScreenHeader, SectionLabel } from '@/components/ui';
 import { useTheme } from '@/design';
 import { useAuth } from '@/features/auth';
+import { isListLimitError, usePlanPaywall } from '@/features/billing';
 import {
   addPresetToTemplates,
   findUneditedCopy,
@@ -28,6 +29,7 @@ export default function CatalogPresetScreen() {
   const copy = t().catalog;
   const recurringCopy = t().recurring;
   const { user, kitchenId, canEditTemplates } = useAuth();
+  const { guardList, paywall, openLists } = usePlanPaywall();
   const userId = user?.id;
   const adding = useRef(false);
   const [busy, setBusy] = useState(false);
@@ -64,6 +66,7 @@ export default function CatalogPresetScreen() {
       setError(t().templates.needKitchen);
       return;
     }
+    if (!(await guardList(kitchenId))) return;
     adding.current = true;
     setBusy(true);
     setError(null);
@@ -72,7 +75,13 @@ export default function CatalogPresetScreen() {
       setCopyId(templateId);
       router.push(`/(app)/(tabs)/templates/${templateId}/hub`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : t().common.errorGeneric);
+      const raw = e instanceof Error ? e.message : t().common.errorGeneric;
+      if (isListLimitError(raw)) {
+        openLists();
+        setError(t().billing.listLimit);
+      } else {
+        setError(raw);
+      }
     } finally {
       adding.current = false;
       setBusy(false);
@@ -260,6 +269,7 @@ export default function CatalogPresetScreen() {
           ) : null}
         </View>
       </View>
+      {paywall}
     </Screen>
   );
 }

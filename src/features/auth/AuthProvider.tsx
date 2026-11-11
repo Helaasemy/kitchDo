@@ -116,6 +116,9 @@ function friendlyJoinError(raw: string): string {
   if (lower.includes('expired')) return copy.expiredCode;
   if (lower.includes('already a member')) return copy.alreadyMember;
   if (lower.includes('display name')) return t().onboarding.displayNameRequired;
+  if (lower.includes('people limit') || lower.includes('kitchen is full')) {
+    return t().billing.joinFull;
+  }
   return raw || copy.joinFailed;
 }
 

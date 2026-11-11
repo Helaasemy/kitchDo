@@ -1,3 +1,4 @@
+import type { KitchenPlan, PlanInterval } from '@/features/billing/plans';
 import type { KitchenMode } from '@/i18n';
 import type { KitchenRole } from './permissions';
 
@@ -11,6 +12,8 @@ export type KitchenMembership = {
   canComplete: boolean;
   canEditTemplates: boolean;
   joinedAt: string;
+  plan: KitchenPlan;
+  planInterval: PlanInterval | null;
 };
 
 export type KitchenMember = {

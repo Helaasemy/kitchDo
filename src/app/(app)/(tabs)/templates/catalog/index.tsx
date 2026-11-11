@@ -12,6 +12,7 @@ import {
 } from '@/components/ui';
 import { useTheme } from '@/design';
 import { useAuth } from '@/features/auth';
+import { usePlanPaywall } from '@/features/billing';
 import {
   categoryForKitchenMode,
   getPreset,
@@ -38,7 +39,8 @@ const openPreset = (id: string) =>
 export default function TemplateCatalogScreen() {
   const t = useT();
   const theme = useTheme();
-  const { kitchenMode } = useAuth();
+  const { kitchenMode, kitchenId } = useAuth();
+  const { guardList, paywall } = usePlanPaywall();
   const catalog = useCatalog();
   const copy = t().catalog;
   const preferred = categoryForKitchenMode(kitchenMode);
@@ -153,7 +155,12 @@ export default function TemplateCatalogScreen() {
               <Button
                 label={copy.createCustom}
                 variant="ghost"
-                onPress={() => router.push('/(app)/(tabs)/templates/new')}
+                onPress={() => {
+                  void (async () => {
+                    if (!(await guardList(kitchenId))) return;
+                    router.push('/(app)/(tabs)/templates/new');
+                  })();
+                }}
               />
             </View>
           ) : (
@@ -173,6 +180,7 @@ export default function TemplateCatalogScreen() {
           )}
         </ScrollView>
       </View>
+      {paywall}
     </Screen>
   );
 }

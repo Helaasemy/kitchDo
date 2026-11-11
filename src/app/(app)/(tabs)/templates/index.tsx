@@ -25,6 +25,7 @@ import {
 } from '@/components/ui';
 import { useTheme } from '@/design';
 import { useAuth } from '@/features/auth';
+import { usePlanPaywall } from '@/features/billing';
 import { useCatalog } from '@/features/catalog';
 import {
   TASK_FREQUENCIES,
@@ -174,6 +175,7 @@ export default function TemplatesScreen() {
   const t = useT();
   const theme = useTheme();
   const { kitchenMode, kitchenId, onboarding, user, canEditTemplates } = useAuth();
+  const { guardList, paywall } = usePlanPaywall();
   const catalog = useCatalog();
   const copy = t().templates;
   const recurring = useRecurringTasks(user?.id, kitchenId);
@@ -313,6 +315,11 @@ export default function TemplatesScreen() {
 
   const openCatalog = () => router.push('/(app)/(tabs)/templates/catalog');
 
+  const goNew = async () => {
+    if (!(await guardList(kitchenId))) return;
+    router.push('/(app)/(tabs)/templates/new');
+  };
+
   const stateLabel = (state: TemplateState) => {
     if (state === 'active') return copy.stateActive;
     if (state === 'archived') return copy.stateArchived;
@@ -342,7 +349,7 @@ export default function TemplatesScreen() {
                 <IconButton
                   name="add"
                   accessibilityLabel={copy.emptyAction}
-                  onPress={() => router.push('/(app)/(tabs)/templates/new')}
+                  onPress={() => void goNew()}
                 />
               ) : undefined
             }
@@ -496,7 +503,7 @@ export default function TemplatesScreen() {
               <Button
                 label={copy.emptyAction}
                 variant="ghost"
-                onPress={() => router.push('/(app)/(tabs)/templates/new')}
+                onPress={() => void goNew()}
               />
             </View>
           ) : (
@@ -583,6 +590,7 @@ export default function TemplatesScreen() {
           </View>
         </View>
       </Modal>
+      {paywall}
     </Screen>
   );
 }

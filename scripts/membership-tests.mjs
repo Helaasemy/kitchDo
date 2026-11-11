@@ -144,6 +144,7 @@ const sql = [
   'supabase/migrations/20261110000003_kdo_membership_rpcs.sql',
   'supabase/migrations/20261110000004_kdo_membership_rpc_patches.sql',
   'supabase/migrations/20261110000005_kdo_membership_run_rpcs.sql',
+  'supabase/migrations/20261111000001_kdo_kitchen_plans.sql',
 ]
   .map((rel) => readFileSync(join(root, rel), 'utf8'))
   .join('\n');
@@ -167,6 +168,9 @@ await test('migrations add members, invites, helpers, and join RPCs', () => {
     'not allowed to edit templates in this kitchen',
     'this code has expired',
     'this code has been revoked',
+    'set_kitchen_plan',
+    'list limit reached',
+    'people limit reached',
   ]) {
     assert.ok(sql.includes(needle), needle);
   }

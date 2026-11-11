@@ -20,6 +20,7 @@ import DraggableFlatList, {
 import { Button, NetworkRequiredBanner, Screen, TextField } from '@/components/ui';
 import { useTheme } from '@/design';
 import { useAuth } from '@/features/auth';
+import { isListLimitError, usePlanPaywall } from '@/features/billing';
 import { useSync } from '@/lib/sync';
 import { listCategories, type Category } from '@/features/categories/api';
 import {
@@ -78,6 +79,7 @@ export default function TemplateBuilderScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const templateId = String(id);
   const { kitchenId, user, canEditTemplates } = useAuth();
+  const { paywall, openLists } = usePlanPaywall();
   const userId = user?.id;
   const { status: syncStatus } = useSync();
   const copy = t().templates;
@@ -293,7 +295,13 @@ export default function TemplateBuilderScreen() {
     try {
       await task();
     } catch (e) {
-      setError(e instanceof Error ? e.message : t().common.errorGeneric);
+      const raw = e instanceof Error ? e.message : t().common.errorGeneric;
+      if (isListLimitError(raw)) {
+        openLists();
+        setError(t().billing.listLimit);
+      } else {
+        setError(raw);
+      }
     } finally {
       savingRef.current = false;
       setSaving(false);
@@ -340,7 +348,13 @@ export default function TemplateBuilderScreen() {
       }
       router.replace(`/(app)/(tabs)/templates/${dup.templateId}`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : t().common.errorGeneric);
+      const raw = e instanceof Error ? e.message : t().common.errorGeneric;
+      if (isListLimitError(raw)) {
+        openLists();
+        setError(t().billing.listLimit);
+      } else {
+        setError(raw);
+      }
     } finally {
       setSaving(false);
     }
@@ -1163,6 +1177,7 @@ export default function TemplateBuilderScreen() {
           </View>
         </View>
       </Modal>
+      {paywall}
     </Screen>
   );
 }
