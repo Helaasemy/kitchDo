@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { router } from 'expo-router';
-import { Alert, KeyboardAvoidingView, Modal, Platform, Text, View } from 'react-native';
+import { Alert, Modal, Text, View } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 
 import {
@@ -11,10 +11,9 @@ import {
   Screen,
   ScreenHeader,
   TextField,
-  Wordmark,
 } from '@/components/ui';
 import { useTheme } from '@/design';
-import { AuthModeToggle, useAuth } from '@/features/auth';
+import { AuthShell, useAuth } from '@/features/auth';
 import { goBackOr } from '@/lib/navigation';
 import { useT } from '@/i18n';
 
@@ -239,23 +238,7 @@ export function JoinScreen({ initialCode }: Props) {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: theme.colors.canvas }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <Screen
-        scroll
-        contentStyle={{
-          paddingHorizontal: theme.space.xxl,
-          paddingTop: theme.space.xxxl + theme.space.xxl,
-        }}
-      >
-        <View style={{ alignItems: 'center', marginBottom: theme.space.xl }}>
-          <Wordmark size="lg" />
-        </View>
-        <View style={{ marginBottom: theme.space.xl }}>
-          <AuthModeToggle value="join" onBeforeChange={stashCode} />
-        </View>
+    <AuthShell mode="join" onBeforeChange={stashCode}>
         <View style={{ gap: theme.space.sm, marginBottom: theme.space.xxl }}>
           <Text
             accessibilityRole="header"
@@ -303,7 +286,6 @@ export function JoinScreen({ initialCode }: Props) {
           />
         </PaperCard>
         {scanner}
-      </Screen>
-    </KeyboardAvoidingView>
+    </AuthShell>
   );
 }

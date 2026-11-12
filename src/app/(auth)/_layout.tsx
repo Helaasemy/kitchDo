@@ -15,5 +15,10 @@ export default function AuthLayout() {
     [theme.colors.canvas, theme.reduceMotion],
   );
 
-  return <Stack screenOptions={screenOptions} />;
+  return (
+    <Stack screenOptions={screenOptions}>
+      <Stack.Screen name="login" options={{ animation: 'none' }} />
+      <Stack.Screen name="signup" options={{ animation: 'none' }} />
+    </Stack>
+  );
 }

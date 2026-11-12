@@ -15,4 +15,5 @@ export {
 } from './plans';
 export { countLiveLists, setKitchenPlan } from './api';
 export { PlanPaywall, type PaywallReason } from './PlanPaywall';
+export { PurchasesSync } from './PurchasesSync';
 export { usePlanPaywall } from './usePlanPaywall';

@@ -19,6 +19,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { ThemeProvider, useTheme } from '@/design';
 import { AuthProvider, useAuth } from '@/features/auth';
+import { PurchasesSync } from '@/features/billing/PurchasesSync';
 import { CatalogProvider } from '@/features/catalog';
 import { I18nProvider, useI18n } from '@/i18n';
 import { ReminderResponseBridge } from '@/features/runs/ReminderResponseBridge';
@@ -75,7 +76,7 @@ const RootNavigator = memo(function RootNavigator() {
       >
         <Stack screenOptions={screenOptions}>
           <Stack.Screen name="index" />
-          <Stack.Screen name="join" />
+          <Stack.Screen name="join" options={{ animation: 'none' }} />
 
           <Stack.Protected guard={showAuth}>
             <Stack.Screen name="(auth)" />
@@ -124,6 +125,7 @@ export default function RootLayout() {
           <I18nProvider>
             <CatalogProvider>
               <AuthProvider>
+                <PurchasesSync />
                 <SyncProvider>
                   <SplashController />
                   <ReminderResponseBridge />

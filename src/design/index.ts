@@ -14,5 +14,10 @@ export {
   type ColorScheme,
   type ThemeColors,
 } from './theme';
+export {
+  isAppearancePreference,
+  resolveScheme,
+  type AppearancePreference,
+} from './appearance';
 
-export { ThemeProvider, useTheme } from './ThemeProvider';
+export { ThemeProvider, useAppearance, useTheme } from './ThemeProvider';

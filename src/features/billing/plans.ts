@@ -4,15 +4,20 @@ export type PlanInterval = 'monthly' | 'yearly';
 export type PlanLimits = {
   lists: number | null;
   people: number;
-  monthKr: number;
-  yearKr: number;
+  monthUsd: number;
+  yearUsd: number;
 };
 
 export const PLAN_LIMITS: Record<KitchenPlan, PlanLimits> = {
-  free: { lists: 5, people: 1, monthKr: 0, yearKr: 0 },
-  light: { lists: null, people: 2, monthKr: 30, yearKr: 300 },
-  pro: { lists: null, people: 6, monthKr: 99, yearKr: 990 },
+  free: { lists: 5, people: 1, monthUsd: 0, yearUsd: 0 },
+  light: { lists: null, people: 2, monthUsd: 3, yearUsd: 30 },
+  pro: { lists: null, people: 6, monthUsd: 9.99, yearUsd: 99 },
 };
+
+/** Two months free on a 12-month price, rounded for the yearly tab badge. */
+export const YEARLY_OFF_PERCENT = Math.round(
+  (1 - PLAN_LIMITS.light.yearUsd / (PLAN_LIMITS.light.monthUsd * 12)) * 100,
+);
 
 export function isKitchenPlan(value: string | null | undefined): value is KitchenPlan {
   return value === 'free' || value === 'light' || value === 'pro';

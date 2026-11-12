@@ -21,7 +21,7 @@ import {
   SyncBanner,
   TextField,
 } from '@/components/ui';
-import { useTheme } from '@/design';
+import { useAppearance, useTheme } from '@/design';
 import { useAuth } from '@/features/auth';
 import { PLAN_LIMITS, usePlanPaywall } from '@/features/billing';
 import { KitchenSwitcher } from '@/features/membership/KitchenSwitcher';
@@ -51,8 +51,10 @@ import {
 
 export default function SettingsScreen() {
   const t = useT();
-  const { preference, setPreference } = useI18n();
+  const { locale, setPreference } = useI18n();
   const theme = useTheme();
+  const { preference: appearance, setPreference: setAppearance } = useAppearance();
+  const selectedScheme = appearance === 'system' ? theme.scheme : appearance;
   const {
     signOut,
     onboarding,
@@ -88,6 +90,7 @@ export default function SettingsScreen() {
   const [kitchenOpen, setKitchenOpen] = useState(false);
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [languageOpen, setLanguageOpen] = useState(false);
+  const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [displayName, setDisplayName] = useState(onboarding?.displayName ?? '');
   const [kitchenName, setKitchenName] = useState(onboarding?.kitchenName ?? '');
   const [kind, setKind] = useState<KitchenMode>(kitchenMode);
@@ -399,10 +402,7 @@ export default function SettingsScreen() {
               accessibilityRole="button"
               accessibilityLabel={copy.language}
               accessibilityValue={{
-                text:
-                  preference === 'system'
-                    ? copy.languageSystem
-                    : LOCALE_LABELS[preference],
+                text: LOCALE_LABELS[locale],
               }}
               onPress={() => setLanguageOpen(true)}
               style={({ pressed }) => ({
@@ -429,9 +429,7 @@ export default function SettingsScreen() {
                 numberOfLines={1}
                 allowFontScaling
               >
-                {preference === 'system'
-                  ? copy.languageSystem
-                  : LOCALE_LABELS[preference]}
+                {LOCALE_LABELS[locale]}
               </Text>
               <Ionicons
                 name="chevron-down"
@@ -440,6 +438,24 @@ export default function SettingsScreen() {
               />
             </Pressable>
           </View>
+          <ListRow
+            title={copy.appearance}
+            subtitle={
+              selectedScheme === 'dark'
+                ? copy.appearanceDark
+                : copy.appearanceLight
+            }
+            left={
+              <IconTile
+                name={selectedScheme === 'dark' ? 'moon' : 'sunny-outline'}
+                size={40}
+                round
+                background={theme.colors.frequency.weekly.tint}
+                color={theme.colors.frequency.weekly.text}
+              />
+            }
+            onPress={() => setAppearanceOpen(true)}
+          />
           <ListRow title={copy.version} subtitle={version} />
         </View>
 
@@ -461,21 +477,77 @@ export default function SettingsScreen() {
         title={copy.language}
         onClose={() => setLanguageOpen(false)}
       >
+        {APP_LOCALES.map((id) => {
+          const selected = locale === id;
+          return (
+            <Pressable
+              key={id}
+              accessibilityRole="radio"
+              accessibilityState={{ selected }}
+              onPress={() => {
+                void setPreference(id);
+                setLanguageOpen(false);
+              }}
+              style={({ pressed }) => ({
+                minHeight: 52,
+                paddingHorizontal: theme.space.md,
+                borderRadius: theme.radii.md,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: theme.space.sm,
+                backgroundColor: selected
+                  ? theme.colors.primaryTint
+                  : pressed
+                    ? theme.colors.sand
+                    : 'transparent',
+              })}
+            >
+              <Text
+                style={{
+                  flex: 1,
+                  fontFamily: selected
+                    ? theme.fonts.bodySemiBold
+                    : theme.fonts.bodyMedium,
+                  fontSize: theme.typography.body.fontSize,
+                  color: theme.colors.ink,
+                }}
+                allowFontScaling
+              >
+                {LOCALE_LABELS[id]}
+              </Text>
+              {selected ? (
+                <Ionicons
+                  name="checkmark"
+                  size={20}
+                  color={theme.colors.primary}
+                />
+              ) : null}
+            </Pressable>
+          );
+        })}
+      </Sheet>
+
+      <Sheet
+        visible={appearanceOpen}
+        title={copy.appearance}
+        onClose={() => setAppearanceOpen(false)}
+      >
         {(
           [
-            { id: 'system' as const, label: copy.languageSystem },
-            ...APP_LOCALES.map((id) => ({ id, label: LOCALE_LABELS[id] })),
+            { id: 'light' as const, label: copy.appearanceLight },
+            { id: 'dark' as const, label: copy.appearanceDark },
           ] as const
         ).map((option) => {
-          const selected = preference === option.id;
+          const selected = selectedScheme === option.id;
           return (
             <Pressable
               key={option.id}
               accessibilityRole="radio"
               accessibilityState={{ selected }}
               onPress={() => {
-                void setPreference(option.id);
-                setLanguageOpen(false);
+                void setAppearance(option.id);
+                setAppearanceOpen(false);
               }}
               style={({ pressed }) => ({
                 minHeight: 52,

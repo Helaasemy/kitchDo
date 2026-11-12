@@ -24,7 +24,7 @@ export function Wordmark({
 
   return (
     <View
-      style={[{ alignItems: 'center', gap: theme.space.sm }, style]}
+      style={[{ alignItems: 'center', gap: 2 }, style]}
       accessibilityRole="header"
       accessibilityLabel={t().brand.product}
     >
@@ -33,7 +33,7 @@ export function Wordmark({
         style={{
           fontFamily: theme.fonts.bodyExtraBold,
           fontSize,
-          lineHeight: Math.round(fontSize * 1.2),
+          lineHeight: fontSize,
           letterSpacing: -0.5,
           color: theme.colors.primary,
         }}

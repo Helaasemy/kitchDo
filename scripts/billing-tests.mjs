@@ -30,6 +30,7 @@ const test = async (name, fn) => {
 
 const {
   PLAN_LIMITS,
+  YEARLY_OFF_PERCENT,
   canAddList,
   canAddPerson,
   canDowngradeTo,
@@ -57,8 +58,9 @@ await test('light and pro have unlimited lists', () => {
 });
 
 await test('yearly is 10 months of the monthly price', () => {
-  assert.equal(PLAN_LIMITS.light.yearKr, PLAN_LIMITS.light.monthKr * 10);
-  assert.equal(PLAN_LIMITS.pro.yearKr, PLAN_LIMITS.pro.monthKr * 10);
+  assert.equal(PLAN_LIMITS.light.yearUsd, PLAN_LIMITS.light.monthUsd * 10);
+  assert.ok(Math.abs(PLAN_LIMITS.pro.yearUsd - PLAN_LIMITS.pro.monthUsd * 10) < 1);
+  assert.equal(YEARLY_OFF_PERCENT, 17);
 });
 
 await test('planForPeople maps counts onto the cheapest fitting plan', () => {

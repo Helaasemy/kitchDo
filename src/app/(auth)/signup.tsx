@@ -1,11 +1,5 @@
 import { type ComponentProps, type ComponentRef, useRef, useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Text, TextInput, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
 import {
@@ -17,10 +11,9 @@ import {
   RequirementRow,
   Screen,
   TextField,
-  Wordmark,
 } from '@/components/ui';
 import { useTheme } from '@/design';
-import { AuthModeToggle, useAuth } from '@/features/auth';
+import { AuthShell, useAuth } from '@/features/auth';
 import type { TaskFrequency } from '@/features/recurring/period';
 import { goBackOr } from '@/lib/navigation';
 import { useT } from '@/i18n';
@@ -62,10 +55,6 @@ export default function SignupScreen() {
   ];
 
   const goBack = () => goBackOr('/(auth)/login');
-  const contentStyle = {
-    paddingHorizontal: theme.space.xxl,
-    paddingTop: theme.space.xxxl + theme.space.xxl,
-  };
 
   const onSubmit = async () => {
     if (loading) return;
@@ -90,14 +79,10 @@ export default function SignupScreen() {
     }
   };
 
-  return (
-    <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: theme.colors.canvas }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <Screen scroll contentStyle={checkEmail ? undefined : contentStyle}>
-        {checkEmail ? (
-          <View style={{ gap: theme.space.xl, paddingTop: theme.space.xxl }}>
+  if (checkEmail) {
+    return (
+      <Screen scroll>
+        <View style={{ gap: theme.space.xl, paddingTop: theme.space.xxl }}>
             <IconTile
               name="mail-open-outline"
               size={56}
@@ -135,15 +120,12 @@ export default function SignupScreen() {
               onPress={goBack}
             />
           </View>
-        ) : (
-        <>
-        <View style={{ alignItems: 'center', marginBottom: theme.space.xl }}>
-          <Wordmark size="lg" />
-        </View>
-        <View style={{ marginBottom: theme.space.xl }}>
-          <AuthModeToggle value="signup" />
-        </View>
+      </Screen>
+    );
+  }
 
+  return (
+    <AuthShell mode="signup">
         <View style={{ gap: theme.space.sm, marginBottom: theme.space.xl }}>
           <Text
             accessibilityRole="header"
@@ -259,9 +241,6 @@ export default function SignupScreen() {
           onPress={onSubmit}
           loading={loading}
         />
-        </>
-        )}
-      </Screen>
-    </KeyboardAvoidingView>
+    </AuthShell>
   );
 }

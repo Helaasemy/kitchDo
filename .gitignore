@@ -43,6 +43,8 @@ yarn-error.*
 # secrets
 .env
 .env.env.raw-backup
+credentials.json
+credentials/
 
 # local supabase CLI cache
 supabase/.temp/

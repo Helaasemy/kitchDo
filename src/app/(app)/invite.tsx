@@ -125,143 +125,201 @@ export default function InviteScreen() {
     goBackOr('/(app)/settings');
   };
 
+  const codeRights = invite
+    ? copy.thisCodeRights.replace(
+        '{summary}',
+        invite.canEditTemplates
+          ? copy.rightsSummaryEdit
+          : invite.canComplete
+            ? copy.rightsSummaryComplete
+            : copy.rightsSummaryView,
+      )
+    : null;
+  const showCode = Boolean(admin && paid && invite && code && deepLink);
+
   return (
-    <Screen scroll contentStyle={{ paddingBottom: theme.space.xxxl }}>
-      <View style={{ gap: theme.space.xl }}>
+    <Screen scroll contentStyle={{ paddingBottom: theme.space.xl }}>
+      <View style={{ gap: theme.space.lg }}>
         <IconButton
           name="chevron-back"
           accessibilityLabel={t().common.back}
           onPress={() => goBackOr()}
         />
         <ScreenHeader
-          size="display"
           eyebrow={onboarding?.kitchenName}
           title={copy.title}
         />
-        <Text
-          style={{
-            fontFamily: theme.fonts.body,
-            fontSize: theme.typography.body.fontSize,
-            color: theme.colors.inkMuted,
-          }}
-        >
-          {admin ? copy.subtitle : copy.cannotInvite}
-        </Text>
+        {admin ? null : (
+          <Text
+            style={{
+              fontFamily: theme.fonts.body,
+              fontSize: theme.typography.body.fontSize,
+              color: theme.colors.inkMuted,
+            }}
+          >
+            {copy.cannotInvite}
+          </Text>
+        )}
 
         {admin ? (
-        <View style={{ gap: theme.space.md }}>
-          <ToggleRow
-            label={copy.canComplete}
-            value={canComplete}
-            onValueChange={setCanComplete}
-          />
-          <ToggleRow
-            label={copy.canEditTemplates}
-            value={canEdit}
-            onValueChange={setCanEdit}
-          />
-          <Button
-            label={invite ? copy.generateAnother : copy.generateCode}
-            onPress={() => void generate()}
-            loading={busy}
-          />
-        </View>
-        ) : null}
+          <View style={{ gap: theme.space.md }}>
+            <SectionChip label={copy.inviteSection} />
+            <PaperCard
+              style={{
+                borderRadius: theme.radii.xxl,
+                padding: theme.space.lg,
+                gap: theme.space.md,
+              }}
+            >
+              {showCode && code && deepLink && invite ? (
+                <View style={{ gap: theme.space.md }}>
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: theme.space.lg,
+                    }}
+                  >
+                    <View style={{ flex: 1, gap: theme.space.sm }}>
+                      <Text
+                        style={{
+                          fontFamily: theme.fonts.bodyExtraBold,
+                          letterSpacing: 0.6,
+                          textTransform: 'uppercase',
+                          color: theme.colors.inkMuted,
+                          fontSize: theme.typography.caption.fontSize,
+                        }}
+                      >
+                        {copy.linkLabel}
+                      </Text>
+                      <Text
+                        style={{
+                          fontFamily: theme.fonts.bodyBold,
+                          fontSize: 22,
+                          letterSpacing: 1.4,
+                          color: theme.colors.ink,
+                        }}
+                      >
+                        {code}
+                      </Text>
+                      {codeRights ? (
+                        <Text
+                          style={{
+                            fontFamily: theme.fonts.body,
+                            fontSize: theme.typography.caption.fontSize,
+                            color: theme.colors.inkMuted,
+                          }}
+                        >
+                          {codeRights}
+                        </Text>
+                      ) : null}
+                    </View>
+                    <QRCode value={deepLink} size={112} />
+                  </View>
+                  <View style={{ flexDirection: 'row', gap: theme.space.sm }}>
+                    <Button
+                      label={copy.shareLink}
+                      icon="share-outline"
+                      onPress={() => void Share.share({ message: `${code}\n${deepLink}` })}
+                      compact
+                      style={{ flex: 1 }}
+                    />
+                    <Button
+                      label={copied ? t().common.copied : copy.copy}
+                      icon="copy-outline"
+                      variant="secondary"
+                      onPress={() => void copyCode()}
+                      compact
+                      style={{ flex: 1 }}
+                    />
+                    <Button
+                      label={copy.revoke}
+                      variant="ghost"
+                      compact
+                      onPress={() => {
+                        void revokeKitchenInvite(invite.id).then(() => {
+                          setInvite(null);
+                          void reload();
+                        });
+                      }}
+                    />
+                  </View>
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      gap: theme.space.sm,
+                      alignItems: 'flex-end',
+                    }}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <TextField
+                        label={copy.emailPlaceholder}
+                        value={email}
+                        onChangeText={setEmail}
+                        autoCapitalize="none"
+                        keyboardType="email-address"
+                      />
+                    </View>
+                    <Button
+                      label={copy.send}
+                      disabled={!email.trim()}
+                      style={{ alignSelf: 'flex-end' }}
+                      onPress={() => {
+                        const subject = encodeURIComponent(copy.emailSubject);
+                        const body = encodeURIComponent(
+                          copy.emailBody
+                            .replace('{kitchen}', onboarding?.kitchenName ?? '')
+                            .replace('{code}', code),
+                        );
+                        void Linking.openURL(
+                          `mailto:${email.trim()}?subject=${subject}&body=${body}`,
+                        );
+                      }}
+                    />
+                  </View>
+                </View>
+              ) : null}
 
-        {admin && paid && invite && code && deepLink ? (
-          <PaperCard style={{ borderRadius: theme.radii.xxl, padding: theme.space.xl, gap: theme.space.lg }}>
-            <Text
-              style={{
-                fontFamily: theme.fonts.bodyExtraBold,
-                letterSpacing: 0.6,
-                textTransform: 'uppercase',
-                color: theme.colors.inkMuted,
-              }}
-            >
-              {copy.linkLabel}
-            </Text>
-            <Text
-              style={{
-                fontFamily: theme.fonts.bodyBold,
-                fontSize: 28,
-                letterSpacing: 2,
-                color: theme.colors.ink,
-              }}
-            >
-              {code}
-            </Text>
-            <View style={{ alignItems: 'center', paddingVertical: theme.space.md }}>
-              <QRCode value={deepLink} size={180} />
-            </View>
-            <View style={{ flexDirection: 'row', gap: theme.space.md }}>
-              <Button
-                label={copy.shareLink}
-                icon="share-outline"
-                onPress={() => void Share.share({ message: `${code}\n${deepLink}` })}
-                compact
-                style={{ flex: 1 }}
-              />
-              <Button
-                label={copied ? t().common.copied : copy.copy}
-                icon="copy-outline"
-                variant="secondary"
-                onPress={() => void copyCode()}
-                compact
-                style={{ flex: 1 }}
-              />
-            </View>
-            <Button
-              label={copy.revoke}
-              variant="ghost"
-              onPress={() => {
-                void revokeKitchenInvite(invite.id).then(() => {
-                  setInvite(null);
-                  void reload();
-                });
-              }}
-            />
-            <Text
-              style={{
-                fontFamily: theme.fonts.body,
-                fontSize: theme.typography.caption.fontSize,
-                color: theme.colors.inkMuted,
-              }}
-            >
-              {copy.linkNote}
-            </Text>
-          </PaperCard>
-        ) : null}
-
-        {admin && paid ? (
-        <View style={{ gap: theme.space.md }}>
-          <SectionChip label={copy.byEmail} />
-          <View style={{ flexDirection: 'row', gap: theme.space.sm, alignItems: 'flex-end' }}>
-            <View style={{ flex: 1 }}>
-              <TextField
-                label={copy.emailPlaceholder}
-                value={email}
-                onChangeText={setEmail}
-                autoCapitalize="none"
-                keyboardType="email-address"
-              />
-            </View>
-            <Button
-              label={copy.send}
-              compact
-              disabled={!code || !email.trim()}
-              onPress={() => {
-                if (!code) return;
-                const subject = encodeURIComponent(copy.emailSubject);
-                const body = encodeURIComponent(
-                  copy.emailBody
-                    .replace('{kitchen}', onboarding?.kitchenName ?? '')
-                    .replace('{code}', code),
-                );
-                void Linking.openURL(`mailto:${email.trim()}?subject=${subject}&body=${body}`);
-              }}
-            />
+              <View
+                style={
+                  showCode
+                    ? {
+                        gap: theme.space.sm,
+                        paddingTop: theme.space.sm,
+                        borderTopWidth: 0.5,
+                        borderTopColor: theme.colors.border,
+                      }
+                    : { gap: theme.space.sm }
+                }
+              >
+                <Text
+                  style={{
+                    fontFamily: theme.fonts.body,
+                    fontSize: theme.typography.caption.fontSize,
+                    color: theme.colors.inkMuted,
+                  }}
+                >
+                  {copy.inviteSectionHint}
+                </Text>
+                <ToggleRow
+                  label={copy.canComplete}
+                  value={canComplete}
+                  onValueChange={setCanComplete}
+                />
+                <ToggleRow
+                  label={copy.canEditTemplates}
+                  value={canEdit}
+                  onValueChange={setCanEdit}
+                />
+                <Button
+                  label={showCode ? copy.generateAnother : copy.generateCode}
+                  variant={showCode ? 'secondary' : 'primary'}
+                  onPress={() => void generate()}
+                  loading={busy}
+                />
+              </View>
+            </PaperCard>
           </View>
-        </View>
         ) : null}
 
         <MemberList
@@ -295,7 +353,7 @@ function ToggleRow({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        minHeight: 52,
+        minHeight: 44,
       }}
     >
       <Text style={{ fontFamily: theme.fonts.bodyMedium, color: theme.colors.ink, flex: 1 }}>
@@ -344,6 +402,15 @@ function MemberList({
         label={copy.members.replace('{count}', String(members.length))}
         chipTone={{ background: theme.colors.primary, text: '#FFFFFF' }}
       />
+      <Text
+        style={{
+          fontFamily: theme.fonts.body,
+          fontSize: theme.typography.caption.fontSize,
+          color: theme.colors.inkMuted,
+        }}
+      >
+        {copy.membersHint}
+      </Text>
       <PaperCard style={{ borderRadius: theme.radii.xxl }}>
         {members.map((member) => {
           const mine = member.userId === userId;
