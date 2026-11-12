@@ -123,12 +123,17 @@ function EntryRow({
     );
   } else {
     const { tick } = entry;
+    alert = tick.outcome === 'blocked';
     title = tick.title;
     subtitle = [
       tick.templateTitle,
       recurringCopy[tick.frequency],
+      tick.outcome === 'blocked' ? t().runs.blocked : null,
+      tick.note,
       recurringCopy.historyTicked.replace('{time}', entry.time),
-    ].join(' · ');
+    ]
+      .filter(Boolean)
+      .join(' · ');
     leading = (
       <View style={{ width: 24, alignItems: 'center' }}>
         <View
@@ -136,7 +141,9 @@ function EntryRow({
             width: 10,
             height: 10,
             borderRadius: 5,
-            backgroundColor: theme.colors.frequency[tick.frequency].base,
+            backgroundColor: alert
+              ? theme.colors.coral
+              : theme.colors.frequency[tick.frequency].base,
           }}
         />
       </View>

@@ -32,10 +32,7 @@ import { listKitchenMembers, type KitchenMember } from '@/features/membership';
 import { isListLimitError, usePlanPaywall } from '@/features/billing';
 import { useSync } from '@/lib/sync';
 import { listCategories, type Category } from '@/features/categories/api';
-import {
-  findOpenRunForTemplate,
-  startManualRunFromTemplate,
-} from '@/features/runs';
+import { findOpenRunForTemplate } from '@/features/runs';
 import {
   archiveTemplate,
   duplicateTemplate,
@@ -58,6 +55,7 @@ import {
   getTemplateFrequencies,
   saveTemplateFrequencies,
   TASK_FREQUENCIES,
+  type RepeatFrequency,
   type TaskFrequency,
 } from '@/features/recurring';
 import { newId } from '@/lib/ids';
@@ -70,8 +68,8 @@ type DraftItem = {
   sectionId: string | null;
   title: string;
   instructions: string;
-  /** `null` = one-off, done with Use now. */
-  frequency: TaskFrequency | null;
+  /** `null` = one-off, ticked on Today. */
+  frequency: RepeatFrequency | null;
   assigneeMode: AssigneeMode;
   assigneeUserId: string | null;
 };
@@ -165,16 +163,19 @@ export default function TemplateBuilderScreen() {
             })),
           );
           setItems(
-            detail.items.map((i) => ({
-              key: i.id,
-              id: i.id,
-              sectionId: i.sectionId,
-              title: i.title,
-              instructions: i.instructions ?? '',
-              frequency: frequencies[i.id] ?? null,
-              assigneeMode: parseAssigneeMode(i.assignment.mode),
-              assigneeUserId: i.assignment.userId,
-            })),
+            detail.items.map((i) => {
+              const stored = frequencies[i.id];
+              return {
+                key: i.id,
+                id: i.id,
+                sectionId: i.sectionId,
+                title: i.title,
+                instructions: i.instructions ?? '',
+                frequency: stored && stored !== 'once' ? stored : null,
+                assigneeMode: parseAssigneeMode(i.assignment.mode),
+                assigneeUserId: i.assignment.userId,
+              };
+            }),
           );
         } else {
           setExists(false);
@@ -421,32 +422,15 @@ export default function TemplateBuilderScreen() {
     ]);
   };
 
-  const onUseNow = async () => {
-    if (!kitchenId || !user?.id || !templateId) {
-      setError(copy.needKitchen);
+  const onAfterPrimary = () => {
+    setAfterAction(null);
+    if (afterOpenRunId) {
+      setAfterOpenRunId(null);
+      router.push(`/(app)/runs/${afterOpenRunId}`);
       return;
     }
-    setSaving(true);
-    setError(null);
-    try {
-      // Reuses the unfinished run when one exists — never starts a second copy.
-      const { runId } = await startManualRunFromTemplate({
-        userId: user.id,
-        kitchenId,
-        templateId,
-      });
-      setAfterAction(null);
-      setAfterOpenRunId(null);
-      router.push(`/(app)/runs/${runId}`);
-    } catch (e) {
-      if (e instanceof Error && e.message === 'NO_PUBLISHED_REVISION') {
-        setError(copy.publishFirst);
-      } else {
-        setError(e instanceof Error ? e.message : t().common.errorGeneric);
-      }
-    } finally {
-      setSaving(false);
-    }
+    setAfterOpenRunId(null);
+    router.replace('/(app)/(tabs)/today');
   };
 
   const addSection = () => {
@@ -625,7 +609,7 @@ export default function TemplateBuilderScreen() {
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={{ gap: theme.space.sm }}
               >
-                {([null, ...TASK_FREQUENCIES] as (TaskFrequency | null)[]).map((f) => (
+                {([null, ...TASK_FREQUENCIES] as (RepeatFrequency | null)[]).map((f) => (
                   <CatChip
                     key={f ?? 'once'}
                     label={f ? recurringCopy[f] : recurringCopy.oneOff}
@@ -1217,10 +1201,9 @@ export default function TemplateBuilderScreen() {
             />
             {afterAction === 'published' || publishedRevision ? (
               <Button
-                label={afterOpenRunId ? copy.continueRun : copy.useNow}
+                label={afterOpenRunId ? copy.continueRun : t().tabs.today}
                 variant="secondary"
-                loading={saving}
-                onPress={() => void onUseNow()}
+                onPress={onAfterPrimary}
               />
             ) : null}
             {!libraryCopy ? (

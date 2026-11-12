@@ -5,6 +5,7 @@ import { useT } from '@/i18n';
 
 import {
   listRecurringTasks,
+  setTaskBlocked,
   setTaskDone,
   type RecurringTaskState,
 } from './api';
@@ -43,10 +44,37 @@ export function useRecurringTasks(
       const done = !task.done;
       setError(null);
       setTasks((prev) =>
-        prev.map((row) => (row.itemId === task.itemId ? { ...row, done } : row)),
+        prev.map((row) =>
+          row.itemId === task.itemId
+            ? { ...row, done, outcome: done ? 'done' : null, note: null }
+            : row,
+        ),
       );
       try {
         await setTaskDone({ userId, kitchenId, task, done });
+      } catch {
+        setError(t().recurring.toggleFailed);
+        await reload();
+      }
+    },
+    [userId, kitchenId, reload, t],
+  );
+
+  const block = useCallback(
+    async (task: RecurringTaskState, note: string) => {
+      if (!userId || !kitchenId) return;
+      const trimmed = note.trim();
+      if (!trimmed) return;
+      setError(null);
+      setTasks((prev) =>
+        prev.map((row) =>
+          row.itemId === task.itemId
+            ? { ...row, done: true, outcome: 'blocked', note: trimmed }
+            : row,
+        ),
+      );
+      try {
+        await setTaskBlocked({ userId, kitchenId, task, note: trimmed });
       } catch {
         setError(t().recurring.toggleFailed);
         await reload();
@@ -62,5 +90,5 @@ export function useRecurringTasks(
     return () => sub.remove();
   }, [reload]);
 
-  return { tasks, reload, toggle, error };
+  return { tasks, reload, toggle, block, error };
 }

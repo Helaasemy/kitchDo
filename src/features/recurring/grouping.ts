@@ -14,6 +14,14 @@ export type TemplateTaskGroup<T extends GroupableTask> = {
   doneCount: number;
 };
 
+/** Open tasks first; done and blocked stay in their original order at the bottom. */
+export function openTasksFirst<T extends { done: boolean }>(tasks: T[]): T[] {
+  const open: T[] = [];
+  const closed: T[] = [];
+  for (const task of tasks) (task.done ? closed : open).push(task);
+  return open.concat(closed);
+}
+
 /** Split tasks by frequency, then by template, keeping the incoming order. */
 export function groupByFrequencyAndTemplate<T extends GroupableTask>(
   tasks: T[],
@@ -22,6 +30,7 @@ export function groupByFrequencyAndTemplate<T extends GroupableTask>(
     daily: [],
     weekly: [],
     monthly: [],
+    once: [],
   };
   for (const task of tasks) {
     const groups = result[task.frequency];
@@ -37,6 +46,9 @@ export function groupByFrequencyAndTemplate<T extends GroupableTask>(
     }
     group.tasks.push(task);
     if (task.done) group.doneCount += 1;
+  }
+  for (const groups of Object.values(result)) {
+    for (const group of groups) group.tasks = openTasksFirst(group.tasks);
   }
   return result;
 }

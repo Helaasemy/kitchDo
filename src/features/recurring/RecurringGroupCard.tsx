@@ -38,6 +38,7 @@ export function RecurringGroupCard({
   doneCount,
   onEditTemplate,
   onToggle,
+  onBlock,
   memberNames,
 }: {
   title: string;
@@ -46,6 +47,7 @@ export function RecurringGroupCard({
   doneCount: number;
   onEditTemplate?: () => void;
   onToggle: (task: RecurringTaskState) => void;
+  onBlock?: (task: RecurringTaskState) => void;
   memberNames?: Record<string, string>;
 }) {
   const t = useT();
@@ -159,11 +161,14 @@ export function RecurringGroupCard({
               key={task.itemId}
               title={task.title}
               caption={task.sectionTitle}
+              note={task.note}
               done={task.done}
+              outcome={task.outcome}
               accent={accent}
               grouped
               divider={index < tasks.length - 1}
               onToggle={() => onToggle(task)}
+              onBlock={onBlock ? () => onBlock(task) : undefined}
               {...hold}
               trailing={
                 task.assigneeUserId ? (

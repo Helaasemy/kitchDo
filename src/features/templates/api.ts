@@ -110,7 +110,12 @@ export async function listTemplates(
 
   const { data, error } = await query;
   if (error) throw new Error(rpcErrorMessage(error, 'Could not load templates.'));
-  return (data ?? []).map(mapSummary);
+  const rows = (data ?? []).map(mapSummary);
+  if (opts?.state === 'archived') return rows;
+  const open: TemplateSummary[] = [];
+  const archived: TemplateSummary[] = [];
+  for (const row of rows) (row.state === 'archived' ? archived : open).push(row);
+  return open.concat(archived);
 }
 
 const TEMPLATE_SELECT =

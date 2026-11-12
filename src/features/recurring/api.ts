@@ -4,7 +4,7 @@ import { effectiveAssignee, INHERIT_ASSIGNMENT } from '@/features/assignment';
 import { getDeviceTimeZone } from '@/lib/dates';
 import { getLocalDb } from '@/lib/storage';
 
-import { periodKey, TASK_FREQUENCIES, type TaskFrequency } from './period';
+import { periodKey, type TaskFrequency } from './period';
 
 /**
  * Task frequencies and ticks live only in this device's SQLite; the server
@@ -22,9 +22,13 @@ export type RecurringTask = {
   assigneeUserId: string | null;
 };
 
+export type TickOutcome = 'done' | 'blocked';
+
 export type RecurringTaskState = RecurringTask & {
-  /** Ticked in the current day / week / month. */
+  /** Accounted for this period — ticked done or marked blocked. */
   done: boolean;
+  outcome: TickOutcome | null;
+  note: string | null;
 };
 
 export type TaskTick = {
@@ -35,6 +39,8 @@ export type TaskTick = {
   title: string;
   templateTitle: string;
   tickedAt: string;
+  outcome: TickOutcome;
+  note: string | null;
 };
 
 type TaskRow = {
@@ -58,14 +64,6 @@ const mapTask = (row: TaskRow): RecurringTask => ({
   sortOrder: row.sort_order,
   assigneeUserId: row.assignee_user_id ?? null,
 });
-
-function currentPeriodKeys(now: DateTime): Record<TaskFrequency, string> {
-  return {
-    daily: periodKey('daily', now),
-    weekly: periodKey('weekly', now),
-    monthly: periodKey('monthly', now),
-  };
-}
 
 const localNow = () => DateTime.now().setZone(getDeviceTimeZone());
 
@@ -110,7 +108,7 @@ export async function saveTemplateFrequencies(input: {
       input.templateId,
     );
     for (const task of input.tasks) {
-      if (!task.frequency || !task.title.trim()) continue;
+      if (!task.title.trim()) continue;
       await db.runAsync(
         `INSERT INTO local_recurring_tasks (
           user_id, kitchen_id, template_id, item_id, frequency,
@@ -120,7 +118,7 @@ export async function saveTemplateFrequencies(input: {
         input.kitchenId,
         input.templateId,
         task.itemId,
-        task.frequency,
+        task.frequency ?? 'once',
         task.title.trim(),
         task.sectionTitle,
         input.templateTitle,
@@ -210,15 +208,23 @@ export async function listRecurringTasks(
   if (rows.length === 0) return [];
 
   const db = await getLocalDb();
-  const keys = currentPeriodKeys(localNow());
-  const ticks = await db.getAllAsync<{ item_id: string; period_key: string }>(
-    `SELECT item_id, period_key FROM local_task_ticks
-     WHERE user_id = ? AND kitchen_id = ? AND period_key IN (?, ?, ?)`,
+  const now = localNow();
+  const placeholders = rows.map(() => '?').join(', ');
+  const ticks = await db.getAllAsync<{
+    item_id: string;
+    period_key: string;
+    outcome?: string | null;
+    note?: string | null;
+  }>(
+    `SELECT item_id, period_key, outcome, note FROM local_task_ticks
+     WHERE user_id = ? AND kitchen_id = ? AND item_id IN (${placeholders})`,
     userId,
     kitchenId,
-    ...TASK_FREQUENCIES.map((f) => keys[f]),
+    ...rows.map((row) => row.item_id),
   );
-  const done = new Set(ticks.map((t) => `${t.item_id}|${t.period_key}`));
+  const tickByKey = new Map(
+    ticks.map((t) => [`${t.item_id}|${t.period_key}`, t] as const),
+  );
   let assignments: Awaited<
     ReturnType<(typeof import('@/features/templates/api'))['listKitchenAssignments']>
   > | null = null;
@@ -236,12 +242,59 @@ export async function listRecurringTasks(
           assignments.items[task.itemId] ?? INHERIT_ASSIGNMENT,
         )
       : task.assigneeUserId;
+    const tick = tickByKey.get(
+      `${task.itemId}|${periodKey(task.frequency, now, task.itemId)}`,
+    );
+    const outcome: TickOutcome | null = !tick
+      ? null
+      : tick.outcome === 'blocked'
+        ? 'blocked'
+        : 'done';
     return {
       ...task,
       assigneeUserId,
-      done: done.has(`${task.itemId}|${keys[task.frequency]}`),
+      done: outcome != null,
+      outcome,
+      note: tick?.note?.trim() ? tick.note : null,
     };
   });
+}
+
+async function upsertTick(input: {
+  userId: string;
+  kitchenId: string;
+  task: RecurringTask;
+  outcome: TickOutcome;
+  note: string | null;
+}): Promise<void> {
+  const db = await getLocalDb();
+  const now = localNow();
+  const key = periodKey(input.task.frequency, now, input.task.itemId);
+  const tickedAt = now.toUTC().toISO() ?? new Date().toISOString();
+  await db.runAsync(
+    `INSERT INTO local_task_ticks (
+      user_id, kitchen_id, template_id, item_id, period_key, frequency,
+      title_snapshot, template_title_snapshot, ticked_at, outcome, note
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(user_id, kitchen_id, item_id, period_key) DO UPDATE SET
+      frequency = excluded.frequency,
+      title_snapshot = excluded.title_snapshot,
+      template_title_snapshot = excluded.template_title_snapshot,
+      ticked_at = excluded.ticked_at,
+      outcome = excluded.outcome,
+      note = excluded.note`,
+    input.userId,
+    input.kitchenId,
+    input.task.templateId,
+    input.task.itemId,
+    key,
+    input.task.frequency,
+    input.task.title,
+    input.task.templateTitle,
+    tickedAt,
+    input.outcome,
+    input.note,
+  );
 }
 
 /** Tick or untick a task for its current period. */
@@ -251,10 +304,9 @@ export async function setTaskDone(input: {
   task: RecurringTask;
   done: boolean;
 }): Promise<void> {
-  const db = await getLocalDb();
-  const now = localNow();
-  const key = periodKey(input.task.frequency, now);
   if (!input.done) {
+    const db = await getLocalDb();
+    const key = periodKey(input.task.frequency, localNow(), input.task.itemId);
     await db.runAsync(
       `DELETE FROM local_task_ticks
        WHERE user_id = ? AND kitchen_id = ? AND item_id = ? AND period_key = ?`,
@@ -265,21 +317,19 @@ export async function setTaskDone(input: {
     );
     return;
   }
-  await db.runAsync(
-    `INSERT OR IGNORE INTO local_task_ticks (
-      user_id, kitchen_id, template_id, item_id, period_key, frequency,
-      title_snapshot, template_title_snapshot, ticked_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    input.userId,
-    input.kitchenId,
-    input.task.templateId,
-    input.task.itemId,
-    key,
-    input.task.frequency,
-    input.task.title,
-    input.task.templateTitle,
-    now.toUTC().toISO() ?? new Date().toISOString(),
-  );
+  await upsertTick({ ...input, outcome: 'done', note: null });
+}
+
+/** Mark a task blocked for this period. A short note is required. */
+export async function setTaskBlocked(input: {
+  userId: string;
+  kitchenId: string;
+  task: RecurringTask;
+  note: string;
+}): Promise<void> {
+  const note = input.note.trim();
+  if (!note) throw new Error('NOTE_REQUIRED');
+  await upsertTick({ ...input, outcome: 'blocked', note });
 }
 
 /** Most recent ticks, newest first, for History. */
@@ -297,6 +347,8 @@ export async function listRecentTicks(
     title_snapshot: string;
     template_title_snapshot: string;
     ticked_at: string;
+    outcome?: string | null;
+    note?: string | null;
   }>(
     `SELECT * FROM local_task_ticks
      WHERE user_id = ? AND kitchen_id = ?
@@ -314,6 +366,8 @@ export async function listRecentTicks(
     title: r.title_snapshot,
     templateTitle: r.template_title_snapshot,
     tickedAt: r.ticked_at,
+    outcome: r.outcome === 'blocked' ? 'blocked' : 'done',
+    note: r.note?.trim() ? r.note : null,
   }));
 }
 
@@ -344,8 +398,7 @@ export async function copyTemplateFrequencies(input: {
     sortOrder: number;
   }[] = [];
   for (const source of from.items) {
-    const freq = frequencies[source.id];
-    if (!freq) continue;
+    const freq = frequencies[source.id] ?? 'once';
     const byOrder = to.items.find(
       (i) => unused.has(i.id) && i.sortOrder === source.sortOrder,
     );

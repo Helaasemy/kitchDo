@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS local_recurring_tasks (
   kitchen_id TEXT NOT NULL,
   template_id TEXT NOT NULL,
   item_id TEXT NOT NULL,
-  frequency TEXT NOT NULL CHECK (frequency IN ('daily', 'weekly', 'monthly')),
+  frequency TEXT NOT NULL CHECK (frequency IN ('daily', 'weekly', 'monthly', 'once')),
   title TEXT NOT NULL,
   section_title TEXT,
   template_title TEXT NOT NULL,
@@ -27,10 +27,12 @@ CREATE TABLE IF NOT EXISTS local_task_ticks (
   template_id TEXT NOT NULL,
   item_id TEXT NOT NULL,
   period_key TEXT NOT NULL,
-  frequency TEXT NOT NULL CHECK (frequency IN ('daily', 'weekly', 'monthly')),
+  frequency TEXT NOT NULL CHECK (frequency IN ('daily', 'weekly', 'monthly', 'once')),
   title_snapshot TEXT NOT NULL,
   template_title_snapshot TEXT NOT NULL,
   ticked_at TEXT NOT NULL,
+  outcome TEXT NOT NULL DEFAULT 'done' CHECK (outcome IN ('done', 'blocked')),
+  note TEXT,
   PRIMARY KEY (user_id, kitchen_id, item_id, period_key)
 );
 
@@ -324,6 +326,67 @@ CREATE INDEX IF NOT EXISTS local_backups_user_idx
     version: 7,
     sql: `
 ALTER TABLE local_recurring_tasks ADD COLUMN assignee_user_id TEXT;
+`,
+  },
+  {
+    version: 8,
+    sql: `
+CREATE TABLE local_recurring_tasks_v8 (
+  user_id TEXT NOT NULL,
+  kitchen_id TEXT NOT NULL,
+  template_id TEXT NOT NULL,
+  item_id TEXT NOT NULL,
+  frequency TEXT NOT NULL CHECK (frequency IN ('daily', 'weekly', 'monthly', 'once')),
+  title TEXT NOT NULL,
+  section_title TEXT,
+  template_title TEXT NOT NULL,
+  sort_order INTEGER NOT NULL,
+  hidden_at TEXT,
+  assignee_user_id TEXT,
+  PRIMARY KEY (user_id, kitchen_id, item_id)
+);
+INSERT INTO local_recurring_tasks_v8 (
+  user_id, kitchen_id, template_id, item_id, frequency, title, section_title,
+  template_title, sort_order, hidden_at, assignee_user_id
+)
+SELECT user_id, kitchen_id, template_id, item_id, frequency, title, section_title,
+  template_title, sort_order, hidden_at, assignee_user_id
+FROM local_recurring_tasks;
+DROP TABLE local_recurring_tasks;
+ALTER TABLE local_recurring_tasks_v8 RENAME TO local_recurring_tasks;
+CREATE INDEX IF NOT EXISTS local_recurring_tasks_template_idx
+  ON local_recurring_tasks (user_id, kitchen_id, template_id);
+
+CREATE TABLE local_task_ticks_v8 (
+  user_id TEXT NOT NULL,
+  kitchen_id TEXT NOT NULL,
+  template_id TEXT NOT NULL,
+  item_id TEXT NOT NULL,
+  period_key TEXT NOT NULL,
+  frequency TEXT NOT NULL CHECK (frequency IN ('daily', 'weekly', 'monthly', 'once')),
+  title_snapshot TEXT NOT NULL,
+  template_title_snapshot TEXT NOT NULL,
+  ticked_at TEXT NOT NULL,
+  PRIMARY KEY (user_id, kitchen_id, item_id, period_key)
+);
+INSERT INTO local_task_ticks_v8 (
+  user_id, kitchen_id, template_id, item_id, period_key, frequency,
+  title_snapshot, template_title_snapshot, ticked_at
+)
+SELECT user_id, kitchen_id, template_id, item_id, period_key, frequency,
+  title_snapshot, template_title_snapshot, ticked_at
+FROM local_task_ticks;
+DROP TABLE local_task_ticks;
+ALTER TABLE local_task_ticks_v8 RENAME TO local_task_ticks;
+CREATE INDEX IF NOT EXISTS local_task_ticks_time_idx
+  ON local_task_ticks (user_id, kitchen_id, ticked_at);
+`,
+  },
+  {
+    version: 9,
+    sql: `
+ALTER TABLE local_task_ticks ADD COLUMN outcome TEXT NOT NULL DEFAULT 'done';
+ALTER TABLE local_task_ticks ADD COLUMN note TEXT;
 `,
   },
 ];

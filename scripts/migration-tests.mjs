@@ -181,10 +181,26 @@ await test('every table cleared on sign-out exists after migration', async () =>
   for (const name of cleared) assert.ok(tables(db).includes(name), name);
 });
 
-await test('migrations never drop local-only tables', () => {
-  const banned = /(DROP|DELETE FROM)\s+(IF EXISTS\s+)?local_(recurring_tasks|task_ticks|template_sources|backups)/i;
+await test('migrations copy local-only rows before rebuilding tables', () => {
+  const tables = [
+    'local_recurring_tasks',
+    'local_task_ticks',
+    'local_template_sources',
+    'local_backups',
+  ];
   for (const m of SQLITE_MIGRATIONS) {
-    assert.ok(!banned.test(m.sql), `migration v${m.version} mutates local-only data`);
+    for (const table of tables) {
+      assert.ok(
+        !new RegExp(`DELETE FROM\\s+${table}\\b`, 'i').test(m.sql),
+        `migration v${m.version} deletes from ${table}`,
+      );
+      if (new RegExp(`DROP TABLE(?: IF EXISTS)?\\s+${table}\\b`, 'i').test(m.sql)) {
+        assert.ok(
+          new RegExp(`INSERT INTO\\s+${table}_`).test(m.sql),
+          `migration v${m.version} drops ${table} without copying`,
+        );
+      }
+    }
   }
 });
 
@@ -212,7 +228,7 @@ await test('v6 is a no-op if hidden_at already exists', async () => {
 
 await test('hidden_at is added even when v6 is already recorded', async () => {
   const db = openDb();
-  await migrateTo(db, 6);
+  await applyMigrations(db);
   db.raw.exec('ALTER TABLE local_recurring_tasks DROP COLUMN hidden_at');
   await applyMigrations(db);
   const cols = db.raw.prepare('PRAGMA table_info(local_recurring_tasks)').all().map((c) => c.name);
@@ -229,6 +245,52 @@ await test('v6 devices gain assignee_user_id', async () => {
   const cols = db.raw.prepare('PRAGMA table_info(local_recurring_tasks)').all().map((c) => c.name);
   assert.ok(cols.includes('assignee_user_id'));
   assert.equal(count(db, 'SELECT COUNT(*) n FROM local_recurring_tasks'), 1);
+});
+
+await test('v7 devices keep ticks and accept once after rebuild', async () => {
+  const db = openDb();
+  await migrateTo(db, 7);
+  db.raw.exec(`INSERT INTO local_recurring_tasks (
+    user_id, kitchen_id, template_id, item_id, frequency, title, section_title,
+    template_title, sort_order, hidden_at, assignee_user_id
+  ) VALUES ('u', 'k', 't', 'i', 'daily', 'Wipe', NULL, 'Close', 0, NULL, NULL)`);
+  db.raw.exec(`INSERT INTO local_task_ticks VALUES
+    ('u', 'k', 't', 'i', 'daily:2026-11-09', 'daily', 'Wipe', 'Close', '2026-11-09T20:00:00Z')`);
+  assert.throws(() =>
+    db.raw.exec(`INSERT INTO local_recurring_tasks (
+      user_id, kitchen_id, template_id, item_id, frequency, title, section_title,
+      template_title, sort_order, hidden_at, assignee_user_id
+    ) VALUES ('u', 'k', 't', 'once-item', 'once', 'Stock', NULL, 'Close', 1, NULL, NULL)`),
+  );
+  await applyMigrations(db);
+  assert.equal(count(db, 'SELECT COUNT(*) n FROM local_recurring_tasks'), 1);
+  assert.equal(count(db, 'SELECT COUNT(*) n FROM local_task_ticks'), 1);
+  db.raw.exec(`INSERT INTO local_recurring_tasks (
+    user_id, kitchen_id, template_id, item_id, frequency, title, section_title,
+    template_title, sort_order, hidden_at, assignee_user_id
+  ) VALUES ('u', 'k', 't', 'once-item', 'once', 'Stock', NULL, 'Close', 1, NULL, NULL)`);
+  db.raw.exec(`INSERT INTO local_task_ticks (
+    user_id, kitchen_id, template_id, item_id, period_key, frequency,
+    title_snapshot, template_title_snapshot, ticked_at
+  ) VALUES ('u', 'k', 't', 'once-item', 'once:once-item', 'once', 'Stock', 'Close', '2026-11-09T20:00:00Z')`);
+  assert.equal(count(db, "SELECT COUNT(*) n FROM local_recurring_tasks WHERE frequency = 'once'"), 1);
+});
+
+await test('v8 devices gain tick outcome and note', async () => {
+  const db = openDb();
+  await migrateTo(db, 8);
+  db.raw.exec(`INSERT INTO local_task_ticks (
+    user_id, kitchen_id, template_id, item_id, period_key, frequency,
+    title_snapshot, template_title_snapshot, ticked_at
+  ) VALUES ('u', 'k', 't', 'i', 'daily:2026-11-09', 'daily', 'Wipe', 'Close', '2026-11-09T20:00:00Z')`);
+  await applyMigrations(db);
+  const cols = db.raw.prepare('PRAGMA table_info(local_task_ticks)').all().map((c) => c.name);
+  assert.ok(cols.includes('outcome'));
+  assert.ok(cols.includes('note'));
+  assert.equal(
+    db.raw.prepare("SELECT outcome FROM local_task_ticks WHERE item_id = 'i'").get().outcome,
+    'done',
+  );
 });
 
 console.log(`\n${passed} migration checks passed`);

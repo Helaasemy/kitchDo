@@ -41,7 +41,9 @@ export async function applyMigrations(db: MigratableDb): Promise<number> {
       const message = e instanceof Error ? e.message : String(e);
       // ADD COLUMN fails if LOCAL_SCHEMA_SQL already created the column.
       if (
-        (migration.version === 6 || migration.version === 7) &&
+        (migration.version === 6 ||
+          migration.version === 7 ||
+          migration.version === 9) &&
         /duplicate column name/i.test(message)
       ) {
         await db.runAsync(
@@ -57,6 +59,8 @@ export async function applyMigrations(db: MigratableDb): Promise<number> {
   await db.execAsync(LOCAL_SCHEMA_SQL);
   await ensureColumn(db, 'local_recurring_tasks', 'hidden_at', 'TEXT');
   await ensureColumn(db, 'local_recurring_tasks', 'assignee_user_id', 'TEXT');
+  await ensureColumn(db, 'local_task_ticks', 'outcome', "TEXT NOT NULL DEFAULT 'done'");
+  await ensureColumn(db, 'local_task_ticks', 'note', 'TEXT');
   return LATEST_SQLITE_VERSION;
 }
 

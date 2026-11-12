@@ -31,6 +31,7 @@ export const colors = {
     daily: { base: '#F4A261', tint: '#FFF1E8', text: '#A65A1E' },
     weekly: { base: '#9C8FD9', tint: '#EFEBFA', text: '#6253B8' },
     monthly: { base: '#7FB08A', tint: '#E6F1E8', text: '#3A7149' },
+    once: { base: '#C4B5A5', tint: '#F4EEE8', text: '#6F6258' },
   } satisfies Record<TaskFrequency, FrequencyColors>,
 } as const;
 
@@ -56,6 +57,7 @@ export const colorsDark = {
     daily: { base: '#F4A261', tint: '#3A2A1E', text: '#F7BC8A' },
     weekly: { base: '#A99BFF', tint: '#2B2740', text: '#C3B9FF' },
     monthly: { base: '#8CC7A1', tint: '#22312A', text: '#A6D8B6' },
+    once: { base: '#C4B5A5', tint: '#3A322C', text: '#D4C6B8' },
   } satisfies Record<TaskFrequency, FrequencyColors>,
 } as const;
 

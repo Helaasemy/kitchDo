@@ -73,7 +73,22 @@ test('period keys round-trip; other strings are rejected', () => {
   assert.equal(period.parsePeriodKey('yearly:2026-01-01'), null);
   assert.equal(period.parsePeriodKey('daily:2026-1-1'), null);
   assert.ok(period.isTaskFrequency('monthly'));
-  assert.ok(!period.isTaskFrequency('once'));
+  assert.ok(period.isTaskFrequency('once'));
+  assert.ok(period.isRepeatFrequency('daily'));
+  assert.ok(!period.isRepeatFrequency('once'));
+});
+
+test('one-off ticks are permanent and keyed by item', () => {
+  assert.equal(period.periodKey('once', at('2026-11-11T09:00'), 'item-a'), 'once:item-a');
+  assert.equal(period.periodKey('once', at('2026-11-12T09:00'), 'item-a'), 'once:item-a');
+  assert.notEqual(
+    period.periodKey('once', at('2026-11-11T09:00'), 'item-a'),
+    period.periodKey('once', at('2026-11-11T09:00'), 'item-b'),
+  );
+  assert.deepEqual(period.parsePeriodKey('once:item-a'), {
+    frequency: 'once',
+    start: 'item-a',
+  });
 });
 
 test('a tick from last week no longer counts this week', () => {
@@ -100,16 +115,54 @@ test('Today groups tasks by frequency, then template, keeping order', () => {
   assert.deepEqual(
     groups.daily.map((g) => [g.templateId, g.tasks.map((t) => t.itemId), g.doneCount]),
     [
-      ['open', ['a1', 'a2'], 1],
+      ['open', ['a2', 'a1'], 1],
       ['close', ['c1'], 1],
     ],
+  );
+  assert.deepEqual(
+    groups.weekly[0].tasks.map((t) => t.itemId),
+    ['b1', 'b2'],
   );
   assert.deepEqual(
     groups.weekly.map((g) => [g.templateId, g.tasks.length, g.doneCount]),
     [['deep', 2, 1]],
   );
   assert.deepEqual(groups.monthly, []);
+  assert.deepEqual(groups.once, []);
   assert.equal(grouping.countDone(groups.daily[0].tasks), 1);
+  assert.deepEqual(
+    grouping.openTasksFirst([
+      { id: 'a', done: true },
+      { id: 'b', done: false },
+      { id: 'c', done: true },
+      { id: 'd', done: false },
+    ]).map((t) => t.id),
+    ['b', 'd', 'a', 'c'],
+  );
+});
+
+test('one-off tasks group separately from repeating ones', () => {
+  const groups = grouping.groupByFrequencyAndTemplate([
+    {
+      itemId: 'a1',
+      templateId: 'open',
+      templateTitle: 'OPEN',
+      frequency: 'once',
+      done: true,
+    },
+    {
+      itemId: 'a2',
+      templateId: 'open',
+      templateTitle: 'OPEN',
+      frequency: 'daily',
+      done: false,
+    },
+  ]);
+  assert.deepEqual(
+    groups.once.map((g) => [g.templateId, g.tasks.map((t) => t.itemId), g.doneCount]),
+    [['open', ['a1'], 1]],
+  );
+  assert.equal(groups.daily[0].tasks[0].itemId, 'a2');
 });
 
 const preset = (id, title, frequency, tasks, aliases = []) => ({

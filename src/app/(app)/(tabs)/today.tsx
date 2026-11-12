@@ -1,18 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
-} from 'react-native';
-import Ionicons from '@expo/vector-icons/Ionicons';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { router, useFocusEffect } from 'expo-router';
-import Swipeable, {
-  type SwipeableMethods,
-} from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { DateTime } from 'luxon';
 
 import {
@@ -36,147 +25,17 @@ import {
   periodEnd,
   RecurringGroupCard,
   TASK_FREQUENCIES,
+  TickNoteModal,
+  TODAY_FREQUENCIES,
   useRecurringTasks,
   type RecurringTaskState,
+  type RepeatFrequency,
   type TaskFrequency,
 } from '@/features/recurring';
-import { cancelRun, listTodayRuns, type RunSummary } from '@/features/runs';
 import { getDeviceTimeZone } from '@/lib/dates';
 import { templateEditorHref } from '@/lib/navigation';
 import { useSync } from '@/lib/sync';
 import { t, useT, tone } from '@/i18n';
-
-function openRun(runId: string) {
-  router.push(`/(app)/runs/${runId}`);
-}
-
-function runSubtitle(run: RunSummary, lead: string = run.dueLabel): string {
-  return [
-    lead,
-    `${run.progressDone}/${run.progressTotal}`,
-    run.blocked ? `${run.blocked} blocked` : null,
-  ]
-    .filter(Boolean)
-    .join(' · ');
-}
-
-function RunCard({
-  run,
-  subtitle,
-  theme,
-  onRequestDelete,
-}: {
-  run: RunSummary;
-  subtitle: string;
-  theme: AppTheme;
-  onRequestDelete: (run: RunSummary) => void;
-}) {
-  const t = useT();
-  const copy = t().today;
-  const alert = run.urgency || run.blocked > 0;
-
-  const renderRightActions = (
-    _progress: unknown,
-    _translation: unknown,
-    methods: SwipeableMethods,
-  ) => (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={copy.deleteRun}
-      onPress={() => {
-        methods.close();
-        onRequestDelete(run);
-      }}
-      style={{
-        backgroundColor: theme.colors.coral,
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingHorizontal: theme.space.lg,
-        marginLeft: theme.space.sm,
-        borderRadius: theme.radii.xxl,
-        minWidth: 88,
-      }}
-    >
-      <Text
-        style={{
-          fontFamily: theme.fonts.bodyBold,
-          fontSize: theme.typography.body.fontSize,
-          color: '#FFFFFF',
-        }}
-        allowFontScaling
-      >
-        {copy.deleteRun}
-      </Text>
-    </Pressable>
-  );
-
-  return (
-    <Swipeable
-      renderRightActions={renderRightActions}
-      overshootRight={false}
-      friction={2}
-    >
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`${run.title}, ${subtitle}`}
-        onPress={() => openRun(run.id)}
-        style={({ pressed }) => ({
-          minHeight: 64,
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: theme.space.lg,
-          padding: theme.space.lg,
-          borderRadius: theme.radii.xxl,
-          backgroundColor: alert ? theme.colors.alertTint : theme.colors.white,
-          boxShadow: theme.shadows.raised,
-          opacity: pressed ? 0.85 : 1,
-        })}
-      >
-        <View
-          style={{
-            width: 48,
-            height: 48,
-            borderRadius: theme.radii.xl,
-            backgroundColor: alert ? theme.colors.coral : theme.colors.primaryTint,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Ionicons
-            name={alert ? 'alert-circle' : 'play'}
-            size={22}
-            color={alert ? '#FFFFFF' : theme.colors.primary}
-          />
-        </View>
-        <View style={{ flex: 1, gap: 2 }}>
-          <Text
-            style={{
-              fontFamily: theme.fonts.bodyExtraBold,
-              fontSize: theme.typography.body.fontSize,
-              lineHeight: 22,
-              color: theme.colors.ink,
-            }}
-            numberOfLines={2}
-            allowFontScaling
-          >
-            {run.title}
-          </Text>
-          <Text
-            style={{
-              fontFamily: alert ? theme.fonts.bodySemiBold : theme.fonts.bodyMedium,
-              fontSize: theme.typography.caption.fontSize,
-              lineHeight: theme.typography.caption.lineHeight,
-              color: alert ? theme.colors.coral : theme.colors.inkMuted,
-            }}
-            allowFontScaling
-          >
-            {subtitle}
-          </Text>
-        </View>
-      </Pressable>
-    </Swipeable>
-  );
-}
 
 function SummaryTiles({
   theme,
@@ -186,12 +45,12 @@ function SummaryTiles({
 }: {
   theme: AppTheme;
   tasks: RecurringTaskState[];
-  selected: TaskFrequency | null;
-  onSelect: (frequency: TaskFrequency | null) => void;
+  selected: RepeatFrequency | null;
+  onSelect: (frequency: RepeatFrequency | null) => void;
 }) {
   const t = useT();
   const copy = t().today;
-  const labels: Record<TaskFrequency, string> = {
+  const labels: Record<RepeatFrequency, string> = {
     daily: copy.summaryToday,
     weekly: copy.summaryWeek,
     monthly: copy.summaryMonth,
@@ -268,7 +127,7 @@ function SummaryTiles({
 }
 
 function periodHint(frequency: TaskFrequency): string | undefined {
-  if (frequency === 'daily') return undefined;
+  if (frequency === 'daily' || frequency === 'once') return undefined;
   const end = periodEnd(frequency, DateTime.now().setZone(getDeviceTimeZone()));
   return t().recurring.untilDate.replace(
     '{date}',
@@ -299,9 +158,10 @@ export default function TodayScreen() {
   const recurringCopy = t().recurring;
   const title = tone(kitchenMode, copy.titleHome, copy.titleBusiness);
 
-  const [due, setDue] = useState<RunSummary[]>([]);
-  const [frequencyFilter, setFrequencyFilter] = useState<TaskFrequency | null>(null);
+  const [frequencyFilter, setFrequencyFilter] = useState<RepeatFrequency | null>(null);
   const [mineOnly, setMineOnly] = useState(false);
+  const [blockTask, setBlockTask] = useState<RecurringTaskState | null>(null);
+  const [blockNote, setBlockNote] = useState('');
   const [members, setMembers] = useState<KitchenMember[]>([]);
   const [loading, setLoading] = useState(true);
   const hasLoaded = useRef(false);
@@ -310,7 +170,6 @@ export default function TodayScreen() {
 
   const load = useCallback(async () => {
     if (!userId || !kitchenId) {
-      setDue([]);
       setLoading(false);
       return;
     }
@@ -321,8 +180,6 @@ export default function TodayScreen() {
       await refreshOnboarding();
       await reloadRecurring();
       await refresh();
-      const result = await listTodayRuns(userId, kitchenId);
-      setDue(result.due);
       try {
         setMembers(await listKitchenMembers(kitchenId));
       } catch {
@@ -352,34 +209,10 @@ export default function TodayScreen() {
     daily: recurringCopy.periodToday,
     weekly: recurringCopy.periodWeek,
     monthly: recurringCopy.periodMonth,
+    once: recurringCopy.once,
   };
-  const empty = !loading && recurring.tasks.length === 0 && due.length === 0;
-  const emptyMine =
-    !loading && mineOnly && visibleTasks.length === 0 && due.length === 0 && !empty;
-
-  const onRequestDelete = (run: RunSummary) => {
-    Alert.alert(copy.deleteRunTitle, copy.deleteRunBody, [
-      { text: t().common.cancel, style: 'cancel' },
-      {
-        text: copy.deleteRun,
-        style: 'destructive',
-        onPress: () => {
-          if (!userId || !kitchenId) return;
-          void (async () => {
-            try {
-              await cancelRun({ userId, kitchenId, runId: run.id });
-              await load();
-            } catch (e) {
-              Alert.alert(
-                t().common.errorGeneric,
-                e instanceof Error ? e.message : undefined,
-              );
-            }
-          })();
-        },
-      },
-    ]);
-  };
+  const empty = !loading && recurring.tasks.length === 0;
+  const emptyMine = !loading && mineOnly && visibleTasks.length === 0 && !empty;
 
   return (
     <Screen>
@@ -460,27 +293,7 @@ export default function TodayScreen() {
               />
             ) : null}
 
-            {due.length > 0 ? (
-              <View style={{ gap: theme.space.lg }}>
-                <SectionChip
-                  label={copy.checklistsTitle}
-                  chipTone={{ background: theme.colors.primary, text: '#FFFFFF' }}
-                />
-                <View style={{ gap: theme.space.md }}>
-                  {due.map((run) => (
-                    <RunCard
-                      key={run.id}
-                      run={run}
-                      theme={theme}
-                      onRequestDelete={onRequestDelete}
-                      subtitle={runSubtitle(run)}
-                    />
-                  ))}
-                </View>
-              </View>
-            ) : null}
-
-            {(frequencyFilter ? [frequencyFilter] : TASK_FREQUENCIES).map((frequency) => {
+            {(frequencyFilter ? [frequencyFilter] : TODAY_FREQUENCIES).map((frequency) => {
               const accent = theme.colors.frequency[frequency];
               return groups[frequency].length > 0 ? (
                 <View key={frequency} style={{ gap: theme.space.lg }}>
@@ -510,6 +323,10 @@ export default function TodayScreen() {
                           : undefined
                       }
                       onToggle={(task) => void recurring.toggle(task)}
+                      onBlock={(task) => {
+                        setBlockNote(task.note ?? '');
+                        setBlockTask(task);
+                      }}
                     />
                   ))}
                 </View>
@@ -519,6 +336,17 @@ export default function TodayScreen() {
         )}
       </View>
       <KitchenSwitcher visible={switcherOpen} onClose={() => setSwitcherOpen(false)} />
+      <TickNoteModal
+        visible={blockTask != null}
+        note={blockNote}
+        onChangeNote={setBlockNote}
+        onClose={() => setBlockTask(null)}
+        onSave={() => {
+          if (!blockTask) return;
+          void recurring.block(blockTask, blockNote);
+          setBlockTask(null);
+        }}
+      />
     </Screen>
   );
 }

@@ -25,17 +25,16 @@ import { listKitchenMembers, type KitchenMember } from '@/features/membership';
 import {
   countDone,
   FrequencyTabs,
+  openTasksFirst,
   RecurringTaskRow,
-  TASK_FREQUENCIES,
+  TickNoteModal,
+  TODAY_FREQUENCIES,
   useRecurringTasks,
   type FrequencyTab,
   type RecurringTaskState,
   type TaskFrequency,
 } from '@/features/recurring';
-import {
-  findOpenRunForTemplate,
-  startManualRunFromTemplate,
-} from '@/features/runs';
+import { findOpenRunForTemplate } from '@/features/runs';
 import {
   getTemplate,
   saveTemplateAssignments,
@@ -54,6 +53,10 @@ type HubRow = {
 
 type HubGroup = { key: string; title: string | null; rows: HubRow[] };
 
+function openHubRows(rows: HubRow[]): HubRow[] {
+  return openTasksFirst(rows.map((row) => ({ ...row, done: Boolean(row.task?.done) })));
+}
+
 /** Rows grouped under their section, in template order; unsectioned rows first. */
 function groupRows(
   detail: TemplateDetail,
@@ -61,11 +64,11 @@ function groupRows(
 ): HubGroup[] {
   const sections = [...detail.sections].sort((a, b) => a.sortOrder - b.sortOrder);
   const groups: HubGroup[] = [
-    { key: 'none', title: null, rows: rows.filter((r) => !r.sectionId) },
+    { key: 'none', title: null, rows: openHubRows(rows.filter((r) => !r.sectionId)) },
     ...sections.map((section) => ({
       key: section.id,
       title: section.title,
-      rows: rows.filter((r) => r.sectionId === section.id),
+      rows: openHubRows(rows.filter((r) => r.sectionId === section.id)),
     })),
   ];
   return groups.filter((g) => g.rows.length > 0);
@@ -83,18 +86,19 @@ export default function TemplateHubScreen() {
   const theme = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const templateId = String(id);
-  const { kitchenId, user, canEditTemplates, canComplete } = useAuth();
+  const { kitchenId, user, canEditTemplates } = useAuth();
   const userId = user?.id;
   const copy = t().templates;
   const recurringCopy = t().recurring;
 
   const [loading, setLoading] = useState(true);
-  const [starting, setStarting] = useState(false);
   const [assigning, setAssigning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [detail, setDetail] = useState<TemplateDetail | null>(null);
   const [members, setMembers] = useState<KitchenMember[]>([]);
   const [picker, setPicker] = useState<null | 'list' | string>(null);
+  const [blockTask, setBlockTask] = useState<RecurringTaskState | null>(null);
+  const [blockNote, setBlockNote] = useState('');
   const [openRunId, setOpenRunId] = useState<string | null>(null);
   const [tab, setTab] = useState<TabKey>('all');
   const [libraryCopy, setLibraryCopy] = useState(false);
@@ -139,8 +143,6 @@ export default function TemplateHubScreen() {
     }, [load]),
   );
 
-  const canStart =
-    Boolean(detail?.publishedRevision) && detail?.state !== 'archived';
   const hasOpenRun = Boolean(openRunId);
   const canAssign =
     canEditTemplates && detail != null && detail.state !== 'archived' && Boolean(kitchenId);
@@ -178,35 +180,8 @@ export default function TemplateHubScreen() {
     }
   };
 
-  const onPrimary = async () => {
-    if (!kitchenId || !user?.id) {
-      setError(copy.needKitchen);
-      return;
-    }
-
-    if (openRunId) {
-      router.push(`/(app)/runs/${openRunId}`);
-      return;
-    }
-
-    setStarting(true);
-    setError(null);
-    try {
-      const { runId } = await startManualRunFromTemplate({
-        userId: user.id,
-        kitchenId,
-        templateId,
-      });
-      router.push(`/(app)/runs/${runId}`);
-    } catch (e) {
-      if (e instanceof Error && e.message === 'NO_PUBLISHED_REVISION') {
-        setError(copy.publishFirst);
-      } else {
-        setError(e instanceof Error ? e.message : t().common.errorGeneric);
-      }
-    } finally {
-      setStarting(false);
-    }
+  const onContinue = () => {
+    if (openRunId) router.push(`/(app)/runs/${openRunId}`);
   };
 
   if (loading) {
@@ -234,10 +209,16 @@ export default function TemplateHubScreen() {
   const recurringById = new Map(recurring.tasks.map((task) => [task.itemId, task]));
   const frequencyTabs: FrequencyTab<TabKey>[] = [
     { key: 'all', label: recurringCopy.tabAll },
-    ...TASK_FREQUENCIES.flatMap((f) => {
+    ...TODAY_FREQUENCIES.flatMap((f) => {
       const tasks = recurring.tasks.filter((task) => task.frequency === f);
       return tasks.length > 0
-        ? [{ key: f, label: recurringCopy[f], badge: `${countDone(tasks)}/${tasks.length}` }]
+        ? [
+            {
+              key: f,
+              label: recurringCopy[f],
+              badge: `${countDone(tasks)}/${tasks.length}`,
+            },
+          ]
         : [];
     }),
   ];
@@ -336,19 +317,19 @@ export default function TemplateHubScreen() {
 
         <View style={{ gap: theme.space.md }}>
           <View style={{ flexDirection: 'row', gap: theme.space.md }}>
-            <Button
-              label={hasOpenRun ? copy.continueRun : copy.useNow}
-              icon="play"
-              loading={starting}
-              disabled={!hasOpenRun && (!canStart || !canComplete)}
-              onPress={() => void onPrimary()}
-              style={{ flex: 1 }}
-            />
+            {hasOpenRun ? (
+              <Button
+                label={copy.continueRun}
+                icon="play"
+                onPress={onContinue}
+                style={{ flex: 1 }}
+              />
+            ) : null}
             {canEditTemplates ? (
               <Button
                 label={copy.hubEditShort}
                 icon="pencil"
-                variant="secondary"
+                variant={hasOpenRun ? 'secondary' : undefined}
                 onPress={() => router.push(templateEditorHref(templateId))}
                 style={{ flex: 1 }}
               />
@@ -367,9 +348,6 @@ export default function TemplateHubScreen() {
           ) : null}
           {detail?.state === 'archived' ? notice(copy.hubArchivedHint, 'alert') : null}
           {hasOpenRun ? notice(copy.hubOpenRunHint) : null}
-          {!canStart && !hasOpenRun && detail?.state !== 'archived'
-            ? notice(copy.hubNoPublished)
-            : null}
           {error ? notice(error, 'alert') : null}
         </View>
 
@@ -401,7 +379,9 @@ export default function TemplateHubScreen() {
                         key={row.key}
                         title={row.title}
                         caption={frequencyLabel(row.task)}
+                        note={row.task?.note}
                         done={row.task?.done ?? false}
+                        outcome={row.task?.outcome ?? null}
                         accent={
                           row.task ? theme.colors.frequency[row.task.frequency] : undefined
                         }
@@ -412,6 +392,16 @@ export default function TemplateHubScreen() {
                             ? () => {
                                 const task = row.task;
                                 if (task) void recurring.toggle(task);
+                              }
+                            : undefined
+                        }
+                        onBlock={
+                          row.task
+                            ? () => {
+                                const task = row.task;
+                                if (!task) return;
+                                setBlockNote(task.note ?? '');
+                                setBlockTask(task);
                               }
                             : undefined
                         }
@@ -444,9 +434,7 @@ export default function TemplateHubScreen() {
                 }}
                 allowFontScaling
               >
-                {recurring.tasks.length < itemCount
-                  ? `${recurringCopy.oneOffHint} ${recurringCopy.localNote}`
-                  : recurringCopy.localNote}
+                {recurringCopy.localNote}
               </Text>
             ) : null}
           </View>
@@ -497,6 +485,17 @@ export default function TemplateHubScreen() {
               : item,
           );
           void persistAssignment(detail.assigneeUserId, nextItems);
+        }}
+      />
+      <TickNoteModal
+        visible={blockTask != null}
+        note={blockNote}
+        onChangeNote={setBlockNote}
+        onClose={() => setBlockTask(null)}
+        onSave={() => {
+          if (!blockTask) return;
+          void recurring.block(blockTask, blockNote);
+          setBlockTask(null);
         }}
       />
     </Screen>
