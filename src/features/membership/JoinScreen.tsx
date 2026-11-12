@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
-import { router } from 'expo-router';
-import { Alert, Modal, Text, View } from 'react-native';
+import { type ComponentRef, useEffect, useRef, useState } from 'react';
+import { Link, router } from 'expo-router';
+import { ActivityIndicator, Alert, Modal, Pressable, Text, TextInput, View } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 
 import {
@@ -8,17 +8,19 @@ import {
   ErrorText,
   IconButton,
   PaperCard,
+  PasswordField,
+  RequirementRow,
   Screen,
   ScreenHeader,
   TextField,
 } from '@/components/ui';
 import { useTheme } from '@/design';
-import { AuthShell, useAuth } from '@/features/auth';
+import { AuthShell, ConfirmEmail, useAuth } from '@/features/auth';
 import { goBackOr } from '@/lib/navigation';
 import { useT } from '@/i18n';
 
 import { formatJoinCode, parseJoinPayload } from './joinCode';
-import { loadPendingJoin, stashPendingJoinCode } from './pendingJoin';
+import { loadPendingJoin } from './pendingJoin';
 
 type Props = {
   initialCode?: string;
@@ -27,18 +29,37 @@ type Props = {
 export function JoinScreen({ initialCode }: Props) {
   const t = useT();
   const theme = useTheme();
-  const { status, joinKitchenWithCode, pendingJoinCode, onboarding } = useAuth();
+  const {
+    status,
+    joinKitchenWithCode,
+    pendingJoinCode,
+    onboarding,
+    rememberPendingJoin,
+    signIn,
+    signUp,
+    resendSignupEmail,
+    verifyEmailOtp,
+    completingJoin,
+  } = useAuth();
   const onboard = t().onboarding;
   const invite = t().invite;
+  const copy = t().auth;
 
   const [code, setCode] = useState(initialCode ?? pendingJoinCode ?? '');
   const [displayName, setDisplayName] = useState(onboarding?.displayName ?? '');
   const nameValue = displayName || onboarding?.displayName || '';
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [accountMode, setAccountMode] = useState<'signup' | 'signin'>('signup');
+  const [existingAccount, setExistingAccount] = useState(false);
+  const [checkEmail, setCheckEmail] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [permission, requestPermission] = useCameraPermissions();
   const seeded = useRef(false);
+  const emailRef = useRef<ComponentRef<typeof TextInput>>(null);
+  const passwordRef = useRef<ComponentRef<typeof TextInput>>(null);
 
   const signedIn = status === 'authenticated' || status === 'needs_onboarding';
   const needsName = status === 'needs_onboarding' || !onboarding?.displayName;
@@ -52,17 +73,17 @@ export function JoinScreen({ initialCode }: Props) {
       const parsed = parseJoinPayload(raw);
       if (parsed) {
         setCode(formatJoinCode(parsed));
-        await stashPendingJoinCode(parsed, pending?.displayName);
+        await rememberPendingJoin(parsed, pending?.displayName);
       }
       if (pending?.displayName) {
         setDisplayName((current) => current || pending.displayName || '');
       }
     })();
-  }, [initialCode, pendingJoinCode]);
+  }, [initialCode, pendingJoinCode, rememberPendingJoin]);
 
   const stashCode = async () => {
     const parsed = parseJoinPayload(code);
-    if (parsed) await stashPendingJoinCode(parsed, nameValue);
+    if (parsed) await rememberPendingJoin(parsed, nameValue);
   };
 
   const backTo = () => {
@@ -88,15 +109,13 @@ export function JoinScreen({ initialCode }: Props) {
     goHome();
   };
 
-  const continueToAccount = async () => {
-    setError(null);
+  const parsedCodeOrError = (): string | null => {
     const parsed = parseJoinPayload(code);
     if (!parsed) {
       setError(onboard.codeRequired);
-      return;
+      return null;
     }
-    await stashPendingJoinCode(parsed);
-    router.replace('/(auth)/signup');
+    return parsed;
   };
 
   const submitSignedIn = async (raw: string) => {
@@ -112,8 +131,67 @@ export function JoinScreen({ initialCode }: Props) {
     }
     setLoading(true);
     try {
-      await stashPendingJoinCode(parsed, nameValue);
+      await rememberPendingJoin(parsed, nameValue);
       const result = await joinKitchenWithCode(parsed, nameValue.trim());
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      finishJoined(result.alreadyMember);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const submitJoinAccount = async () => {
+    setError(null);
+    const parsed = parsedCodeOrError();
+    if (!parsed) return;
+    if (accountMode === 'signup' && !nameValue.trim()) {
+      setError(onboard.displayNameRequired);
+      return;
+    }
+    if (!email.trim()) {
+      setError(copy.emailRequired);
+      return;
+    }
+    if (accountMode === 'signup' && password.length < 8) {
+      setError(copy.passwordTooShort);
+      return;
+    }
+    if (accountMode === 'signin' && !password) {
+      setError(copy.passwordRequired);
+      return;
+    }
+    setLoading(true);
+    try {
+      await rememberPendingJoin(parsed, nameValue);
+      if (accountMode === 'signup') {
+        const created = await signUp(email, password);
+        if (created.alreadyRegistered) {
+          setAccountMode('signin');
+          setExistingAccount(true);
+          setPassword('');
+          setError(null);
+          return;
+        }
+        if (created.error) {
+          setError(created.error);
+          return;
+        }
+        if (created.needsConfirmation) {
+          setCheckEmail(true);
+          return;
+        }
+      } else {
+        const session = await signIn(email, password);
+        if (session.error) {
+          setError(session.error);
+          return;
+        }
+        return;
+      }
+      const result = await joinKitchenWithCode(parsed, nameValue.trim() || undefined);
       if (result.error) {
         setError(result.error);
         return;
@@ -184,6 +262,34 @@ export function JoinScreen({ initialCode }: Props) {
     </Modal>
   );
 
+  if (completingJoin) {
+    return (
+      <Screen>
+        <View
+          style={{
+            flex: 1,
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: theme.space.md,
+          }}
+        >
+          <ActivityIndicator color={theme.colors.primary} />
+          <Text
+            style={{
+              fontFamily: theme.fonts.body,
+              fontSize: theme.typography.body.fontSize,
+              color: theme.colors.inkMuted,
+            }}
+            accessibilityLiveRegion="polite"
+            allowFontScaling
+          >
+            {copy.confirmingEmail}
+          </Text>
+        </View>
+      </Screen>
+    );
+  }
+
   if (signedIn) {
     return (
       <Screen scroll>
@@ -237,55 +343,152 @@ export function JoinScreen({ initialCode }: Props) {
     );
   }
 
+  if (checkEmail) {
+    return (
+      <Screen scroll>
+        <ConfirmEmail
+          email={email}
+          body={copy.signupCheckJoinBody}
+          onVerify={(value, token) => verifyEmailOtp(value, token, 'signup')}
+          onResend={resendSignupEmail}
+          onBack={() => goBackOr('/(auth)/login')}
+        />
+      </Screen>
+    );
+  }
+
   return (
     <AuthShell mode="join" onBeforeChange={stashCode}>
-        <View style={{ gap: theme.space.sm, marginBottom: theme.space.xxl }}>
-          <Text
-            accessibilityRole="header"
-            style={{
-              fontFamily: theme.fonts.display,
-              fontSize: theme.typography.display.fontSize,
-              lineHeight: theme.typography.display.lineHeight,
-              color: theme.colors.ink,
-              textAlign: 'center',
-            }}
-            allowFontScaling
-          >
-            {onboard.joinTitle}
-          </Text>
-          <Text
-            style={{
-              fontFamily: theme.fonts.body,
-              fontSize: theme.typography.body.fontSize,
-              lineHeight: theme.typography.body.lineHeight,
-              color: theme.colors.inkMuted,
-              textAlign: 'center',
-            }}
-            allowFontScaling
-          >
-            {onboard.joinSubtitle}
-          </Text>
-        </View>
-        <PaperCard
+      <View style={{ gap: theme.space.sm, marginBottom: theme.space.xl }}>
+        <Text
+          accessibilityRole="header"
           style={{
-            borderRadius: theme.radii.xxl,
-            padding: theme.space.xl,
-            gap: theme.space.lg,
+            fontFamily: theme.fonts.display,
+            fontSize: theme.typography.display.fontSize,
+            lineHeight: theme.typography.display.lineHeight,
+            color: theme.colors.ink,
+            textAlign: 'center',
           }}
+          allowFontScaling
         >
-          {codeField}
-          <Button
-            label={invite.scanQr}
-            variant="secondary"
-            onPress={() => void openScanner()}
+          {accountMode === 'signup' ? onboard.accountTitle : onboard.signInToJoin}
+        </Text>
+        <Text
+          style={{
+            fontFamily: theme.fonts.body,
+            fontSize: theme.typography.body.fontSize,
+            lineHeight: theme.typography.body.lineHeight,
+            color: theme.colors.inkMuted,
+            textAlign: 'center',
+          }}
+          allowFontScaling
+        >
+          {accountMode === 'signup'
+            ? onboard.accountSubtitle
+            : existingAccount
+              ? copy.alreadyRegisteredJoin
+              : onboard.signInToJoinSubtitle}
+        </Text>
+      </View>
+      <PaperCard
+        style={{
+          borderRadius: theme.radii.xxl,
+          padding: theme.space.xl,
+          gap: theme.space.lg,
+          marginBottom: theme.space.lg,
+        }}
+      >
+        {codeField}
+        <Button
+          label={invite.scanQr}
+          variant="secondary"
+          onPress={() => void openScanner()}
+        />
+        {accountMode === 'signup' ? (
+          <TextField
+            label={t().common.displayName}
+            value={nameValue}
+            onChangeText={setDisplayName}
+            autoComplete="name"
+            textContentType="name"
+            returnKeyType="next"
+            onSubmitEditing={() => emailRef.current?.focus()}
           />
-          <ErrorText message={error} boxed />
-          <Button
-            label={t().common.continue}
-            onPress={() => void continueToAccount()}
+        ) : null}
+        <TextField
+          ref={emailRef}
+          label={t().common.email}
+          placeholder={copy.emailPlaceholder}
+          autoCapitalize="none"
+          autoCorrect={false}
+          autoComplete="email"
+          keyboardType="email-address"
+          textContentType="emailAddress"
+          returnKeyType="next"
+          submitBehavior="submit"
+          onSubmitEditing={() => passwordRef.current?.focus()}
+          value={email}
+          onChangeText={setEmail}
+        />
+        <View style={{ gap: theme.space.md }}>
+          <PasswordField
+            ref={passwordRef}
+            label={t().common.password}
+            autoComplete={accountMode === 'signup' ? 'new-password' : 'password'}
+            textContentType={accountMode === 'signup' ? 'newPassword' : 'password'}
+            returnKeyType="go"
+            onSubmitEditing={() => void submitJoinAccount()}
+            value={password}
+            onChangeText={setPassword}
           />
-        </PaperCard>
-        {scanner}
+          {accountMode === 'signup' ? (
+            <View style={{ paddingLeft: theme.space.xs }}>
+              <RequirementRow label={copy.ruleLength} met={password.length >= 8} />
+            </View>
+          ) : (
+            <Link href="/(auth)/forgot-password" asChild>
+              <Pressable
+                accessibilityRole="link"
+                onPress={() => void stashCode()}
+                style={{
+                  minHeight: 44,
+                  alignSelf: 'flex-start',
+                  justifyContent: 'center',
+                }}
+              >
+                <Text
+                  style={{
+                    fontFamily: theme.fonts.bodySemiBold,
+                    fontSize: theme.typography.bodySmall.fontSize,
+                    lineHeight: theme.typography.bodySmall.lineHeight,
+                    color: theme.colors.primary,
+                  }}
+                  allowFontScaling
+                >
+                  {copy.forgotLink}
+                </Text>
+              </Pressable>
+            </Link>
+          )}
+        </View>
+        <ErrorText message={error} boxed />
+        <Button
+          label={accountMode === 'signup' ? invite.joinAction : onboard.signInToJoin}
+          loading={loading}
+          onPress={() => void submitJoinAccount()}
+        />
+      </PaperCard>
+      <Button
+        label={accountMode === 'signup' ? onboard.signInToJoin : onboard.accountTitle}
+        variant="ghost"
+        onPress={() => {
+          setError(null);
+          setExistingAccount(false);
+          setPassword('');
+          setAccountMode((mode) => (mode === 'signup' ? 'signin' : 'signup'));
+        }}
+      />
+      {scanner}
     </AuthShell>
   );
 }

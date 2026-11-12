@@ -1,0 +1,36 @@
+<!-- Subject: Your KitchDo code is {{ .Token }} -->
+<!DOCTYPE html>
+<html lang="en">
+  <body style="margin:0;padding:0;background-color:#FBF6EE;">
+    <div style="display:none;max-height:0;overflow:hidden;opacity:0;">
+      Your KitchDo code is {{ .Token }}
+    </div>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#FBF6EE;">
+      <tr>
+        <td align="center" style="padding:32px 16px;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:480px;">
+            <tr>
+              <td style="background-color:#FFFDF9;border:1px solid #EADFD2;border-radius:20px;padding:36px 28px 32px;">
+                <p style="margin:0 0 28px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:22px;line-height:26px;font-weight:800;letter-spacing:-0.5px;color:#C4452A;">
+                  KitchDo
+                </p>
+                <h1 style="margin:0 0 12px;font-family:Georgia,'Times New Roman',serif;font-size:28px;line-height:34px;font-weight:400;font-style:italic;color:#2B211C;">
+                  Confirm your new email
+                </h1>
+                <p style="margin:0 0 24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:16px;line-height:24px;color:#7A6A5F;">
+                  Enter this code in the app to finish changing your email.
+                </p>
+                <p style="margin:0;padding:16px 12px;background-color:#F7EEE3;border-radius:14px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:32px;line-height:40px;font-weight:800;letter-spacing:8px;text-align:center;color:#C4452A;">
+                  {{ .Token }}
+                </p>
+                <p style="margin:28px 0 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;line-height:18px;color:#7D6C61;">
+                  If you didn’t ask to change this, you can ignore this email.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

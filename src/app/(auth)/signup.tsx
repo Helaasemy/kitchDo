@@ -5,7 +5,6 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import {
   Button,
   ErrorText,
-  IconTile,
   PaperCard,
   PasswordField,
   RequirementRow,
@@ -13,7 +12,7 @@ import {
   TextField,
 } from '@/components/ui';
 import { useTheme } from '@/design';
-import { AuthShell, useAuth } from '@/features/auth';
+import { AuthShell, ConfirmEmail, useAuth } from '@/features/auth';
 import type { TaskFrequency } from '@/features/recurring/period';
 import { goBackOr } from '@/lib/navigation';
 import { useT } from '@/i18n';
@@ -27,7 +26,7 @@ type Benefit = {
 export default function SignupScreen() {
   const t = useT();
   const theme = useTheme();
-  const { signUp } = useAuth();
+  const { signUp, resendSignupEmail, verifyEmailOtp } = useAuth();
   const copy = t().auth;
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -82,44 +81,13 @@ export default function SignupScreen() {
   if (checkEmail) {
     return (
       <Screen scroll>
-        <View style={{ gap: theme.space.xl, paddingTop: theme.space.xxl }}>
-            <IconTile
-              name="mail-open-outline"
-              size={56}
-              round
-              background={theme.colors.frequency.monthly.tint}
-              color={theme.colors.frequency.monthly.text}
-            />
-            <View style={{ gap: theme.space.sm }}>
-              <Text
-                accessibilityRole="header"
-                style={{
-                  fontFamily: theme.fonts.display,
-                  fontSize: theme.typography.display.fontSize,
-                  lineHeight: theme.typography.display.lineHeight,
-                  color: theme.colors.ink,
-                }}
-                allowFontScaling
-              >
-                {copy.signupCheckTitle}
-              </Text>
-              <Text
-                style={{
-                  fontFamily: theme.fonts.body,
-                  fontSize: theme.typography.body.fontSize,
-                  color: theme.colors.inkMuted,
-                }}
-                allowFontScaling
-              >
-                {copy.signupCheckBody.replace('{email}', email.trim())}
-              </Text>
-            </View>
-            <Button
-              label={copy.backToLogin}
-              variant="secondary"
-              onPress={goBack}
-            />
-          </View>
+        <ConfirmEmail
+          email={email}
+          body={copy.signupCheckBody}
+          onVerify={(value, token) => verifyEmailOtp(value, token, 'signup')}
+          onResend={resendSignupEmail}
+          onBack={goBack}
+        />
       </Screen>
     );
   }

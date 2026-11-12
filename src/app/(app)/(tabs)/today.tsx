@@ -8,6 +8,7 @@ import {
   View,
 } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import * as Haptics from 'expo-haptics';
 import { router, useFocusEffect } from 'expo-router';
 import Swipeable, {
   type SwipeableMethods,
@@ -176,9 +177,13 @@ function RunCard({
 function SummaryTiles({
   theme,
   tasks,
+  selected,
+  onSelect,
 }: {
   theme: AppTheme;
   tasks: RecurringTaskState[];
+  selected: TaskFrequency | null;
+  onSelect: (frequency: TaskFrequency | null) => void;
 }) {
   const t = useT();
   const copy = t().today;
@@ -195,21 +200,35 @@ function SummaryTiles({
         const ofFrequency = tasks.filter((task) => task.frequency === frequency);
         const done = countDone(ofFrequency);
         const value = ofFrequency.length ? `${done}/${ofFrequency.length}` : '–';
+        const isSelected = selected === frequency;
+        const dimmed = selected != null && !isSelected;
         return (
-          <View
+          <Pressable
             key={frequency}
-            accessible
+            accessibilityRole="button"
+            accessibilityState={{ selected: isSelected }}
             accessibilityLabel={copy.summaryA11y
               .replace('{period}', labels[frequency])
               .replace('{done}', String(done))
               .replace('{total}', String(ofFrequency.length))}
-            style={{
+            accessibilityHint={
+              isSelected
+                ? copy.filterClearA11y
+                : copy.filterShowA11y.replace('{period}', labels[frequency])
+            }
+            onPress={() => {
+              void Haptics.selectionAsync();
+              onSelect(isSelected ? null : frequency);
+            }}
+            style={({ pressed }) => ({
               flex: 1,
+              minHeight: 64,
               gap: theme.space.xs,
               padding: theme.space.lg,
               borderRadius: 24,
-              backgroundColor: accent.tint,
-            }}
+              backgroundColor: isSelected ? theme.colors.ink : accent.tint,
+              opacity: pressed ? 0.85 : dimmed ? 0.45 : 1,
+            })}
           >
             <Text
               style={{
@@ -217,8 +236,11 @@ function SummaryTiles({
                 fontSize: theme.typography.chip.fontSize,
                 lineHeight: theme.typography.chip.lineHeight,
                 textTransform: 'uppercase',
-                color: accent.text,
+                color: isSelected ? theme.colors.canvas : accent.text,
               }}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.75}
               allowFontScaling
             >
               {labels[frequency]}
@@ -228,13 +250,13 @@ function SummaryTiles({
                 fontFamily: theme.fonts.bodyExtraBold,
                 fontSize: 20,
                 lineHeight: 26,
-                color: theme.colors.ink,
+                color: isSelected ? theme.colors.canvas : theme.colors.ink,
               }}
               allowFontScaling
             >
               {value}
             </Text>
-          </View>
+          </Pressable>
         );
       })}
     </View>
@@ -264,7 +286,7 @@ function dateLine(tasks: RecurringTaskState[]): string {
 export default function TodayScreen() {
   const t = useT();
   const theme = useTheme();
-  const { kitchenMode, onboarding, user, kitchenId } = useAuth();
+  const { kitchenMode, onboarding, user, kitchenId, canEditTemplates } = useAuth();
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const userId = user?.id;
   const { refresh } = useSync();
@@ -273,7 +295,7 @@ export default function TodayScreen() {
   const title = tone(kitchenMode, copy.titleHome, copy.titleBusiness);
 
   const [due, setDue] = useState<RunSummary[]>([]);
-  const [earlier, setEarlier] = useState<RunSummary[]>([]);
+  const [frequencyFilter, setFrequencyFilter] = useState<TaskFrequency | null>(null);
   const [loading, setLoading] = useState(true);
   const hasLoaded = useRef(false);
   const recurring = useRecurringTasks(userId, kitchenId);
@@ -282,7 +304,6 @@ export default function TodayScreen() {
   const load = useCallback(async () => {
     if (!userId || !kitchenId) {
       setDue([]);
-      setEarlier([]);
       setLoading(false);
       return;
     }
@@ -294,7 +315,6 @@ export default function TodayScreen() {
       await refresh();
       const result = await listTodayRuns(userId, kitchenId);
       setDue(result.due);
-      setEarlier(result.earlierUnfinished);
       hasLoaded.current = true;
     } finally {
       setLoading(false);
@@ -313,8 +333,7 @@ export default function TodayScreen() {
     weekly: recurringCopy.periodWeek,
     monthly: recurringCopy.periodMonth,
   };
-  const empty =
-    !loading && recurring.tasks.length === 0 && due.length === 0 && earlier.length === 0;
+  const empty = !loading && recurring.tasks.length === 0 && due.length === 0;
 
   const onRequestDelete = (run: RunSummary) => {
     Alert.alert(copy.deleteRunTitle, copy.deleteRunBody, [
@@ -395,7 +414,12 @@ export default function TodayScreen() {
             }}
           >
             {recurring.tasks.length > 0 ? (
-              <SummaryTiles theme={theme} tasks={recurring.tasks} />
+              <SummaryTiles
+                theme={theme}
+                tasks={recurring.tasks}
+                selected={frequencyFilter}
+                onSelect={setFrequencyFilter}
+              />
             ) : null}
 
             {due.length > 0 ? (
@@ -418,7 +442,7 @@ export default function TodayScreen() {
               </View>
             ) : null}
 
-            {TASK_FREQUENCIES.map((frequency) => {
+            {(frequencyFilter ? [frequencyFilter] : TASK_FREQUENCIES).map((frequency) => {
               const accent = theme.colors.frequency[frequency];
               return groups[frequency].length > 0 ? (
                 <View key={frequency} style={{ gap: theme.space.lg }}>
@@ -438,8 +462,17 @@ export default function TodayScreen() {
                       frequency={frequency}
                       tasks={group.tasks}
                       doneCount={group.doneCount}
-                      onOpenTemplate={() =>
-                        router.push(`/(app)/(tabs)/templates/${group.templateId}/hub`)
+                      onEditTemplate={
+                        canEditTemplates
+                          ? () =>
+                              router.push(
+                                {
+                                  pathname: '/(app)/(tabs)/templates/[id]',
+                                  params: { id: group.templateId },
+                                },
+                                { withAnchor: true },
+                              )
+                          : undefined
                       }
                       onToggle={(task) => void recurring.toggle(task)}
                     />
@@ -447,26 +480,6 @@ export default function TodayScreen() {
                 </View>
               ) : null;
             })}
-
-            {earlier.length > 0 ? (
-              <View style={{ gap: theme.space.lg }}>
-                <SectionChip
-                  label={copy.earlierUnfinished}
-                  chipTone={{ background: theme.colors.sand, text: theme.colors.ink }}
-                />
-                <View style={{ gap: theme.space.md }}>
-                  {earlier.map((run) => (
-                    <RunCard
-                      key={run.id}
-                      run={run}
-                      theme={theme}
-                      onRequestDelete={onRequestDelete}
-                      subtitle={runSubtitle(run, run.localDate)}
-                    />
-                  ))}
-                </View>
-              </View>
-            ) : null}
           </ScrollView>
         )}
       </View>

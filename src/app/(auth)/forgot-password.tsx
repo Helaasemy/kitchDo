@@ -2,19 +2,34 @@ import { useState } from 'react';
 import { router } from 'expo-router';
 import { Pressable, Text, View } from 'react-native';
 
-import { Button, IconButton, IconTile, PaperCard, Screen, TextField } from '@/components/ui';
+import {
+  Button,
+  ErrorText,
+  IconButton,
+  IconTile,
+  PaperCard,
+  PasswordField,
+  RequirementRow,
+  Screen,
+  TextField,
+} from '@/components/ui';
 import { useTheme } from '@/design';
-import { useAuth } from '@/features/auth';
+import { AUTH_OTP_LENGTH, normalizeAuthOtp, useAuth } from '@/features/auth';
 import { useT } from '@/i18n';
 
 export default function ForgotPasswordScreen() {
   const t = useT();
   const theme = useTheme();
-  const { requestPasswordReset } = useAuth();
+  const { requestPasswordReset, verifyEmailOtp, updatePassword, recoveryPending } =
+    useAuth();
   const copy = t().auth;
   const [email, setEmail] = useState('');
+  const [code, setCode] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
+  const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
 
@@ -23,7 +38,7 @@ export default function ForgotPasswordScreen() {
     else router.replace('/(auth)/login');
   };
 
-  const onSubmit = async () => {
+  const onSubmitEmail = async () => {
     setError(null);
     if (!email.trim()) {
       setError(copy.emailRequired);
@@ -48,22 +63,42 @@ export default function ForgotPasswordScreen() {
     if (result.error) setError(result.error);
   };
 
-  const [bodyBefore, bodyAfter = ''] = copy.forgotSentBody.split('{email}');
+  const onSubmitCode = async () => {
+    const token = normalizeAuthOtp(code);
+    if (!token) {
+      setError(copy.signupCodeInvalid);
+      return;
+    }
+    setError(null);
+    setLoading(true);
+    const result = await verifyEmailOtp(email, token, 'recovery');
+    setLoading(false);
+    if (result.error) setError(result.error);
+  };
 
-  const errorText = error ? (
-    <Text
-      style={{
-        fontFamily: theme.fonts.body,
-        fontSize: theme.typography.caption.fontSize,
-        lineHeight: theme.typography.caption.lineHeight,
-        color: theme.colors.coral,
-      }}
-      accessibilityLiveRegion="polite"
-      allowFontScaling
-    >
-      {error}
-    </Text>
-  ) : null;
+  const onSubmitPassword = async () => {
+    setError(null);
+    if (password.length < 8) {
+      setError(copy.passwordTooShort);
+      return;
+    }
+    if (password !== confirm) {
+      setError(copy.passwordsDontMatch);
+      return;
+    }
+    setLoading(true);
+    const result = await updatePassword(password);
+    setLoading(false);
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+    setDone(true);
+  };
+
+  const [bodyBefore, bodyAfter = ''] = copy.forgotSentBody.split('{email}');
+  const choosingPassword = sent && recoveryPending && !done;
+  const enteringCode = sent && !recoveryPending && !done;
 
   return (
     <Screen scroll>
@@ -74,7 +109,7 @@ export default function ForgotPasswordScreen() {
 
         {sent ? (
           <IconTile
-            name="mail-open-outline"
+            name={choosingPassword || done ? 'key-outline' : 'mail-open-outline'}
             round
             size={56}
             background={theme.colors.frequency.monthly.tint}
@@ -95,7 +130,13 @@ export default function ForgotPasswordScreen() {
             accessibilityRole="header"
             allowFontScaling
           >
-            {sent ? copy.forgotSentTitle : copy.forgotTitle}
+            {done
+              ? copy.resetSuccess
+              : choosingPassword
+                ? copy.resetTitle
+                : sent
+                  ? copy.forgotSentTitle
+                  : copy.forgotTitle}
           </Text>
           <Text
             style={{
@@ -106,7 +147,7 @@ export default function ForgotPasswordScreen() {
             }}
             allowFontScaling
           >
-            {sent ? (
+            {enteringCode ? (
               <>
                 {bodyBefore}
                 <Text style={{ fontFamily: theme.fonts.bodySemiBold, color: theme.colors.ink }}>
@@ -114,18 +155,82 @@ export default function ForgotPasswordScreen() {
                 </Text>
                 {bodyAfter}
               </>
+            ) : choosingPassword ? (
+              copy.resetSubtitle
+            ) : done ? (
+              copy.resetGoToday
             ) : (
               copy.forgotSubtitle
             )}
           </Text>
         </View>
 
-        {sent ? (
+        {done ? (
+          <Button label={copy.resetGoToday} onPress={() => router.replace('/')} />
+        ) : choosingPassword ? (
           <View style={{ gap: theme.space.lg }}>
+            <PaperCard
+              style={{
+                borderRadius: theme.radii.xxl,
+                padding: theme.space.xl,
+                gap: theme.space.xl,
+              }}
+            >
+              <PasswordField
+                label={copy.newPassword}
+                autoComplete="new-password"
+                textContentType="newPassword"
+                value={password}
+                onChangeText={setPassword}
+              />
+              <PasswordField
+                label={copy.confirmPassword}
+                autoComplete="new-password"
+                textContentType="newPassword"
+                returnKeyType="done"
+                onSubmitEditing={() => void onSubmitPassword()}
+                value={confirm}
+                onChangeText={setConfirm}
+              />
+              <View style={{ gap: theme.space.sm }}>
+                <RequirementRow label={copy.ruleLength} met={password.length >= 8} />
+                <RequirementRow
+                  label={copy.ruleMatch}
+                  met={confirm.length > 0 && confirm === password}
+                />
+              </View>
+            </PaperCard>
+            <ErrorText message={error} boxed />
             <Button
-              label={copy.backToLogin}
-              variant="secondary"
-              onPress={() => router.replace('/(auth)/login')}
+              label={copy.resetAction}
+              onPress={() => void onSubmitPassword()}
+              loading={loading}
+            />
+          </View>
+        ) : enteringCode ? (
+          <View style={{ gap: theme.space.lg }}>
+            <PaperCard style={{ padding: theme.space.lg + theme.space.xs }}>
+              <TextField
+                label={copy.signupCodeLabel}
+                value={code}
+                onChangeText={(value) =>
+                  setCode(value.replace(/[^\d]/g, '').slice(0, AUTH_OTP_LENGTH))
+                }
+                keyboardType="number-pad"
+                inputMode="numeric"
+                textContentType="oneTimeCode"
+                autoComplete="one-time-code"
+                autoFocus
+                maxLength={AUTH_OTP_LENGTH}
+                returnKeyType="done"
+                onSubmitEditing={() => void onSubmitCode()}
+              />
+            </PaperCard>
+            <ErrorText message={error} boxed />
+            <Button
+              label={copy.signupCodeAction}
+              onPress={() => void onSubmitCode()}
+              loading={loading}
             />
             <View
               style={{
@@ -150,7 +255,7 @@ export default function ForgotPasswordScreen() {
                 accessibilityRole="button"
                 accessibilityState={{ disabled: resending, busy: resending }}
                 disabled={resending}
-                onPress={onResend}
+                onPress={() => void onResend()}
                 hitSlop={4}
                 style={({ pressed }) => ({
                   minHeight: 44,
@@ -172,7 +277,6 @@ export default function ForgotPasswordScreen() {
                 </Text>
               </Pressable>
             </View>
-            {errorText}
           </View>
         ) : (
           <View style={{ gap: theme.space.lg }}>
@@ -186,13 +290,17 @@ export default function ForgotPasswordScreen() {
                 keyboardType="email-address"
                 textContentType="emailAddress"
                 returnKeyType="send"
-                onSubmitEditing={onSubmit}
+                onSubmitEditing={() => void onSubmitEmail()}
                 value={email}
                 onChangeText={setEmail}
               />
             </PaperCard>
-            {errorText}
-            <Button label={copy.forgotAction} onPress={onSubmit} loading={loading} />
+            <ErrorText message={error} boxed />
+            <Button
+              label={copy.forgotAction}
+              onPress={() => void onSubmitEmail()}
+              loading={loading}
+            />
           </View>
         )}
       </View>

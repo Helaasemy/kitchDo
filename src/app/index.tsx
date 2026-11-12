@@ -8,11 +8,12 @@ import { useT } from '@/i18n';
 
 export default function Index() {
   const t = useT();
-  const { status, recoveryPending, refreshOnboarding, pendingJoinCode } = useAuth();
+  const { status, recoveryPending, refreshOnboarding, pendingJoinCode, completingJoin } =
+    useAuth();
   const theme = useTheme();
   const copy = t().auth;
 
-  if (status === 'loading') {
+  if (status === 'loading' || completingJoin) {
     return (
       <View
         style={{

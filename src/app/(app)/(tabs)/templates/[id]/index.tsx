@@ -52,7 +52,7 @@ import {
   type TaskFrequency,
 } from '@/features/recurring';
 import { newId } from '@/lib/ids';
-import { goBackOr } from '@/lib/navigation';
+import { goBackOr, routeParam } from '@/lib/navigation';
 import { useT } from '@/i18n';
 
 type DraftItem = {
@@ -76,8 +76,8 @@ type AfterAction = 'saved' | 'published' | null;
 export default function TemplateBuilderScreen() {
   const t = useT();
   const theme = useTheme();
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const templateId = String(id);
+  const { id } = useLocalSearchParams<{ id: string | string[] }>();
+  const templateId = routeParam(id);
   const { kitchenId, user, canEditTemplates } = useAuth();
   const { paywall, openLists } = usePlanPaywall();
   const userId = user?.id;
@@ -118,7 +118,7 @@ export default function TemplateBuilderScreen() {
   }
 
   useEffect(() => {
-    if (!kitchenId) return;
+    if (!kitchenId || !templateId) return;
     let cancelled = false;
     Promise.all([
       listCategories(kitchenId),
@@ -199,7 +199,7 @@ export default function TemplateBuilderScreen() {
   };
 
   const persistDraft = async (): Promise<number> => {
-    if (!kitchenId) throw new Error(copy.needKitchen);
+    if (!kitchenId || !templateId) throw new Error(copy.needKitchen);
     if (!title.trim()) throw new Error(copy.needTitle);
     const payload = buildPayload();
     const result = await saveTemplateDraft({
@@ -250,7 +250,7 @@ export default function TemplateBuilderScreen() {
   };
 
   const resolveAfterOpenRun = async () => {
-    if (!user?.id || !kitchenId) {
+    if (!user?.id || !kitchenId || !templateId) {
       setAfterOpenRunId(null);
       return;
     }
@@ -269,6 +269,7 @@ export default function TemplateBuilderScreen() {
   };
 
   const commitPublish = async () => {
+    if (!templateId) throw new Error(copy.needKitchen);
     const payload = buildPayload();
     if (payload.items.length === 0) {
       throw new Error(copy.needItems);
@@ -334,6 +335,7 @@ export default function TemplateBuilderScreen() {
   };
 
   const onDuplicate = async () => {
+    if (!templateId) return;
     setSaving(true);
     try {
       if (!exists) await persistDraft();
@@ -367,6 +369,7 @@ export default function TemplateBuilderScreen() {
         text: copy.archive,
         style: 'destructive',
         onPress: async () => {
+          if (!templateId) return;
           setSaving(true);
           try {
             await archiveTemplate({
@@ -389,7 +392,7 @@ export default function TemplateBuilderScreen() {
   };
 
   const onUseNow = async () => {
-    if (!kitchenId || !user?.id) {
+    if (!kitchenId || !user?.id || !templateId) {
       setError(copy.needKitchen);
       return;
     }
@@ -660,7 +663,7 @@ export default function TemplateBuilderScreen() {
     );
   }
 
-  if (loading) {
+  if (!templateId || loading) {
     return (
       <Screen>
         <ActivityIndicator

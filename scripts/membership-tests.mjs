@@ -182,4 +182,30 @@ await test('join payload from a scanned kitchdo URL is redeemable', () => {
   assert.equal(parseJoinPayload(`KITCHDO://JOIN/${generated.toLowerCase()}`), generated);
 });
 
+const {
+  AUTH_OTP_LENGTH,
+  isExistingAccountAuthError,
+  isInvalidCredentialsError,
+  normalizeAuthOtp,
+} = await load('src/features/auth/authErrors.ts');
+
+await test('treats signup enumeration errors as an existing account', () => {
+  assert.equal(isExistingAccountAuthError('Invalid login credentials'), true);
+  assert.equal(isExistingAccountAuthError('User already registered'), true);
+  assert.equal(isExistingAccountAuthError('Email rate limit exceeded'), false);
+});
+
+await test('detects wrong-password sign-in errors', () => {
+  assert.equal(isInvalidCredentialsError('Invalid login credentials'), true);
+  assert.equal(isInvalidCredentialsError('Email not confirmed'), false);
+});
+
+await test('email codes are exactly 6 digits', () => {
+  assert.equal(AUTH_OTP_LENGTH, 6);
+  assert.equal(normalizeAuthOtp('847291'), '847291');
+  assert.equal(normalizeAuthOtp('84 72 91'), '847291');
+  assert.equal(normalizeAuthOtp('84729'), null);
+  assert.equal(normalizeAuthOtp('8472911'), null);
+});
+
 console.log(`\n${passed} membership tests passed`);

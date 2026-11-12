@@ -1,5 +1,7 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
+import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import * as Haptics from 'expo-haptics';
 
 import { useTheme } from '@/design';
 import { useT } from '@/i18n';
@@ -14,14 +16,14 @@ export function RecurringGroupCard({
   frequency,
   tasks,
   doneCount,
-  onOpenTemplate,
+  onEditTemplate,
   onToggle,
 }: {
   title: string;
   frequency: TaskFrequency;
   tasks: RecurringTaskState[];
   doneCount: number;
-  onOpenTemplate?: () => void;
+  onEditTemplate?: () => void;
   onToggle: (task: RecurringTaskState) => void;
 }) {
   const t = useT();
@@ -29,6 +31,14 @@ export function RecurringGroupCard({
   const copy = t().recurring;
   const accent = theme.colors.frequency[frequency];
   const allDone = tasks.length > 0 && doneCount === tasks.length;
+  const [expanded, setExpanded] = useState(true);
+
+  const hint = [
+    expanded ? copy.collapseA11y : copy.expandA11y,
+    onEditTemplate ? copy.editHoldA11y : null,
+  ]
+    .filter(Boolean)
+    .join('. ');
 
   return (
     <View
@@ -42,15 +52,27 @@ export function RecurringGroupCard({
       }}
     >
       <Pressable
-        accessibilityRole={onOpenTemplate ? 'button' : undefined}
-        disabled={!onOpenTemplate}
-        onPress={onOpenTemplate}
+        accessibilityRole="button"
+        accessibilityLabel={title}
+        accessibilityState={{ expanded }}
+        accessibilityHint={hint}
+        onPress={() => setExpanded((open) => !open)}
+        onLongPress={
+          onEditTemplate
+            ? () => {
+                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                requestAnimationFrame(() => onEditTemplate());
+              }
+            : undefined
+        }
+        delayLongPress={550}
         style={({ pressed }) => ({
           flexDirection: 'row',
           alignItems: 'center',
           gap: theme.space.sm,
           padding: theme.space.xl - 4,
-          borderBottomWidth: 0.5,
+          minHeight: 48,
+          borderBottomWidth: expanded ? 0.5 : 0,
           borderBottomColor: theme.colors.border,
           backgroundColor: pressed ? theme.colors.sand : 'transparent',
         })}
@@ -83,22 +105,27 @@ export function RecurringGroupCard({
         </Text>
         {allDone ? (
           <Ionicons name="checkmark-circle" size={18} color={accent.text} />
-        ) : onOpenTemplate ? (
-          <Ionicons name="chevron-forward" size={14} color={theme.colors.inkSubtle} />
         ) : null}
-      </Pressable>
-      {tasks.map((task, index) => (
-        <RecurringTaskRow
-          key={task.itemId}
-          title={task.title}
-          caption={task.sectionTitle}
-          done={task.done}
-          accent={accent}
-          grouped
-          divider={index < tasks.length - 1}
-          onToggle={() => onToggle(task)}
+        <Ionicons
+          name={expanded ? 'chevron-down' : 'chevron-forward'}
+          size={14}
+          color={theme.colors.inkSubtle}
         />
-      ))}
+      </Pressable>
+      {expanded
+        ? tasks.map((task, index) => (
+            <RecurringTaskRow
+              key={task.itemId}
+              title={task.title}
+              caption={task.sectionTitle}
+              done={task.done}
+              accent={accent}
+              grouped
+              divider={index < tasks.length - 1}
+              onToggle={() => onToggle(task)}
+            />
+          ))
+        : null}
     </View>
   );
 }

@@ -1,5 +1,14 @@
 import { router, type Href } from 'expo-router';
 
+/** First string from Expo Router search params (can be a string, array, or missing). */
+export function routeParam(
+  value: string | string[] | undefined,
+): string | undefined {
+  const raw = Array.isArray(value) ? value[0] : value;
+  if (!raw || raw === 'undefined') return undefined;
+  return raw;
+}
+
 /** Go back when history exists; otherwise replace to a safe screen. */
 export function goBackOr(fallback: Href = '/(app)/(tabs)/today') {
   if (router.canGoBack()) {

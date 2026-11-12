@@ -33,6 +33,7 @@ import {
   isOnboardingComplete,
   joinKitchen as joinKitchenRpc,
   listMemberships,
+  loadPendingJoin,
   loadPendingJoinCode,
   stashPendingJoinCode,
   type KitchenMembership,
@@ -43,6 +44,11 @@ import {
   saveOnboardingState,
   type OnboardingDraft,
 } from './onboardingStore';
+import {
+  isExistingAccountAuthError,
+  isInvalidCredentialsError,
+  normalizeAuthOtp,
+} from './authErrors';
 import { applyAuthUrl, isAuthCallbackUrl } from './sessionFromUrl';
 
 export type AuthStatus =
@@ -75,8 +81,16 @@ type AuthContextValue = {
   recoveryPending: boolean;
   authLinkError: string | null;
   pendingJoinCode: string | null;
+  rememberPendingJoin: (code: string, displayName?: string) => Promise<void>;
+  completingJoin: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signUp: (email: string, password: string) => Promise<SignUpResult>;
+  resendSignupEmail: (email: string) => Promise<{ error: string | null }>;
+  verifyEmailOtp: (
+    email: string,
+    token: string,
+    type: 'signup' | 'recovery',
+  ) => Promise<{ error: string | null }>;
   signOut: (opts?: {
     discardPending?: boolean;
   }) => Promise<{ error: string | null; pendingCount?: number }>;
@@ -217,6 +231,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [authLinkError, setAuthLinkError] = useState<string | null>(null);
   const [kitchens, setKitchens] = useState<KitchenMembership[]>([]);
   const [pendingJoinCode, setPendingJoinCode] = useState<string | null>(null);
+  const [completingJoin, setCompletingJoin] = useState(false);
   const seq = useRef(0);
   const currentUserId = useRef<string | null>(null);
   const lastAuthUrl = useRef<string | null>(null);
@@ -354,8 +369,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       lastAuthUrl.current = url;
       const result = await applyAuthUrl(url);
       if (!active) return;
-      if (result.error) setAuthLinkError(result.error);
-      if (result.type === 'recovery') setRecoveryPending(true);
+      if (result.error) {
+        setAuthLinkError(result.error);
+        return;
+      }
+      if (result.type === 'recovery') {
+        setRecoveryPending(true);
+        return;
+      }
+      const pending = await loadPendingJoinCode();
+      if (pending) setCompletingJoin(true);
     };
     void Linking.getInitialURL().then((url) => {
       if (url) void consume(url);
@@ -381,17 +404,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             ? 'authenticated'
             : 'needs_onboarding';
 
+  const continuePendingJoin = useCallback(async () => {
+    const pending = await loadPendingJoinCode();
+    if (pending) setCompletingJoin(true);
+  }, []);
+
   const signIn = useCallback(async (email: string, password: string) => {
     try {
       const { error } = await getSupabase().auth.signInWithPassword({
         email: email.trim(),
         password,
       });
-      return { error: error?.message ?? null };
+      if (error) {
+        if (isInvalidCredentialsError(error.message)) {
+          return { error: t().auth.invalidCredentials };
+        }
+        return { error: error.message };
+      }
+      await continuePendingJoin();
+      return { error: null };
     } catch (e) {
       return { error: errorMessage(e) };
     }
-  }, []);
+  }, [continuePendingJoin]);
 
   const signUp = useCallback(async (email: string, password: string): Promise<SignUpResult> => {
     try {
@@ -400,7 +435,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         password,
         options: { emailRedirectTo: AUTH_CALLBACK_URL },
       });
-      if (error) return { error: error.message };
+      if (error) {
+        if (isExistingAccountAuthError(error.message)) {
+          return {
+            error: t().auth.alreadyRegistered,
+            alreadyRegistered: true,
+          };
+        }
+        return { error: error.message };
+      }
       const alreadyRegistered = (data.user?.identities?.length ?? 0) === 0;
       return {
         error: alreadyRegistered ? t().auth.alreadyRegistered : null,
@@ -411,6 +454,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { error: errorMessage(e) };
     }
   }, []);
+
+  const resendSignupEmail = useCallback(async (email: string) => {
+    try {
+      const { error } = await getSupabase().auth.resend({
+        type: 'signup',
+        email: email.trim(),
+        options: { emailRedirectTo: AUTH_CALLBACK_URL },
+      });
+      return { error: error?.message ?? null };
+    } catch (e) {
+      return { error: errorMessage(e) };
+    }
+  }, []);
+
+  const verifyEmailOtp = useCallback(
+    async (email: string, token: string, type: 'signup' | 'recovery') => {
+      const cleaned = normalizeAuthOtp(token);
+      if (!cleaned) {
+        return { error: t().auth.signupCodeInvalid };
+      }
+      try {
+        const { error } = await getSupabase().auth.verifyOtp({
+          email: email.trim(),
+          token: cleaned,
+          type,
+        });
+        if (error) {
+          const lower = error.message.toLowerCase();
+          if (lower.includes('expired') || lower.includes('invalid')) {
+            return { error: t().auth.codeExpired };
+          }
+          return { error: error.message };
+        }
+        if (type === 'recovery') setRecoveryPending(true);
+        if (type === 'signup') await continuePendingJoin();
+        return { error: null };
+      } catch (e) {
+        return { error: errorMessage(e) };
+      }
+    },
+    [continuePendingJoin],
+  );
 
   const signOut = useCallback(
     async (opts?: { discardPending?: boolean }) => {
@@ -471,17 +556,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const updatePassword = useCallback(async (password: string) => {
     try {
       const { error } = await getSupabase().auth.updateUser({ password });
-      if (!error) setRecoveryPending(false);
+      if (!error) {
+        setRecoveryPending(false);
+        await continuePendingJoin();
+      }
       return { error: error?.message ?? null };
     } catch (e) {
       return { error: errorMessage(e) };
     }
-  }, []);
+  }, [continuePendingJoin]);
 
   useEffect(() => {
     void loadPendingJoinCode().then((code) => {
       if (code) setPendingJoinCode(code);
     });
+  }, []);
+
+  const rememberPendingJoin = useCallback(async (code: string, displayName?: string) => {
+    const stored = await stashPendingJoinCode(code, displayName);
+    if (stored) setPendingJoinCode(stored);
   }, []);
 
   const switchKitchen = useCallback(
@@ -532,6 +625,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     [session?.user?.id, onboarding, switchKitchen, refreshOnboarding],
   );
+
+  const joiningAfterAuth = useRef(false);
+  useEffect(() => {
+    if (!completingJoin || joiningAfterAuth.current) return;
+    if (status !== 'needs_onboarding' && status !== 'authenticated') return;
+    joiningAfterAuth.current = true;
+    void (async () => {
+      const pending = await loadPendingJoin();
+      if (!pending?.code) {
+        joiningAfterAuth.current = false;
+        setCompletingJoin(false);
+        return;
+      }
+      const result = await joinKitchenWithCode(pending.code, pending.displayName);
+      joiningAfterAuth.current = false;
+      setCompletingJoin(false);
+      if (result.error) {
+        router.replace('/join');
+        return;
+      }
+      router.replace('/(app)/(tabs)/today');
+    })();
+  }, [completingJoin, status, joinKitchenWithCode]);
 
   const createAnotherKitchen = useCallback(
     async (input: { mode: KitchenMode; name: string }) => {
@@ -599,8 +715,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       recoveryPending,
       authLinkError,
       pendingJoinCode,
+      rememberPendingJoin,
+      completingJoin,
       signIn,
       signUp,
+      resendSignupEmail,
+      verifyEmailOtp,
       signOut,
       requestPasswordReset,
       updatePassword,
@@ -621,8 +741,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       recoveryPending,
       authLinkError,
       pendingJoinCode,
+      rememberPendingJoin,
+      completingJoin,
       signIn,
       signUp,
+      resendSignupEmail,
+      verifyEmailOtp,
       signOut,
       requestPasswordReset,
       updatePassword,

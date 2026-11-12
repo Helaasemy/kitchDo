@@ -3,6 +3,10 @@ import { Stack } from 'expo-router';
 
 import { useTheme } from '@/design';
 
+export const unstable_settings = {
+  anchor: 'index',
+};
+
 export default function TemplatesStackLayout() {
   const theme = useTheme();
 

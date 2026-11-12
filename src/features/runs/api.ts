@@ -104,6 +104,7 @@ async function summariesFromCache(
   });
 }
 
+/** Due checklists for Today. `earlierUnfinished` is kept for future stats, not shown on Today. */
 export async function listTodayRuns(
   userId: string,
   kitchenId: string,

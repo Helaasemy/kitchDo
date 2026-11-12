@@ -19,7 +19,8 @@ import { useT } from '@/i18n';
 export default function AuthCallbackScreen() {
   const t = useT();
   const theme = useTheme();
-  const { updatePassword, status, recoveryPending, authLinkError } = useAuth();
+  const { updatePassword, status, recoveryPending, authLinkError, completingJoin } =
+    useAuth();
   const copy = t().auth;
   const [error, setError] = useState<string | null>(null);
   const [password, setPassword] = useState('');
@@ -49,21 +50,38 @@ export default function AuthCallbackScreen() {
 
   const displayError = error ?? authLinkError;
 
-  if (status === 'loading') {
+  if (status === 'loading' || completingJoin) {
     return (
       <Screen>
         <View
-          style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
+          style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: theme.space.md }}
           accessible
-          accessibilityLabel={t().common.loading}
+          accessibilityLabel={completingJoin ? copy.confirmingEmail : t().common.loading}
         >
           <ActivityIndicator color={theme.colors.primary} />
+          {completingJoin ? (
+            <Text
+              style={{
+                fontFamily: theme.fonts.bodyMedium,
+                fontSize: theme.typography.body.fontSize,
+                color: theme.colors.inkMuted,
+                textAlign: 'center',
+              }}
+              allowFontScaling
+            >
+              {copy.confirmingEmail}
+            </Text>
+          ) : null}
         </View>
       </Screen>
     );
   }
 
-  if (!recoveryPending && status === 'authenticated' && !done) {
+  if (
+    !recoveryPending &&
+    (status === 'authenticated' || status === 'needs_onboarding') &&
+    !done
+  ) {
     return <Redirect href="/" />;
   }
 
