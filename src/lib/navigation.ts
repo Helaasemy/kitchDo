@@ -1,5 +1,13 @@
 import { router, type Href } from 'expo-router';
 
+/** Editor screen (`[id]/index.tsx`). Distinct from the hub at `[id]/hub`. */
+export function templateEditorHref(templateId: string): Href {
+  return {
+    pathname: '/(app)/(tabs)/templates/[id]',
+    params: { id: templateId },
+  };
+}
+
 /** First string from Expo Router search params (can be a string, array, or missing). */
 export function routeParam(
   value: string | string[] | undefined,

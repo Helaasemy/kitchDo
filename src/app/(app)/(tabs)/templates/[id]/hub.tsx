@@ -11,8 +11,17 @@ import {
   SectionLabel,
 } from '@/components/ui';
 import { useTheme } from '@/design';
+import {
+  AssigneeAvatar,
+  AssigneePicker,
+  AssignedToCard,
+  effectiveAssignee,
+  itemAssignmentFromPick,
+  listAssigneeFromPick,
+} from '@/features/assignment';
 import { useAuth } from '@/features/auth';
 import { isLibraryCopy } from '@/features/catalog';
+import { listKitchenMembers, type KitchenMember } from '@/features/membership';
 import {
   countDone,
   FrequencyTabs,
@@ -27,8 +36,13 @@ import {
   findOpenRunForTemplate,
   startManualRunFromTemplate,
 } from '@/features/runs';
-import { getTemplate, type TemplateDetail } from '@/features/templates/api';
+import {
+  getTemplate,
+  saveTemplateAssignments,
+  type TemplateDetail,
+} from '@/features/templates/api';
 import { t, useT } from '@/i18n';
+import { templateEditorHref } from '@/lib/navigation';
 
 type TabKey = 'all' | TaskFrequency;
 
@@ -76,8 +90,11 @@ export default function TemplateHubScreen() {
 
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
+  const [assigning, setAssigning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [detail, setDetail] = useState<TemplateDetail | null>(null);
+  const [members, setMembers] = useState<KitchenMember[]>([]);
+  const [picker, setPicker] = useState<null | 'list' | string>(null);
   const [openRunId, setOpenRunId] = useState<string | null>(null);
   const [tab, setTab] = useState<TabKey>('all');
   const [libraryCopy, setLibraryCopy] = useState(false);
@@ -98,12 +115,14 @@ export default function TemplateHubScreen() {
       }
 
       if (userId && kitchenId) {
-        const [open, fromLibrary] = await Promise.all([
+        const [open, fromLibrary, kitchenMembers] = await Promise.all([
           findOpenRunForTemplate(userId, kitchenId, templateId),
           isLibraryCopy(userId, kitchenId, templateId),
+          listKitchenMembers(kitchenId).catch(() => [] as KitchenMember[]),
         ]);
         setOpenRunId(open?.runId ?? null);
         setLibraryCopy(fromLibrary);
+        setMembers(kitchenMembers);
       } else {
         setOpenRunId(null);
       }
@@ -123,6 +142,41 @@ export default function TemplateHubScreen() {
   const canStart =
     Boolean(detail?.publishedRevision) && detail?.state !== 'archived';
   const hasOpenRun = Boolean(openRunId);
+  const canAssign =
+    canEditTemplates && detail != null && detail.state !== 'archived' && Boolean(kitchenId);
+
+  const persistAssignment = async (
+    listAssigneeUserId: string | null,
+    items: TemplateDetail['items'],
+  ) => {
+    if (!kitchenId || !detail) return;
+    setAssigning(true);
+    setError(null);
+    try {
+      const result = await saveTemplateAssignments({
+        templateId,
+        kitchenId,
+        expectedRevision: detail.revision,
+        assigneeUserId: listAssigneeUserId,
+        items: items.map((item) => ({
+          id: item.id,
+          assignee_mode: item.assignment.mode,
+          assignee_user_id: item.assignment.userId,
+        })),
+      });
+      setDetail({
+        ...detail,
+        revision: result.revision,
+        assigneeUserId: listAssigneeUserId,
+        items,
+      });
+      await reloadRecurring();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t().common.errorGeneric);
+    } finally {
+      setAssigning(false);
+    }
+  };
 
   const onPrimary = async () => {
     if (!kitchenId || !user?.id) {
@@ -269,6 +323,17 @@ export default function TemplateHubScreen() {
           ) : null}
         </View>
 
+        {detail ? (
+          <AssignedToCard
+            label={t().assignment.listLabel}
+            hint={t().assignment.listHint}
+            anyoneLabel={t().assignment.anyone}
+            member={members.find((m) => m.userId === detail.assigneeUserId) ?? null}
+            readOnly={!canAssign || assigning}
+            onPress={() => setPicker('list')}
+          />
+        ) : null}
+
         <View style={{ gap: theme.space.md }}>
           <View style={{ flexDirection: 'row', gap: theme.space.md }}>
             <Button
@@ -284,7 +349,7 @@ export default function TemplateHubScreen() {
                 label={copy.hubEditShort}
                 icon="pencil"
                 variant="secondary"
-                onPress={() => router.push(`/(app)/(tabs)/templates/${templateId}`)}
+                onPress={() => router.push(templateEditorHref(templateId))}
                 style={{ flex: 1 }}
               />
             ) : null}
@@ -321,27 +386,51 @@ export default function TemplateHubScreen() {
                   </View>
                 ) : null}
                 <PaperCard>
-                  {group.rows.map((row, index) => (
-                    <RecurringTaskRow
-                      key={row.key}
-                      title={row.title}
-                      caption={frequencyLabel(row.task)}
-                      done={row.task?.done ?? false}
-                      accent={
-                        row.task ? theme.colors.frequency[row.task.frequency] : undefined
-                      }
-                      grouped
-                      divider={index < group.rows.length - 1}
-                      onToggle={
-                        row.task
-                          ? () => {
-                              const task = row.task;
-                              if (task) void recurring.toggle(task);
+                  {group.rows.map((row, index) => {
+                    const item = detail?.items.find((i) => i.id === row.key);
+                    const assignment = item?.assignment ?? {
+                      mode: 'inherit' as const,
+                      userId: null,
+                    };
+                    const effectiveId = effectiveAssignee(
+                      detail?.assigneeUserId ?? null,
+                      assignment,
+                    );
+                    return (
+                      <RecurringTaskRow
+                        key={row.key}
+                        title={row.title}
+                        caption={frequencyLabel(row.task)}
+                        done={row.task?.done ?? false}
+                        accent={
+                          row.task ? theme.colors.frequency[row.task.frequency] : undefined
+                        }
+                        grouped
+                        divider={index < group.rows.length - 1}
+                        onToggle={
+                          row.task
+                            ? () => {
+                                const task = row.task;
+                                if (task) void recurring.toggle(task);
+                              }
+                            : undefined
+                        }
+                        onAssign={canAssign ? () => setPicker(row.key) : undefined}
+                        assignLabel={t().assignment.listLabel}
+                        trailing={
+                          <AssigneeAvatar
+                            size={28}
+                            userId={effectiveId}
+                            name={
+                              members.find((m) => m.userId === effectiveId)?.displayName ??
+                              t().assignment.anyone
                             }
-                          : undefined
-                      }
-                    />
-                  ))}
+                            override={assignment.mode === 'explicit' && Boolean(effectiveId)}
+                          />
+                        }
+                      />
+                    );
+                  })}
                 </PaperCard>
               </View>
             ))}
@@ -363,6 +452,53 @@ export default function TemplateHubScreen() {
           </View>
         ) : null}
       </View>
+      <AssigneePicker
+        visible={picker != null}
+        onClose={() => setPicker(null)}
+        members={members}
+        currentUserId={userId}
+        inheritMember={
+          picker != null && picker !== 'list' && detail?.assigneeUserId
+            ? {
+                userId: detail.assigneeUserId,
+                name:
+                  members.find((m) => m.userId === detail.assigneeUserId)?.displayName ??
+                  t().assignment.anyone,
+              }
+            : null
+        }
+        inheritSelected={
+          picker != null &&
+          picker !== 'list' &&
+          Boolean(detail?.assigneeUserId) &&
+          detail?.items.find((i) => i.id === picker)?.assignment.mode === 'inherit'
+        }
+        selectedUserId={
+          picker === 'list'
+            ? (detail?.assigneeUserId ?? null)
+            : picker
+              ? (detail?.items.find((i) => i.id === picker)?.assignment.userId ?? null)
+              : null
+        }
+        onPick={(pick) => {
+          if (!detail) return;
+          const pickedUserId = pick.kind === 'member' ? pick.userId : undefined;
+          if (picker === 'list') {
+            void persistAssignment(listAssigneeFromPick(pick.kind, pickedUserId), detail.items);
+            return;
+          }
+          if (!picker) return;
+          const nextItems = detail.items.map((item) =>
+            item.id === picker
+              ? {
+                  ...item,
+                  assignment: itemAssignmentFromPick(pick.kind, pickedUserId),
+                }
+              : item,
+          );
+          void persistAssignment(detail.assigneeUserId, nextItems);
+        }}
+      />
     </Screen>
   );
 }

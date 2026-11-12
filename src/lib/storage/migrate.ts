@@ -39,8 +39,11 @@ export async function applyMigrations(db: MigratableDb): Promise<number> {
       });
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
-      // v6 ADD COLUMN fails if LOCAL_SCHEMA_SQL already created hidden_at.
-      if (migration.version === 6 && /duplicate column name/i.test(message)) {
+      // ADD COLUMN fails if LOCAL_SCHEMA_SQL already created the column.
+      if (
+        (migration.version === 6 || migration.version === 7) &&
+        /duplicate column name/i.test(message)
+      ) {
         await db.runAsync(
           'INSERT OR IGNORE INTO schema_migrations (version) VALUES (?)',
           migration.version,
@@ -53,6 +56,7 @@ export async function applyMigrations(db: MigratableDb): Promise<number> {
 
   await db.execAsync(LOCAL_SCHEMA_SQL);
   await ensureColumn(db, 'local_recurring_tasks', 'hidden_at', 'TEXT');
+  await ensureColumn(db, 'local_recurring_tasks', 'assignee_user_id', 'TEXT');
   return LATEST_SQLITE_VERSION;
 }
 

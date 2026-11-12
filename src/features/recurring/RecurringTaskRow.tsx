@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Pressable, Text, View } from 'react-native';
 
@@ -11,34 +12,53 @@ export function RecurringTaskRow({
   done,
   disabled,
   onToggle,
+  onAssign,
+  onLongPress,
+  onPressOut,
+  delayLongPress,
+  cancelable,
+  assignLabel,
   accent,
   grouped = false,
   divider = false,
+  trailing,
 }: {
   title: string;
   caption?: string | null;
   done: boolean;
   disabled?: boolean;
   onToggle?: () => void;
+  onAssign?: () => void;
+  onLongPress?: () => void;
+  onPressOut?: () => void;
+  delayLongPress?: number;
+  cancelable?: boolean;
+  assignLabel?: string;
   /** Frequency colors for the checkbox fill and caption. */
   accent?: FrequencyColors;
   /** Row inside a shared card: no own border, optional hairline divider below. */
   grouped?: boolean;
   divider?: boolean;
+  trailing?: ReactNode;
 }) {
   const t = useT();
   const theme = useTheme();
   const copy = t().recurring;
   const tickable = Boolean(onToggle) && !disabled;
   const fill = accent?.base ?? theme.colors.primary;
+  const pressable = tickable || Boolean(onLongPress);
 
   return (
     <Pressable
       accessibilityRole="checkbox"
       accessibilityState={{ checked: done, disabled: !tickable }}
       accessibilityHint={tickable ? (done ? copy.markNotDone : copy.markDone) : undefined}
-      disabled={!tickable}
+      disabled={!pressable}
       onPress={onToggle}
+      onLongPress={onLongPress}
+      onPressOut={onPressOut}
+      delayLongPress={delayLongPress}
+      cancelable={cancelable}
       style={({ pressed }) => ({
         flexDirection: 'row',
         alignItems: 'center',
@@ -107,6 +127,19 @@ export function RecurringTaskRow({
           </Text>
         ) : null}
       </View>
+      {onAssign && trailing ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={assignLabel}
+          onPress={onAssign}
+          hitSlop={8}
+          style={({ pressed }) => ({ opacity: pressed ? 0.75 : 1 })}
+        >
+          {trailing}
+        </Pressable>
+      ) : (
+        trailing
+      )}
     </Pressable>
   );
 }

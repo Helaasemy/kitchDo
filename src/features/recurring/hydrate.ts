@@ -8,6 +8,8 @@ import {
   restoreLocalBackup,
 } from '@/lib/storage/localBackup';
 
+import { effectiveAssignee } from '@/features/assignment';
+
 import {
   getTemplateFrequencies,
   listRecurringTasks,
@@ -90,6 +92,7 @@ async function restoreFrequenciesFromCatalog(
         title: item.title,
         sectionTitle: item.sectionId ? (sectionTitles.get(item.sectionId) ?? null) : null,
         sortOrder: item.sortOrder,
+        assigneeUserId: effectiveAssignee(detail.assigneeUserId, item.assignment),
       })),
     });
     await rememberSource(userId, kitchenId, detail.id, preset);

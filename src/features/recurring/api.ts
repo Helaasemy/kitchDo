@@ -1,5 +1,6 @@
 import { DateTime } from 'luxon';
 
+import { effectiveAssignee, INHERIT_ASSIGNMENT } from '@/features/assignment';
 import { getDeviceTimeZone } from '@/lib/dates';
 import { getLocalDb } from '@/lib/storage';
 
@@ -18,6 +19,7 @@ export type RecurringTask = {
   sectionTitle: string | null;
   templateTitle: string;
   sortOrder: number;
+  assigneeUserId: string | null;
 };
 
 export type RecurringTaskState = RecurringTask & {
@@ -43,6 +45,7 @@ type TaskRow = {
   section_title: string | null;
   template_title: string;
   sort_order: number;
+  assignee_user_id?: string | null;
 };
 
 const mapTask = (row: TaskRow): RecurringTask => ({
@@ -53,6 +56,7 @@ const mapTask = (row: TaskRow): RecurringTask => ({
   sectionTitle: row.section_title,
   templateTitle: row.template_title,
   sortOrder: row.sort_order,
+  assigneeUserId: row.assignee_user_id ?? null,
 });
 
 function currentPeriodKeys(now: DateTime): Record<TaskFrequency, string> {
@@ -93,6 +97,7 @@ export async function saveTemplateFrequencies(input: {
     title: string;
     sectionTitle: string | null;
     sortOrder: number;
+    assigneeUserId?: string | null;
   }[];
 }): Promise<void> {
   const db = await getLocalDb();
@@ -109,8 +114,8 @@ export async function saveTemplateFrequencies(input: {
       await db.runAsync(
         `INSERT INTO local_recurring_tasks (
           user_id, kitchen_id, template_id, item_id, frequency,
-          title, section_title, template_title, sort_order
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          title, section_title, template_title, sort_order, assignee_user_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         input.userId,
         input.kitchenId,
         input.templateId,
@@ -120,6 +125,7 @@ export async function saveTemplateFrequencies(input: {
         task.sectionTitle,
         input.templateTitle,
         task.sortOrder,
+        task.assigneeUserId ?? null,
       );
     }
   });
@@ -213,9 +219,28 @@ export async function listRecurringTasks(
     ...TASK_FREQUENCIES.map((f) => keys[f]),
   );
   const done = new Set(ticks.map((t) => `${t.item_id}|${t.period_key}`));
+  let assignments: Awaited<
+    ReturnType<(typeof import('@/features/templates/api'))['listKitchenAssignments']>
+  > | null = null;
+  try {
+    const { listKitchenAssignments } = await import('@/features/templates/api');
+    assignments = await listKitchenAssignments(kitchenId);
+  } catch {
+    assignments = null;
+  }
   return rows.map((row) => {
     const task = mapTask(row);
-    return { ...task, done: done.has(`${task.itemId}|${keys[task.frequency]}`) };
+    const assigneeUserId = assignments
+      ? effectiveAssignee(
+          assignments.templates[task.templateId] ?? null,
+          assignments.items[task.itemId] ?? INHERIT_ASSIGNMENT,
+        )
+      : task.assigneeUserId;
+    return {
+      ...task,
+      assigneeUserId,
+      done: done.has(`${task.itemId}|${keys[task.frequency]}`),
+    };
   });
 }
 

@@ -501,6 +501,8 @@ export type Database = {
       }
       kdo_template_items: {
         Row: {
+          assignee_mode: string
+          assignee_user_id: string | null
           created_at: string
           id: string
           instructions: string | null
@@ -514,6 +516,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          assignee_mode?: string
+          assignee_user_id?: string | null
           created_at?: string
           id?: string
           instructions?: string | null
@@ -527,6 +531,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          assignee_mode?: string
+          assignee_user_id?: string | null
           created_at?: string
           id?: string
           instructions?: string | null
@@ -637,6 +643,7 @@ export type Database = {
       }
       kdo_templates: {
         Row: {
+          assignee_user_id: string | null
           category_id: string | null
           created_at: string
           description: string | null
@@ -650,6 +657,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          assignee_user_id?: string | null
           category_id?: string | null
           created_at?: string
           description?: string | null
@@ -663,6 +671,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          assignee_user_id?: string | null
           category_id?: string | null
           created_at?: string
           description?: string | null
@@ -1017,8 +1026,20 @@ export type Database = {
         }
         Returns: Json
       }
+      save_template_assignments: {
+        Args: {
+          p_assignee_user_id?: string | null
+          p_expected_revision: number
+          p_items?: Json
+          p_kitchen_id: string
+          p_mutation_id: string
+          p_template_id: string
+        }
+        Returns: Json
+      }
       save_template_draft: {
         Args: {
+          p_assignee_user_id?: string | null
           p_category_id?: string
           p_description?: string
           p_expected_revision: number

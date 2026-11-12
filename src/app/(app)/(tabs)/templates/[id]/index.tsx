@@ -19,7 +19,16 @@ import DraggableFlatList, {
 
 import { Button, NetworkRequiredBanner, Screen, TextField } from '@/components/ui';
 import { useTheme } from '@/design';
+import {
+  AssigneePicker,
+  AssignedToCard,
+  TaskAssigneeRow,
+  effectiveAssignee,
+  parseAssigneeMode,
+  type AssigneeMode,
+} from '@/features/assignment';
 import { useAuth } from '@/features/auth';
+import { listKitchenMembers, type KitchenMember } from '@/features/membership';
 import { isListLimitError, usePlanPaywall } from '@/features/billing';
 import { useSync } from '@/lib/sync';
 import { listCategories, type Category } from '@/features/categories/api';
@@ -63,6 +72,8 @@ type DraftItem = {
   instructions: string;
   /** `null` = one-off, done with Use now. */
   frequency: TaskFrequency | null;
+  assigneeMode: AssigneeMode;
+  assigneeUserId: string | null;
 };
 
 type DraftSection = {
@@ -99,6 +110,9 @@ export default function TemplateBuilderScreen() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [sections, setSections] = useState<DraftSection[]>([]);
   const [items, setItems] = useState<DraftItem[]>([]);
+  const [listAssigneeUserId, setListAssigneeUserId] = useState<string | null>(null);
+  const [members, setMembers] = useState<KitchenMember[]>([]);
+  const [picker, setPicker] = useState<null | 'list' | string>(null);
 
   const [pasteOpen, setPasteOpen] = useState(false);
   const [pasteRaw, setPasteRaw] = useState('');
@@ -127,11 +141,13 @@ export default function TemplateBuilderScreen() {
         ? getTemplateFrequencies(userId, kitchenId, templateId)
         : Promise.resolve({} as Record<string, TaskFrequency>),
       userId ? isLibraryCopy(userId, kitchenId, templateId) : Promise.resolve(false),
+      listKitchenMembers(kitchenId).catch(() => [] as KitchenMember[]),
     ])
-      .then(([cats, detail, frequencies, fromLibrary]) => {
+      .then(([cats, detail, frequencies, fromLibrary, kitchenMembers]) => {
         if (cancelled) return;
         setLibraryCopy(fromLibrary);
         setCategories(cats);
+        setMembers(kitchenMembers);
         if (detail) {
           setExists(true);
           setTitle(detail.title);
@@ -140,6 +156,7 @@ export default function TemplateBuilderScreen() {
           setRevision(detail.revision);
           setState(detail.state);
           setPublishedRevision(detail.publishedRevision);
+          setListAssigneeUserId(detail.assigneeUserId);
           setSections(
             detail.sections.map((s) => ({
               key: s.id,
@@ -155,6 +172,8 @@ export default function TemplateBuilderScreen() {
               title: i.title,
               instructions: i.instructions ?? '',
               frequency: frequencies[i.id] ?? null,
+              assigneeMode: parseAssigneeMode(i.assignment.mode),
+              assigneeUserId: i.assignment.userId,
             })),
           );
         } else {
@@ -162,6 +181,7 @@ export default function TemplateBuilderScreen() {
           setRevision(0);
           setState('draft');
           setPublishedRevision(null);
+          setListAssigneeUserId(null);
         }
       })
       .catch((e: unknown) => {
@@ -194,6 +214,8 @@ export default function TemplateBuilderScreen() {
         title: i.title.trim(),
         instructions: i.instructions.trim() || null,
         sort_order: index,
+        assignee_mode: i.assigneeMode,
+        assignee_user_id: i.assigneeMode === 'explicit' ? i.assigneeUserId : null,
       }));
     return { sections: sectionPayload, items: itemPayload };
   };
@@ -209,6 +231,7 @@ export default function TemplateBuilderScreen() {
       title,
       description,
       categoryId,
+      assigneeUserId: listAssigneeUserId,
       sections: payload.sections,
       items: payload.items,
     });
@@ -223,13 +246,20 @@ export default function TemplateBuilderScreen() {
         kitchenId,
         templateId,
         templateTitle: title.trim(),
-        tasks: payload.items.map((i) => ({
-          itemId: i.id,
-          frequency: frequencyById.get(i.id) ?? null,
-          title: i.title,
-          sectionTitle: i.section_id ? (sectionTitles.get(i.section_id) ?? null) : null,
-          sortOrder: i.sort_order,
-        })),
+        tasks: payload.items.map((i) => {
+          const draft = items.find((row) => row.id === i.id);
+          return {
+            itemId: i.id,
+            frequency: frequencyById.get(i.id) ?? null,
+            title: i.title,
+            sectionTitle: i.section_id ? (sectionTitles.get(i.section_id) ?? null) : null,
+            sortOrder: i.sort_order,
+            assigneeUserId: effectiveAssignee(listAssigneeUserId, {
+              mode: draft?.assigneeMode ?? 'inherit',
+              userId: draft?.assigneeUserId ?? null,
+            }),
+          };
+        }),
       });
       await noteTemplateSaved(
         userId,
@@ -435,6 +465,8 @@ export default function TemplateBuilderScreen() {
         title: '',
         instructions: '',
         frequency: prev.at(-1)?.frequency ?? null,
+        assigneeMode: 'inherit',
+        assigneeUserId: null,
       },
     ]);
   };
@@ -458,6 +490,8 @@ export default function TemplateBuilderScreen() {
             title: line,
             instructions: '',
             frequency,
+            assigneeMode: 'inherit' as const,
+            assigneeUserId: null,
           };
         }),
       ];
@@ -608,6 +642,13 @@ export default function TemplateBuilderScreen() {
               </ScrollView>
             )}
           </View>
+          <TaskAssigneeRow
+            assignment={{ mode: item.assigneeMode, userId: item.assigneeUserId }}
+            listAssigneeUserId={listAssigneeUserId}
+            members={members}
+            readOnly={readOnly}
+            onPress={() => setPicker(item.key)}
+          />
           {sections.length > 0 && !readOnly ? (
             <ScrollView
               horizontal
@@ -644,7 +685,7 @@ export default function TemplateBuilderScreen() {
         </View>
       </ScaleDecorator>
     ),
-    [copy, recurringCopy, readOnly, sections, theme],
+    [copy, recurringCopy, readOnly, sections, theme, listAssigneeUserId, members],
   );
 
   if (!kitchenId) {
@@ -776,6 +817,15 @@ export default function TemplateBuilderScreen() {
           ))}
         </ScrollView>
       </View>
+
+      <AssignedToCard
+        label={t().assignment.listLabel}
+        hint={t().assignment.listHint}
+        anyoneLabel={t().assignment.anyone}
+        member={members.find((m) => m.userId === listAssigneeUserId) ?? null}
+        readOnly={readOnly}
+        onPress={() => setPicker('list')}
+      />
 
       <View style={{ gap: theme.space.sm }}>
         <View
@@ -1000,6 +1050,13 @@ export default function TemplateBuilderScreen() {
                   multiline
                 />
               ) : null}
+              <TaskAssigneeRow
+                assignment={{ mode: item.assigneeMode, userId: item.assigneeUserId }}
+                listAssigneeUserId={listAssigneeUserId}
+                members={members}
+                readOnly
+                onPress={() => undefined}
+              />
             </View>
           ))}
           {listFooter}
@@ -1181,6 +1238,54 @@ export default function TemplateBuilderScreen() {
         </View>
       </Modal>
       {paywall}
+      <AssigneePicker
+        visible={picker != null}
+        onClose={() => setPicker(null)}
+        members={members}
+        currentUserId={userId}
+        inheritMember={
+          picker != null && picker !== 'list' && listAssigneeUserId
+            ? {
+                userId: listAssigneeUserId,
+                name:
+                  members.find((m) => m.userId === listAssigneeUserId)?.displayName ??
+                  t().assignment.anyone,
+              }
+            : null
+        }
+        inheritSelected={
+          picker != null &&
+          picker !== 'list' &&
+          Boolean(listAssigneeUserId) &&
+          items.find((i) => i.key === picker)?.assigneeMode === 'inherit'
+        }
+        selectedUserId={
+          picker === 'list'
+            ? listAssigneeUserId
+            : picker
+              ? (items.find((i) => i.key === picker)?.assigneeUserId ?? null)
+              : null
+        }
+        onPick={(pick) => {
+          if (picker === 'list') {
+            setListAssigneeUserId(pick.kind === 'member' ? pick.userId : null);
+            return;
+          }
+          if (!picker) return;
+          setItems((prev) =>
+            prev.map((i) => {
+              if (i.key !== picker) return i;
+              if (pick.kind === 'inherit') {
+                return { ...i, assigneeMode: 'inherit', assigneeUserId: null };
+              }
+              if (pick.kind === 'anyone') {
+                return { ...i, assigneeMode: 'explicit', assigneeUserId: null };
+              }
+              return { ...i, assigneeMode: 'explicit', assigneeUserId: pick.userId };
+            }),
+          );
+        }}
+      />
     </Screen>
   );
 }
@@ -1224,3 +1329,4 @@ function CatChip({
     </Pressable>
   );
 }
+

@@ -219,4 +219,16 @@ await test('hidden_at is added even when v6 is already recorded', async () => {
   assert.ok(cols.includes('hidden_at'));
 });
 
+await test('v6 devices gain assignee_user_id', async () => {
+  const db = openDb();
+  await migrateTo(db, 6);
+  db.raw.exec(`INSERT INTO local_recurring_tasks (
+    user_id, kitchen_id, template_id, item_id, frequency, title, section_title, template_title, sort_order, hidden_at
+  ) VALUES ('u', 'k', 't', 'i', 'daily', 'Wipe', NULL, 'Close', 0, NULL)`);
+  await applyMigrations(db);
+  const cols = db.raw.prepare('PRAGMA table_info(local_recurring_tasks)').all().map((c) => c.name);
+  assert.ok(cols.includes('assignee_user_id'));
+  assert.equal(count(db, 'SELECT COUNT(*) n FROM local_recurring_tasks'), 1);
+});
+
 console.log(`\n${passed} migration checks passed`);

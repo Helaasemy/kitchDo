@@ -174,7 +174,8 @@ function TemplateCard({
 export default function TemplatesScreen() {
   const t = useT();
   const theme = useTheme();
-  const { kitchenMode, kitchenId, onboarding, user, canEditTemplates } = useAuth();
+  const { kitchenMode, kitchenId, onboarding, user, canEditTemplates, refreshOnboarding } =
+    useAuth();
   const { guardList, paywall } = usePlanPaywall();
   const catalog = useCatalog();
   const copy = t().templates;
@@ -237,9 +238,10 @@ export default function TemplatesScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      void refreshOnboarding();
       void load();
       reloadRecurring().catch(() => undefined);
-    }, [load, reloadRecurring]),
+    }, [load, reloadRecurring, refreshOnboarding]),
   );
 
   const onRenameCategory = (cat: Category) => {

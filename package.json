@@ -69,6 +69,7 @@
     "test:catalog-load": "node scripts/catalog-load-tests.mjs",
     "test:catalog-i18n": "node scripts/catalog-i18n-tests.mjs",
     "test:membership": "node scripts/membership-tests.mjs",
+    "test:assignment": "node scripts/assignment-tests.mjs",
     "catalog:import-sanity": "node scripts/import-catalog-to-sanity.mjs"
   },
   "private": true

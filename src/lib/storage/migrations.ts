@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS local_recurring_tasks (
   template_title TEXT NOT NULL,
   sort_order INTEGER NOT NULL,
   hidden_at TEXT,
+  assignee_user_id TEXT,
   PRIMARY KEY (user_id, kitchen_id, item_id)
 );
 
@@ -317,6 +318,12 @@ CREATE TABLE IF NOT EXISTS local_backups (
 
 CREATE INDEX IF NOT EXISTS local_backups_user_idx
   ON local_backups (user_id, id);
+`,
+  },
+  {
+    version: 7,
+    sql: `
+ALTER TABLE local_recurring_tasks ADD COLUMN assignee_user_id TEXT;
 `,
   },
 ];

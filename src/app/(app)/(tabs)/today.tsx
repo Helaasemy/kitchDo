@@ -16,6 +16,7 @@ import Swipeable, {
 import { DateTime } from 'luxon';
 
 import {
+  Chip,
   EmptyState,
   ErrorText,
   IconButton,
@@ -24,6 +25,8 @@ import {
   SectionChip,
   SyncBanner,
 } from '@/components/ui';
+import { isAssignedToMe } from '@/features/assignment';
+import { listKitchenMembers, type KitchenMember } from '@/features/membership';
 import { useTheme, type AppTheme } from '@/design';
 import { useAuth } from '@/features/auth';
 import { KitchenSwitcher } from '@/features/membership/KitchenSwitcher';
@@ -39,6 +42,7 @@ import {
 } from '@/features/recurring';
 import { cancelRun, listTodayRuns, type RunSummary } from '@/features/runs';
 import { getDeviceTimeZone } from '@/lib/dates';
+import { templateEditorHref } from '@/lib/navigation';
 import { useSync } from '@/lib/sync';
 import { t, useT, tone } from '@/i18n';
 
@@ -286,7 +290,8 @@ function dateLine(tasks: RecurringTaskState[]): string {
 export default function TodayScreen() {
   const t = useT();
   const theme = useTheme();
-  const { kitchenMode, onboarding, user, kitchenId, canEditTemplates } = useAuth();
+  const { kitchenMode, onboarding, user, kitchenId, canEditTemplates, refreshOnboarding } =
+    useAuth();
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const userId = user?.id;
   const { refresh } = useSync();
@@ -296,6 +301,8 @@ export default function TodayScreen() {
 
   const [due, setDue] = useState<RunSummary[]>([]);
   const [frequencyFilter, setFrequencyFilter] = useState<TaskFrequency | null>(null);
+  const [mineOnly, setMineOnly] = useState(false);
+  const [members, setMembers] = useState<KitchenMember[]>([]);
   const [loading, setLoading] = useState(true);
   const hasLoaded = useRef(false);
   const recurring = useRecurringTasks(userId, kitchenId);
@@ -311,15 +318,21 @@ export default function TodayScreen() {
     // sync does not look like a continuous re-render.
     if (!hasLoaded.current) setLoading(true);
     try {
+      await refreshOnboarding();
       await reloadRecurring();
       await refresh();
       const result = await listTodayRuns(userId, kitchenId);
       setDue(result.due);
+      try {
+        setMembers(await listKitchenMembers(kitchenId));
+      } catch {
+        setMembers([]);
+      }
       hasLoaded.current = true;
     } finally {
       setLoading(false);
     }
-  }, [userId, kitchenId, refresh, reloadRecurring]);
+  }, [userId, kitchenId, refresh, reloadRecurring, refreshOnboarding]);
 
   useFocusEffect(
     useCallback(() => {
@@ -327,13 +340,22 @@ export default function TodayScreen() {
     }, [load]),
   );
 
-  const groups = groupByFrequencyAndTemplate(recurring.tasks);
+  const memberNames = Object.fromEntries(
+    members.map((member) => [member.userId, member.displayName]),
+  );
+  const visibleTasks =
+    mineOnly && userId
+      ? recurring.tasks.filter((task) => isAssignedToMe(task.assigneeUserId, userId))
+      : recurring.tasks;
+  const groups = groupByFrequencyAndTemplate(visibleTasks);
   const periodLabels: Record<TaskFrequency, string> = {
     daily: recurringCopy.periodToday,
     weekly: recurringCopy.periodWeek,
     monthly: recurringCopy.periodMonth,
   };
   const empty = !loading && recurring.tasks.length === 0 && due.length === 0;
+  const emptyMine =
+    !loading && mineOnly && visibleTasks.length === 0 && due.length === 0 && !empty;
 
   const onRequestDelete = (run: RunSummary) => {
     Alert.alert(copy.deleteRunTitle, copy.deleteRunBody, [
@@ -385,8 +407,22 @@ export default function TodayScreen() {
             }}
             allowFontScaling
           >
-            {dateLine(recurring.tasks)}
+            {dateLine(visibleTasks)}
           </Text>
+        </View>
+
+        <View style={{ flexDirection: 'row', gap: theme.space.sm }}>
+          <Chip
+            label={copy.filterAll}
+            selected={!mineOnly}
+            onPress={() => setMineOnly(false)}
+          />
+          <Chip
+            label={copy.mine}
+            selected={mineOnly}
+            onPress={() => setMineOnly(true)}
+            accessibilityHint={mineOnly ? copy.mineClearA11y : copy.mineA11y}
+          />
         </View>
 
         <SyncBanner />
@@ -403,6 +439,8 @@ export default function TodayScreen() {
             actionLabel={copy.emptyAction}
             onAction={() => router.replace('/(app)/(tabs)/templates')}
           />
+        ) : emptyMine && !recurring.error ? (
+          <EmptyState title={copy.emptyMineTitle} body={copy.emptyMineBody} />
         ) : (
           <ScrollView
             showsVerticalScrollIndicator={false}
@@ -413,10 +451,10 @@ export default function TodayScreen() {
               alignItems: 'stretch',
             }}
           >
-            {recurring.tasks.length > 0 ? (
+            {visibleTasks.length > 0 ? (
               <SummaryTiles
                 theme={theme}
-                tasks={recurring.tasks}
+                tasks={visibleTasks}
                 selected={frequencyFilter}
                 onSelect={setFrequencyFilter}
               />
@@ -462,16 +500,13 @@ export default function TodayScreen() {
                       frequency={frequency}
                       tasks={group.tasks}
                       doneCount={group.doneCount}
+                      memberNames={memberNames}
                       onEditTemplate={
                         canEditTemplates
                           ? () =>
-                              router.push(
-                                {
-                                  pathname: '/(app)/(tabs)/templates/[id]',
-                                  params: { id: group.templateId },
-                                },
-                                { withAnchor: true },
-                              )
+                              router.push(templateEditorHref(group.templateId), {
+                                withAnchor: true,
+                              })
                           : undefined
                       }
                       onToggle={(task) => void recurring.toggle(task)}

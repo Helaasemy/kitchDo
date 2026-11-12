@@ -6,6 +6,7 @@ export const templateDefinitionSchema = z.object({
   description: z.string().nullable().optional(),
   category_id: z.union([z.string(), z.null()]).optional(),
   category_name: z.string().nullable().optional(),
+  assignee_user_id: z.union([z.string(), z.null()]).optional(),
   sections: z
     .array(
       z.object({
@@ -25,6 +26,8 @@ export const templateDefinitionSchema = z.object({
         instructions: z.string().nullable().optional(),
         response_type: z.string().optional().default('checkbox'),
         sort_order: z.number().int(),
+        assignee_user_id: z.union([z.string(), z.null()]).optional(),
+        assignee_mode: z.enum(['inherit', 'explicit']).optional(),
       }),
     )
     .min(1),

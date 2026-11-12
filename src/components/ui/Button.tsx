@@ -56,8 +56,8 @@ export function Button({
       border: 'transparent',
     },
     danger: {
-      bg: theme.colors.coral,
-      fg: theme.colors.onCoral,
+      bg: theme.colors.white,
+      fg: theme.colors.coral,
       border: theme.colors.coral,
     },
   }[variant];
@@ -95,7 +95,7 @@ export function Button({
           paddingVertical: compact ? theme.space.sm : theme.space.md,
           borderRadius: theme.radii.pill,
           backgroundColor: palette.bg,
-          borderWidth: variant === 'secondary' ? 0.5 : 0,
+          borderWidth: variant === 'secondary' || variant === 'danger' ? 0.5 : 0,
           borderColor: palette.border,
           boxShadow:
             variant === 'primary' || variant === 'secondary' ? theme.shadows.soft : undefined,

@@ -1,5 +1,6 @@
+import { parseAssigneeMode, type ItemAssignment } from '@/features/assignment';
 import { newId } from '@/lib/ids';
-import { getSupabase, rpcErrorMessage } from '@/lib/supabase';
+import { getSupabase, isMissingColumnError, rpcErrorMessage } from '@/lib/supabase';
 import type { Json } from '@/types/database';
 
 export type TemplateState = 'draft' | 'active' | 'archived';
@@ -27,10 +28,13 @@ export type TemplateItemInput = {
   title: string;
   instructions: string | null;
   sort_order: number;
+  assignee_user_id?: string | null;
+  assignee_mode?: ItemAssignment['mode'];
 };
 
 export type TemplateDetail = TemplateSummary & {
   kitchenId: string;
+  assigneeUserId: string | null;
   sections: {
     id: string;
     title: string;
@@ -42,6 +46,7 @@ export type TemplateDetail = TemplateSummary & {
     title: string;
     instructions: string | null;
     sortOrder: number;
+    assignment: ItemAssignment;
   }[];
 };
 
@@ -108,33 +113,70 @@ export async function listTemplates(
   return (data ?? []).map(mapSummary);
 }
 
+const TEMPLATE_SELECT =
+  'id, kitchen_id, title, description, category_id, state, revision, published_revision, updated_at, assignee_user_id';
+const TEMPLATE_SELECT_LEGACY =
+  'id, kitchen_id, title, description, category_id, state, revision, published_revision, updated_at';
+const ITEM_SELECT =
+  'id, section_id, title, instructions, sort_order, assignee_user_id, assignee_mode';
+const ITEM_SELECT_LEGACY = 'id, section_id, title, instructions, sort_order';
+
 export async function getTemplate(templateId: string): Promise<TemplateDetail | null> {
   const supabase = getSupabase();
 
-  const { data: row, error } = await supabase
+  let { data: row, error } = await supabase
     .from('kdo_templates')
-    .select(
-      'id, kitchen_id, title, description, category_id, state, revision, published_revision, updated_at',
-    )
+    .select(TEMPLATE_SELECT)
     .eq('id', templateId)
     .maybeSingle();
+
+  if (error && isMissingColumnError(error)) {
+    const fallback = await supabase
+      .from('kdo_templates')
+      .select(TEMPLATE_SELECT_LEGACY)
+      .eq('id', templateId)
+      .maybeSingle();
+    row = fallback.data
+      ? { ...fallback.data, assignee_user_id: null }
+      : null;
+    error = fallback.error;
+  }
 
   if (error) throw new Error(rpcErrorMessage(error, 'Could not load template.'));
   if (!row) return null;
 
-  const [{ data: sections, error: secErr }, { data: items, error: itemErr }] =
-    await Promise.all([
-      supabase
-        .from('kdo_template_sections')
-        .select('id, title, sort_order')
-        .eq('template_id', templateId)
-        .order('sort_order', { ascending: true }),
-      supabase
-        .from('kdo_template_items')
-        .select('id, section_id, title, instructions, sort_order')
-        .eq('template_id', templateId)
-        .order('sort_order', { ascending: true }),
-    ]);
+  const sectionsQuery = supabase
+    .from('kdo_template_sections')
+    .select('id, title, sort_order')
+    .eq('template_id', templateId)
+    .order('sort_order', { ascending: true });
+
+  const itemsQuery = supabase
+    .from('kdo_template_items')
+    .select(ITEM_SELECT)
+    .eq('template_id', templateId)
+    .order('sort_order', { ascending: true });
+
+  const [{ data: sections, error: secErr }, itemsResult] = await Promise.all([
+    sectionsQuery,
+    itemsQuery,
+  ]);
+
+  let itemRows = itemsResult.data;
+  let itemErr = itemsResult.error;
+  if (itemErr && isMissingColumnError(itemErr)) {
+    const fallback = await supabase
+      .from('kdo_template_items')
+      .select(ITEM_SELECT_LEGACY)
+      .eq('template_id', templateId)
+      .order('sort_order', { ascending: true });
+    itemErr = fallback.error;
+    itemRows = (fallback.data ?? []).map((item) => ({
+      ...item,
+      assignee_user_id: null,
+      assignee_mode: 'inherit',
+    }));
+  }
 
   if (secErr) throw new Error(rpcErrorMessage(secErr, 'Could not load sections.'));
   if (itemErr) throw new Error(rpcErrorMessage(itemErr, 'Could not load items.'));
@@ -142,17 +184,22 @@ export async function getTemplate(templateId: string): Promise<TemplateDetail | 
   return {
     ...mapSummary(row),
     kitchenId: row.kitchen_id,
+    assigneeUserId: row.assignee_user_id,
     sections: (sections ?? []).map((s) => ({
       id: s.id,
       title: s.title,
       sortOrder: s.sort_order,
     })),
-    items: (items ?? []).map((i) => ({
+    items: (itemRows ?? []).map((i) => ({
       id: i.id,
       sectionId: i.section_id,
       title: i.title,
       instructions: i.instructions,
       sortOrder: i.sort_order,
+      assignment: {
+        mode: parseAssigneeMode(i.assignee_mode),
+        userId: i.assignee_user_id,
+      },
     })),
   };
 }
@@ -165,6 +212,7 @@ export async function saveTemplateDraft(input: {
   title: string;
   description?: string | null;
   categoryId?: string | null;
+  assigneeUserId?: string | null;
   sections: TemplateSectionInput[];
   items: TemplateItemInput[];
 }): Promise<{ templateId: string; revision: number }> {
@@ -182,9 +230,36 @@ export async function saveTemplateDraft(input: {
     ...(input.categoryId ? { p_category_id: input.categoryId } : {}),
     p_sections: input.sections as unknown as Json,
     p_items: input.items as unknown as Json,
+    p_assignee_user_id: input.assigneeUserId ?? null,
   });
 
   if (error) throw new Error(rpcErrorMessage(error, 'Could not save draft.'));
+
+  const result = (data ?? {}) as { template_id?: string; revision?: number };
+  return {
+    templateId: result.template_id ?? input.templateId,
+    revision: result.revision ?? input.expectedRevision + 1,
+  };
+}
+
+export async function saveTemplateAssignments(input: {
+  mutationId?: string;
+  templateId: string;
+  kitchenId: string;
+  expectedRevision: number;
+  assigneeUserId: string | null;
+  items?: { id: string; assignee_mode: ItemAssignment['mode']; assignee_user_id: string | null }[];
+}): Promise<{ templateId: string; revision: number }> {
+  const { data, error } = await getSupabase().rpc('save_template_assignments', {
+    p_mutation_id: input.mutationId ?? newId(),
+    p_template_id: input.templateId,
+    p_kitchen_id: input.kitchenId,
+    p_expected_revision: input.expectedRevision,
+    p_assignee_user_id: input.assigneeUserId,
+    p_items: (input.items ?? []) as unknown as Json,
+  });
+
+  if (error) throw new Error(rpcErrorMessage(error, 'Could not save assignment.'));
 
   const result = (data ?? {}) as { template_id?: string; revision?: number };
   return {
@@ -269,6 +344,44 @@ export async function latestPublishedRevisionId(
 
   if (error) throw new Error(rpcErrorMessage(error, 'Could not find published revision.'));
   return data?.id ?? null;
+}
+
+/** Kitchen-wide list + item assignment, for overlaying onto Today. */
+export async function listKitchenAssignments(kitchenId: string): Promise<{
+  templates: Record<string, string | null>;
+  items: Record<string, ItemAssignment>;
+}> {
+  const supabase = getSupabase();
+  const [{ data: templates, error: tErr }, { data: items, error: iErr }] =
+    await Promise.all([
+      supabase
+        .from('kdo_templates')
+        .select('id, assignee_user_id')
+        .eq('kitchen_id', kitchenId),
+      supabase
+        .from('kdo_template_items')
+        .select('id, assignee_user_id, assignee_mode')
+        .eq('kitchen_id', kitchenId),
+    ]);
+  if (tErr && !isMissingColumnError(tErr)) {
+    throw new Error(rpcErrorMessage(tErr, 'Could not load assignments.'));
+  }
+  if (iErr && !isMissingColumnError(iErr)) {
+    throw new Error(rpcErrorMessage(iErr, 'Could not load assignments.'));
+  }
+
+  const templateMap: Record<string, string | null> = {};
+  for (const row of templates ?? []) {
+    templateMap[row.id] = row.assignee_user_id;
+  }
+  const itemMap: Record<string, ItemAssignment> = {};
+  for (const row of items ?? []) {
+    itemMap[row.id] = {
+      mode: parseAssigneeMode(row.assignee_mode),
+      userId: row.assignee_user_id,
+    };
+  }
+  return { templates: templateMap, items: itemMap };
 }
 
 /** Split pasted text into candidate checklist item titles. */
