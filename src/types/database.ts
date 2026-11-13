@@ -265,6 +265,27 @@ export type Database = {
         }
         Relationships: []
       }
+      kdo_push_tokens: {
+        Row: {
+          platform: string
+          token: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          platform: string
+          token: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          platform?: string
+          token?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       kdo_run_items: {
         Row: {
           created_at: string

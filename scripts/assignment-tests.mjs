@@ -34,6 +34,7 @@ const {
   itemAssignmentFromPick,
   itemAssignmentKind,
   listAssigneeFromPick,
+  newlyAssignedUserIds,
   normalizeItemAssignment,
   parseAssigneeMode,
 } = await load('src/features/assignment/resolve.ts');
@@ -87,6 +88,27 @@ await test('picker maps list and task choices', () => {
   assert.deepEqual(itemAssignmentFromPick('inherit'), inherit);
   assert.deepEqual(itemAssignmentFromPick('anyone'), explicit(null));
   assert.deepEqual(itemAssignmentFromPick('member', alex), explicit(alex));
+});
+
+await test('newly assigned excludes Anyone, self, and people who already had it', () => {
+  const empty = { listUserId: null, items: [] };
+  const listMaya = { listUserId: maya, items: [inherit] };
+  const listAlex = { listUserId: alex, items: [inherit] };
+  const taskMaya = { listUserId: null, items: [explicit(maya)] };
+
+  assert.deepEqual(newlyAssignedUserIds(empty, listMaya, alex), [maya]);
+  assert.deepEqual(newlyAssignedUserIds(empty, listMaya, maya), []);
+  assert.deepEqual(newlyAssignedUserIds(listMaya, listMaya, alex), []);
+  assert.deepEqual(newlyAssignedUserIds(listMaya, listAlex, maya), [alex]);
+  assert.deepEqual(
+    newlyAssignedUserIds(empty, { listUserId: null, items: [explicit(null)] }, alex),
+    [],
+  );
+  assert.deepEqual(newlyAssignedUserIds(empty, taskMaya, alex), [maya]);
+  assert.deepEqual(
+    newlyAssignedUserIds(listMaya, { listUserId: maya, items: [inherit, inherit] }, alex),
+    [],
+  );
 });
 
 console.log(`${passed} assignment tests passed`);

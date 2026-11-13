@@ -2,23 +2,16 @@ import { memo, useEffect } from 'react';
 
 import { useAuth } from '@/features/auth';
 
-import { configurePurchases, identifyPurchasesUser } from './purchases';
+import { identifyPurchasesUser } from './purchases';
 
 export const PurchasesSync = memo(function PurchasesSync() {
-  const { user } = useAuth();
+  const { user, status } = useAuth();
   const userId = user?.id ?? null;
 
   useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      const ready = await configurePurchases();
-      if (!ready || cancelled) return;
-      await identifyPurchasesUser(userId);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [userId]);
+    if (status === 'loading' || status === 'misconfigured') return;
+    void identifyPurchasesUser(userId);
+  }, [status, userId]);
 
   return null;
 });

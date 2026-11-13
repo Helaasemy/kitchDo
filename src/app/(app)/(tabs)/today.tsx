@@ -204,7 +204,9 @@ export default function TodayScreen() {
     mineOnly && userId
       ? recurring.tasks.filter((task) => isAssignedToMe(task.assigneeUserId, userId))
       : recurring.tasks;
-  const groups = groupByFrequencyAndTemplate(visibleTasks);
+  const groups = groupByFrequencyAndTemplate(visibleTasks, (task) =>
+    recurring.parkedIds.has(task.itemId),
+  );
   const periodLabels: Record<TaskFrequency, string> = {
     daily: recurringCopy.periodToday,
     weekly: recurringCopy.periodWeek,

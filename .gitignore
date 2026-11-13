@@ -45,6 +45,7 @@ yarn-error.*
 .env.env.raw-backup
 credentials.json
 credentials/
+audit/
 
 # local supabase CLI cache
 supabase/.temp/

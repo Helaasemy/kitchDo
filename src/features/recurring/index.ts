@@ -34,5 +34,5 @@ export {
 export { RecurringGroupCard } from './RecurringGroupCard';
 export { RecurringTaskRow } from './RecurringTaskRow';
 export { TickNoteModal } from './TickNoteModal';
-export { useRecurringTasks } from './useRecurringTasks';
+export { SETTLE_CLOSED_MS, useRecurringTasks } from './useRecurringTasks';
 export { FrequencyTabs, type FrequencyTab } from './FrequencyTabs';

@@ -106,4 +106,101 @@ await test('plan migration enforces slots and set_kitchen_plan', () => {
   }
 });
 
+const { createPurchasesIdentitySync, isAnonymousAppUserId } = await load(
+  'src/features/billing/identity.ts',
+);
+
+await test('anonymous ids are the RevenueCat generated prefix', () => {
+  assert.equal(isAnonymousAppUserId('$RCAnonymousID:abc'), true);
+  assert.equal(isAnonymousAppUserId('user-1'), false);
+});
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function fakePurchases(start) {
+  const calls = { configure: [], logIn: [], logOut: [] };
+  let configured = Boolean(start.configured);
+  let current = start.current ?? '';
+  let inflight = 0;
+  let maxInflight = 0;
+
+  const begin = async () => {
+    inflight += 1;
+    maxInflight = Math.max(maxInflight, inflight);
+    await delay(15);
+    inflight -= 1;
+  };
+
+  const actions = {
+    isConfigured: async () => configured,
+    configure: async (userId) => {
+      calls.configure.push(userId);
+      await begin();
+      configured = true;
+      current = userId ?? '$RCAnonymousID:new';
+    },
+    getAppUserID: async () => current,
+    logIn: async (userId) => {
+      calls.logIn.push(userId);
+      await begin();
+      current = userId;
+    },
+    logOut: async () => {
+      calls.logOut.push(true);
+      await begin();
+      current = '$RCAnonymousID:out';
+    },
+  };
+
+  return { sync: createPurchasesIdentitySync(actions), calls, maxInflight: () => maxInflight };
+}
+
+await test('first sync configures with the user and does not also logIn', async () => {
+  const { sync, calls } = fakePurchases({ configured: false });
+  await sync.sync('maya');
+  assert.deepEqual(calls.configure, ['maya']);
+  assert.deepEqual(calls.logIn, []);
+});
+
+await test('already identified as that user skips logIn', async () => {
+  const { sync, calls } = fakePurchases({ configured: true, current: 'maya' });
+  await sync.sync('maya');
+  assert.deepEqual(calls.logIn, []);
+  assert.deepEqual(calls.configure, []);
+});
+
+await test('parallel syncs for the same user configure once and never overlap', async () => {
+  const { sync, calls, maxInflight } = fakePurchases({ configured: false });
+  await Promise.all([sync.sync('maya'), sync.sync('maya'), sync.sync('maya')]);
+  assert.equal(calls.configure.length, 1);
+  assert.deepEqual(calls.logIn, []);
+  assert.equal(maxInflight(), 1);
+});
+
+await test('a later user waits for the in-flight identify instead of overlapping', async () => {
+  const { sync, calls, maxInflight } = fakePurchases({ configured: true, current: 'anon' });
+  const first = sync.sync('maya');
+  await delay(5);
+  await Promise.all([first, sync.sync('alex')]);
+  assert.equal(calls.logIn.at(-1), 'alex');
+  assert.equal(maxInflight(), 1);
+});
+
+await test('signed-out anonymous users do not logOut', async () => {
+  const { sync, calls } = fakePurchases({
+    configured: true,
+    current: '$RCAnonymousID:device',
+  });
+  await sync.sync(null);
+  assert.deepEqual(calls.logOut, []);
+});
+
+await test('signing out an identified user logs out once', async () => {
+  const { sync, calls } = fakePurchases({ configured: true, current: 'maya' });
+  await sync.sync(null);
+  assert.equal(calls.logOut.length, 1);
+});
+
 console.log(`\n${passed} billing tests passed`);

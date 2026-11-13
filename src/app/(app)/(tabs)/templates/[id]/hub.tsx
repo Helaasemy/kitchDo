@@ -18,6 +18,7 @@ import {
   effectiveAssignee,
   itemAssignmentFromPick,
   listAssigneeFromPick,
+  notifyNewAssignees,
 } from '@/features/assignment';
 import { useAuth } from '@/features/auth';
 import { isLibraryCopy } from '@/features/catalog';
@@ -53,22 +54,39 @@ type HubRow = {
 
 type HubGroup = { key: string; title: string | null; rows: HubRow[] };
 
-function openHubRows(rows: HubRow[]): HubRow[] {
-  return openTasksFirst(rows.map((row) => ({ ...row, done: Boolean(row.task?.done) })));
+function openHubRows(
+  rows: HubRow[],
+  keepInPlace?: (row: HubRow) => boolean,
+): HubRow[] {
+  return openTasksFirst(
+    rows.map((row) => ({ ...row, done: Boolean(row.task?.done) })),
+    keepInPlace,
+  );
 }
 
 /** Rows grouped under their section, in template order; unsectioned rows first. */
 function groupRows(
   detail: TemplateDetail,
   rows: (HubRow & { sectionId: string | null })[],
+  keepInPlace?: (row: HubRow) => boolean,
 ): HubGroup[] {
   const sections = [...detail.sections].sort((a, b) => a.sortOrder - b.sortOrder);
   const groups: HubGroup[] = [
-    { key: 'none', title: null, rows: openHubRows(rows.filter((r) => !r.sectionId)) },
+    {
+      key: 'none',
+      title: null,
+      rows: openHubRows(
+        rows.filter((r) => !r.sectionId),
+        keepInPlace,
+      ),
+    },
     ...sections.map((section) => ({
       key: section.id,
       title: section.title,
-      rows: openHubRows(rows.filter((r) => r.sectionId === section.id)),
+      rows: openHubRows(
+        rows.filter((r) => r.sectionId === section.id),
+        keepInPlace,
+      ),
     })),
   ];
   return groups.filter((g) => g.rows.length > 0);
@@ -155,6 +173,14 @@ export default function TemplateHubScreen() {
     setAssigning(true);
     setError(null);
     try {
+      const previous = {
+        listUserId: detail.assigneeUserId,
+        items: detail.items.map((item) => item.assignment),
+      };
+      const next = {
+        listUserId: listAssigneeUserId,
+        items: items.map((item) => item.assignment),
+      };
       const result = await saveTemplateAssignments({
         templateId,
         kitchenId,
@@ -172,6 +198,16 @@ export default function TemplateHubScreen() {
         assigneeUserId: listAssigneeUserId,
         items,
       });
+      if (userId) {
+        void notifyNewAssignees({
+          actorUserId: userId,
+          kitchenId,
+          templateId,
+          templateTitle: detail.title,
+          previous,
+          next,
+        });
+      }
       await reloadRecurring();
     } catch (e) {
       setError(e instanceof Error ? e.message : t().common.errorGeneric);
@@ -246,7 +282,11 @@ export default function TemplateHubScreen() {
           task,
           sectionId: sectionIdByItem.get(task.itemId) ?? null,
         }));
-  const groups = detail ? groupRows(detail, rows) : [];
+  const groups = detail
+    ? groupRows(detail, rows, (row) =>
+        Boolean(row.task && recurring.parkedIds.has(row.task.itemId)),
+      )
+    : [];
 
   const notice = (text: string, tone: 'muted' | 'alert' = 'muted') => (
     <Text

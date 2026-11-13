@@ -141,6 +141,43 @@ test('Today groups tasks by frequency, then template, keeping order', () => {
   );
 });
 
+test('a just-closed task stays put until it is ready to settle', () => {
+  const rows = [
+    { id: 'a', done: false },
+    { id: 'b', done: true },
+    { id: 'c', done: false },
+    { id: 'd', done: true },
+  ];
+  const hold = new Set(['b']);
+  assert.deepEqual(
+    grouping.openTasksFirst(rows, (task) => hold.has(task.id)).map((t) => t.id),
+    ['a', 'b', 'c', 'd'],
+  );
+  assert.deepEqual(
+    grouping.openTasksFirst(rows).map((t) => t.id),
+    ['a', 'c', 'b', 'd'],
+  );
+});
+
+test('Today keeps a just-closed task in its template group until it settles', () => {
+  const task = (itemId, done = false) => ({
+    itemId,
+    templateId: 'open',
+    templateTitle: 'OPEN',
+    frequency: 'daily',
+    done,
+  });
+  const groups = grouping.groupByFrequencyAndTemplate(
+    [task('a1'), task('a2', true), task('a3')],
+    (row) => row.itemId === 'a2',
+  );
+  assert.deepEqual(
+    groups.daily[0].tasks.map((t) => t.itemId),
+    ['a1', 'a2', 'a3'],
+  );
+  assert.equal(groups.daily[0].doneCount, 1);
+});
+
 test('one-off tasks group separately from repeating ones', () => {
   const groups = grouping.groupByFrequencyAndTemplate([
     {

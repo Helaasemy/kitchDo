@@ -7,6 +7,7 @@ import Purchases, {
   type PurchasesPackage,
 } from 'react-native-purchases';
 
+import { createPurchasesIdentitySync } from './identity';
 import type { KitchenPlan, PlanInterval } from './plans';
 
 const ENV_IOS_KEY = process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY ?? '';
@@ -73,31 +74,43 @@ export async function isPurchasesConfigured(): Promise<boolean> {
   }
 }
 
+const identitySync = createPurchasesIdentitySync({
+  isConfigured: isPurchasesConfigured,
+  configure: async (userId) => {
+    const apiKey = revenueCatApiKey();
+    if (!apiKey) return;
+    await Purchases.setLogLevel(__DEV__ ? LOG_LEVEL.DEBUG : LOG_LEVEL.INFO);
+    if (__DEV__) {
+      console.log(
+        '[KitchDo] RevenueCat',
+        apiKey.startsWith('test_') ? 'Test Store' : 'App Store',
+      );
+    }
+    Purchases.configure({
+      apiKey,
+      ...(userId ? { appUserID: userId } : {}),
+    });
+  },
+  getAppUserID: () => Purchases.getAppUserID(),
+  logIn: async (userId) => {
+    await Purchases.logIn(userId);
+  },
+  logOut: async () => {
+    await Purchases.logOut();
+  },
+});
+
 export async function configurePurchases(): Promise<boolean> {
-  const apiKey = revenueCatApiKey();
-  if (!apiKey) return false;
-  if (await isPurchasesConfigured()) return true;
-  await Purchases.setLogLevel(__DEV__ ? LOG_LEVEL.DEBUG : LOG_LEVEL.INFO);
-  if (__DEV__) {
-    console.log(
-      '[KitchDo] RevenueCat',
-      apiKey.startsWith('test_') ? 'Test Store' : 'App Store',
-    );
-  }
-  Purchases.configure({ apiKey });
-  return true;
+  if (!revenueCatApiKey()) return false;
+  return isPurchasesConfigured();
 }
 
 export async function identifyPurchasesUser(userId: string | null): Promise<void> {
-  if (!(await isPurchasesConfigured())) return;
-  if (userId) {
-    await Purchases.logIn(userId);
-    return;
-  }
+  if (!revenueCatApiKey()) return;
   try {
-    await Purchases.logOut();
+    await identitySync.sync(userId);
   } catch {
-    // Already anonymous.
+    /* RevenueCat 429/7638: another identify is already in flight. */
   }
 }
 

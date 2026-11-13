@@ -2,7 +2,6 @@ import type { ReactNode } from 'react';
 import {
   KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -46,7 +45,7 @@ export function Sheet({
       statusBarTranslucent
     >
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior="padding"
         style={{ flex: 1, justifyContent: 'flex-end' }}
       >
         <Pressable
@@ -92,6 +91,7 @@ export function Sheet({
             style={{ flexGrow: 0 }}
             contentContainerStyle={{ gap: theme.space.lg }}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="interactive"
             showsVerticalScrollIndicator={false}
           >
             {children}

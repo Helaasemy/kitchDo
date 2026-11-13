@@ -12,6 +12,7 @@ import { AppState, type AppStateStatus } from 'react-native';
 
 import { useAuth } from '@/features/auth';
 import { getDeviceTimeZone, localDateString, nowLocal } from '@/lib/dates';
+import { registerPushToken } from '@/lib/notifications';
 
 import {
   buildSyncStatus,
@@ -163,6 +164,11 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    if (authStatus !== 'authenticated' || !userId) return;
+    void registerPushToken(userId);
+  }, [authStatus, userId]);
 
   useEffect(() => {
     const onChange = (next: AppStateStatus) => {

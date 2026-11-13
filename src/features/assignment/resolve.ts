@@ -38,6 +38,32 @@ export function isAssignedToMe(
   return effectiveUserId != null && effectiveUserId === currentUserId;
 }
 
+type AssignmentSnapshot = {
+  listUserId: string | null;
+  items: ItemAssignment[];
+};
+
+function assignedUserIds(snapshot: AssignmentSnapshot): Set<string> {
+  const ids = new Set<string>();
+  if (snapshot.listUserId) ids.add(snapshot.listUserId);
+  for (const item of snapshot.items) {
+    const userId = effectiveAssignee(snapshot.listUserId, item);
+    if (userId) ids.add(userId);
+  }
+  return ids;
+}
+
+/** People who gained a list or task, excluding Anyone and the person making the change. */
+export function newlyAssignedUserIds(
+  previous: AssignmentSnapshot,
+  next: AssignmentSnapshot,
+  actorUserId: string,
+): string[] {
+  const before = assignedUserIds(previous);
+  const after = assignedUserIds(next);
+  return [...after].filter((id) => !before.has(id) && id !== actorUserId);
+}
+
 export type ItemAssignmentKind = 'anyone' | 'inherit' | 'override';
 
 /** Visual state on a task row in the template editor. */

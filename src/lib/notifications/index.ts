@@ -1,3 +1,4 @@
+export { registerPushToken } from './push';
 export {
   cancelAllMappedReminders,
   cancelReminderForOccurrence,

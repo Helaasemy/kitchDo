@@ -1,3 +1,4 @@
+export { notifyNewAssignees } from './notify';
 export {
   INHERIT_ASSIGNMENT,
   effectiveAssignee,
@@ -5,6 +6,7 @@ export {
   itemAssignmentFromPick,
   itemAssignmentKind,
   listAssigneeFromPick,
+  newlyAssignedUserIds,
   normalizeItemAssignment,
   parseAssigneeMode,
   type AssigneeMode,

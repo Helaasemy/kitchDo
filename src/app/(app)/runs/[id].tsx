@@ -2,7 +2,6 @@ import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Modal,
   ScrollView,
   Text,
   TextInput,
@@ -19,6 +18,7 @@ import {
   Screen,
   ScreenHeader,
   SectionChip,
+  Sheet,
   SyncBanner,
 } from '@/components/ui';
 import { useTheme } from '@/design';
@@ -470,78 +470,55 @@ export default function RunExecutionScreen() {
         </View>
       </View>
 
-      <Modal visible={modal != null} transparent animationType="fade">
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: theme.colors.overlay,
-            justifyContent: 'flex-end',
-          }}
-        >
-          <View
-            style={{
-              backgroundColor: theme.colors.canvas,
-              borderTopLeftRadius: theme.radii.xxl,
-              borderTopRightRadius: theme.radii.xxl,
-              padding: theme.space.xl,
-              paddingBottom: theme.space.xxl,
-              gap: theme.space.lg,
-            }}
-          >
-            <Text
-              style={{
-                fontFamily: theme.fonts.display,
-                fontSize: 28,
-                lineHeight: 32,
-                color: theme.colors.ink,
-              }}
-              allowFontScaling
-            >
-              {modal?.kind === 'resolve'
-                ? copy.resolveIssue
-                : copy.exceptionTitle}
-            </Text>
-            <TextInput
-              value={note}
-              onChangeText={setNote}
-              placeholder={
-                modal?.kind === 'resolve'
-                  ? copy.resolveNote
-                  : modal?.kind === 'outcome' && modal.requireNote
-                    ? copy.noteRequired
-                    : copy.noteOptional
-              }
-              placeholderTextColor={theme.colors.inkSubtle}
-              multiline
-              style={{
-                minHeight: 96,
-                borderWidth: 1,
-                borderColor: theme.colors.border,
-                borderRadius: theme.radii.xl,
-                padding: theme.space.lg,
-                fontFamily: theme.fonts.body,
-                fontSize: theme.typography.body.fontSize,
-                color: theme.colors.ink,
-                backgroundColor: theme.colors.white,
-                textAlignVertical: 'top',
-              }}
+      <Sheet
+        visible={modal != null}
+        title={
+          modal?.kind === 'resolve' ? copy.resolveIssue : copy.exceptionTitle
+        }
+        onClose={() => setModal(null)}
+        footer={
+          <View style={{ flexDirection: 'row', gap: theme.space.sm }}>
+            <Button
+              label={t().common.cancel}
+              variant="secondary"
+              onPress={() => setModal(null)}
+              style={{ flex: 1 }}
             />
-            <View style={{ flexDirection: 'row', gap: theme.space.sm }}>
-              <Button
-                label={t().common.cancel}
-                variant="secondary"
-                onPress={() => setModal(null)}
-                style={{ flex: 1 }}
-              />
-              <Button
-                label={copy.exceptionSave}
-                onPress={() => void confirmModal()}
-                style={{ flex: 1 }}
-              />
-            </View>
+            <Button
+              label={copy.exceptionSave}
+              onPress={() => void confirmModal()}
+              style={{ flex: 1 }}
+            />
           </View>
-        </View>
-      </Modal>
+        }
+      >
+        <TextInput
+          value={note}
+          onChangeText={setNote}
+          placeholder={
+            modal?.kind === 'resolve'
+              ? copy.resolveNote
+              : modal?.kind === 'outcome' && modal.requireNote
+                ? copy.noteRequired
+                : copy.noteOptional
+          }
+          placeholderTextColor={theme.colors.inkSubtle}
+          multiline
+          autoFocus
+          style={{
+            minHeight: 96,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            borderRadius: theme.radii.xl,
+            padding: theme.space.lg,
+            fontFamily: theme.fonts.body,
+            fontSize: theme.typography.body.fontSize,
+            color: theme.colors.ink,
+            backgroundColor: theme.colors.white,
+            textAlignVertical: 'top',
+          }}
+        />
+      </Sheet>
     </Screen>
   );
 }

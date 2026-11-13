@@ -25,7 +25,9 @@ import {
   TaskAssigneeRow,
   effectiveAssignee,
   parseAssigneeMode,
+  notifyNewAssignees,
   type AssigneeMode,
+  type ItemAssignment,
 } from '@/features/assignment';
 import { useAuth } from '@/features/auth';
 import { listKitchenMembers, type KitchenMember } from '@/features/membership';
@@ -117,6 +119,10 @@ export default function TemplateBuilderScreen() {
   const [afterAction, setAfterAction] = useState<AfterAction>(null);
   const [afterOpenRunId, setAfterOpenRunId] = useState<string | null>(null);
   const [libraryCopy, setLibraryCopy] = useState(false);
+  const lastAssignmentRef = useRef<{
+    listUserId: string | null;
+    items: ItemAssignment[];
+  }>({ listUserId: null, items: [] });
 
   const readOnly = state === 'archived' || !canEditTemplates;
   const alreadyUsed = publishedRevision != null;
@@ -131,6 +137,7 @@ export default function TemplateBuilderScreen() {
 
   useEffect(() => {
     if (!kitchenId || !templateId) return;
+    lastAssignmentRef.current = { listUserId: null, items: [] };
     let cancelled = false;
     Promise.all([
       listCategories(kitchenId),
@@ -177,12 +184,17 @@ export default function TemplateBuilderScreen() {
               };
             }),
           );
+          lastAssignmentRef.current = {
+            listUserId: detail.assigneeUserId,
+            items: detail.items.map((i) => i.assignment),
+          };
         } else {
           setExists(false);
           setRevision(0);
           setState('draft');
           setPublishedRevision(null);
           setListAssigneeUserId(null);
+          lastAssignmentRef.current = { listUserId: null, items: [] };
         }
       })
       .catch((e: unknown) => {
@@ -225,6 +237,17 @@ export default function TemplateBuilderScreen() {
     if (!kitchenId || !templateId) throw new Error(copy.needKitchen);
     if (!title.trim()) throw new Error(copy.needTitle);
     const payload = buildPayload();
+    const previous = lastAssignmentRef.current;
+    const savedIds = new Set(payload.items.map((item) => item.id));
+    const next = {
+      listUserId: listAssigneeUserId,
+      items: items
+        .filter((item) => savedIds.has(item.id))
+        .map((item) => ({
+          mode: item.assigneeMode,
+          userId: item.assigneeUserId,
+        })),
+    };
     const result = await saveTemplateDraft({
       templateId,
       kitchenId,
@@ -239,7 +262,16 @@ export default function TemplateBuilderScreen() {
     setExists(true);
     setRevision(result.revision);
     setState((prev) => (prev === 'archived' ? prev : prev === 'active' ? 'active' : 'draft'));
+    lastAssignmentRef.current = next;
     if (userId) {
+      void notifyNewAssignees({
+        actorUserId: userId,
+        kitchenId,
+        templateId,
+        templateTitle: title.trim(),
+        previous,
+        next,
+      });
       const sectionTitles = new Map(payload.sections.map((s) => [s.id, s.title]));
       const frequencyById = new Map(items.map((i) => [i.id, i.frequency]));
       await saveTemplateFrequencies({
@@ -1005,6 +1037,7 @@ export default function TemplateBuilderScreen() {
           style={{ flex: 1 }}
           contentContainerStyle={{ paddingBottom: theme.space.xxl }}
           keyboardShouldPersistTaps="handled"
+          automaticallyAdjustKeyboardInsets
           showsVerticalScrollIndicator={false}
         >
           {listHeader}
@@ -1059,6 +1092,7 @@ export default function TemplateBuilderScreen() {
           ListHeaderComponent={listHeader}
           ListFooterComponent={listFooter}
           keyboardShouldPersistTaps="handled"
+          automaticallyAdjustKeyboardInsets
           contentContainerStyle={{ paddingBottom: theme.space.xxl }}
           activationDistance={12}
         />
