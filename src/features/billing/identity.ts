@@ -1,39 +1,31 @@
 export type PurchasesIdentityActions = {
   isConfigured: () => Promise<boolean>;
-  configure: (userId: string | null) => Promise<void>;
+  configure: (kitchenId: string) => Promise<void>;
   getAppUserID: () => Promise<string>;
-  logIn: (userId: string) => Promise<void>;
-  logOut: () => Promise<void>;
+  logIn: (kitchenId: string) => Promise<void>;
 };
-
-export function isAnonymousAppUserId(id: string): boolean {
-  return id.startsWith('$RCAnonymousID:');
-}
 
 type Waiter = { resolve: () => void; reject: (error: unknown) => void };
 
 /**
- * Serializes RevenueCat identity changes so configure/logIn/logOut never overlap.
- * Overlapping identify calls return HTTP 429 / backend 7638.
+ * Serializes RevenueCat identity so configure/logIn never overlap.
+ * Identity is the kitchen (the billed unit). No kitchen means do nothing:
+ * never configure anonymously and never logOut (both mint $RCAnonymousID customers).
  */
 export function createPurchasesIdentitySync(actions: PurchasesIdentityActions) {
-  let queued: { userId: string | null; waiters: Waiter[] } | undefined;
+  let queued: { kitchenId: string | null; waiters: Waiter[] } | undefined;
   let chain: Promise<void> = Promise.resolve();
 
-  async function apply(userId: string | null): Promise<void> {
+  async function apply(kitchenId: string | null): Promise<void> {
+    if (!kitchenId) return;
     const configured = await actions.isConfigured();
     if (!configured) {
-      await actions.configure(userId);
+      await actions.configure(kitchenId);
       return;
     }
     const current = await actions.getAppUserID();
-    if (userId) {
-      if (current === userId) return;
-      await actions.logIn(userId);
-      return;
-    }
-    if (!current || isAnonymousAppUserId(current)) return;
-    await actions.logOut();
+    if (current === kitchenId) return;
+    await actions.logIn(kitchenId);
   }
 
   async function runQueued(): Promise<void> {
@@ -41,7 +33,7 @@ export function createPurchasesIdentitySync(actions: PurchasesIdentityActions) {
     queued = undefined;
     if (!job) return;
     try {
-      await apply(job.userId);
+      await apply(job.kitchenId);
       for (const waiter of job.waiters) waiter.resolve();
     } catch (error) {
       for (const waiter of job.waiters) waiter.reject(error);
@@ -49,9 +41,9 @@ export function createPurchasesIdentitySync(actions: PurchasesIdentityActions) {
   }
 
   return {
-    sync(userId: string | null): Promise<void> {
-      if (!queued) queued = { userId, waiters: [] };
-      else queued.userId = userId;
+    sync(kitchenId: string | null): Promise<void> {
+      if (!queued) queued = { kitchenId, waiters: [] };
+      else queued.kitchenId = kitchenId;
       const result = new Promise<void>((resolve, reject) => {
         queued?.waiters.push({ resolve, reject });
       });

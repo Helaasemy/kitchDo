@@ -76,7 +76,7 @@ export async function isPurchasesConfigured(): Promise<boolean> {
 
 const identitySync = createPurchasesIdentitySync({
   isConfigured: isPurchasesConfigured,
-  configure: async (userId) => {
+  configure: async (kitchenId) => {
     const apiKey = revenueCatApiKey();
     if (!apiKey) return;
     await Purchases.setLogLevel(__DEV__ ? LOG_LEVEL.DEBUG : LOG_LEVEL.INFO);
@@ -88,15 +88,12 @@ const identitySync = createPurchasesIdentitySync({
     }
     Purchases.configure({
       apiKey,
-      ...(userId ? { appUserID: userId } : {}),
+      appUserID: kitchenId,
     });
   },
   getAppUserID: () => Purchases.getAppUserID(),
-  logIn: async (userId) => {
-    await Purchases.logIn(userId);
-  },
-  logOut: async () => {
-    await Purchases.logOut();
+  logIn: async (kitchenId) => {
+    await Purchases.logIn(kitchenId);
   },
 });
 
@@ -105,10 +102,12 @@ export async function configurePurchases(): Promise<boolean> {
   return isPurchasesConfigured();
 }
 
-export async function identifyPurchasesUser(userId: string | null): Promise<void> {
+export async function identifyPurchasesKitchen(
+  kitchenId: string | null,
+): Promise<void> {
   if (!revenueCatApiKey()) return;
   try {
-    await identitySync.sync(userId);
+    await identitySync.sync(kitchenId);
   } catch {
     /* RevenueCat 429/7638: another identify is already in flight. */
   }
@@ -188,4 +187,11 @@ export async function restorePaidPurchases(): Promise<CustomerInfo> {
     throw new Error('STORE_UNAVAILABLE');
   }
   return Purchases.restorePurchases();
+}
+
+export async function openManageSubscriptions(): Promise<void> {
+  if (!(await isPurchasesConfigured())) {
+    throw new Error('STORE_UNAVAILABLE');
+  }
+  await Purchases.showManageSubscriptions();
 }
