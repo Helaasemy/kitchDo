@@ -22,12 +22,14 @@ import {
   ListRow,
   Screen,
   ScreenHeader,
+  SwipeDelete,
 } from '@/components/ui';
 import { useTheme } from '@/design';
 import { useAuth } from '@/features/auth';
 import { usePlanPaywall } from '@/features/billing';
-import { useCatalog } from '@/features/catalog';
+import { forgetTemplateSource, useCatalog } from '@/features/catalog';
 import {
+  clearTemplateFrequencies,
   TASK_FREQUENCIES,
   useRecurringTasks,
   type TaskFrequency,
@@ -40,6 +42,8 @@ import {
   type Category,
 } from '@/features/categories/api';
 import {
+  archiveTemplate,
+  deleteTemplate,
   listTemplates,
   type TemplateState,
   type TemplateSummary,
@@ -290,6 +294,73 @@ export default function TemplatesScreen() {
     }
   };
 
+  const forgetLocal = async (templateId: string) => {
+    if (!user?.id || !kitchenId) return;
+    await clearTemplateFrequencies(user.id, kitchenId, templateId);
+    await forgetTemplateSource(user.id, kitchenId, templateId);
+  };
+
+  const onArchiveTemplate = (tmpl: TemplateSummary) => {
+    Alert.alert(
+      copy.archive,
+      copy.archiveListConfirm.replace('{name}', tmpl.title),
+      [
+        { text: t().common.cancel, style: 'cancel' },
+        {
+          text: copy.archive,
+          onPress: () => {
+            void (async () => {
+              try {
+                await archiveTemplate({
+                  templateId: tmpl.id,
+                  expectedRevision: tmpl.revision,
+                });
+                await forgetLocal(tmpl.id);
+                await load();
+              } catch (e) {
+                Alert.alert(
+                  t().common.errorGeneric,
+                  e instanceof Error ? e.message : undefined,
+                );
+              }
+            })();
+          },
+        },
+      ],
+    );
+  };
+
+  const onDeleteTemplate = (tmpl: TemplateSummary) => {
+    Alert.alert(
+      t().common.delete,
+      copy.deleteListConfirm.replace('{name}', tmpl.title),
+      [
+        { text: t().common.cancel, style: 'cancel' },
+        {
+          text: t().common.delete,
+          style: 'destructive',
+          onPress: () => {
+            void (async () => {
+              try {
+                await deleteTemplate({
+                  templateId: tmpl.id,
+                  expectedRevision: tmpl.revision,
+                });
+                await forgetLocal(tmpl.id);
+                await load();
+              } catch (e) {
+                Alert.alert(
+                  t().common.errorGeneric,
+                  e instanceof Error ? e.message : undefined,
+                );
+              }
+            })();
+          },
+        },
+      ],
+    );
+  };
+
   const onArchiveCategory = (cat: Category) => {
     Alert.alert(t().common.archive, catCopy.archiveConfirm, [
       { text: t().common.cancel, style: 'cancel' },
@@ -519,19 +590,34 @@ export default function TemplatesScreen() {
               showsVerticalScrollIndicator={false}
             >
               {templates.map((tmpl) => (
-                <TemplateCard
+                <SwipeDelete
                   key={tmpl.id}
-                  template={tmpl}
-                  frequencies={frequenciesByTemplate.get(tmpl.id) ?? []}
-                  stateLabel={stateLabel(tmpl.state)}
-                  onPress={() =>
-                    router.push(
-                      tmpl.publishedRevision != null
-                        ? `/(app)/(tabs)/templates/${tmpl.id}/hub`
-                        : `/(app)/(tabs)/templates/${tmpl.id}`,
-                    )
+                  enabled={canEditTemplates}
+                  label={t().common.delete}
+                  onDelete={() => onDeleteTemplate(tmpl)}
+                  archiveLabel={
+                    tmpl.state === 'archived' ? undefined : copy.archive
                   }
-                />
+                  onArchive={
+                    tmpl.state === 'archived'
+                      ? undefined
+                      : () => onArchiveTemplate(tmpl)
+                  }
+                  radius={24}
+                >
+                  <TemplateCard
+                    template={tmpl}
+                    frequencies={frequenciesByTemplate.get(tmpl.id) ?? []}
+                    stateLabel={stateLabel(tmpl.state)}
+                    onPress={() =>
+                      router.push(
+                        tmpl.publishedRevision != null
+                          ? `/(app)/(tabs)/templates/${tmpl.id}/hub`
+                          : `/(app)/(tabs)/templates/${tmpl.id}`,
+                      )
+                    }
+                  />
+                </SwipeDelete>
               ))}
             </ScrollView>
           )}

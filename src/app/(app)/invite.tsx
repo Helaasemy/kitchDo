@@ -3,11 +3,13 @@ import { useFocusEffect } from 'expo-router';
 import {
   Alert,
   Linking,
+  Pressable,
   Share,
   Switch,
   Text,
   View,
 } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Clipboard from 'expo-clipboard';
 import QRCode from 'react-native-qrcode-svg';
 
@@ -76,7 +78,7 @@ export default function InviteScreen() {
     const invites = amAdmin && plan !== 'free' ? await listKitchenInvites(kitchenId) : [];
     setMembers(nextMembers);
     setInvite(invites[0] ?? null);
-  }, [kitchenId, isAdmin, userId, plan]);
+  }, [kitchenId, isAdmin, userId, plan, setInvite]);
 
   useFocusEffect(
     useCallback(() => {
@@ -330,6 +332,7 @@ export default function InviteScreen() {
           onChanged={reload}
           otherKitchenId={kitchens.find((k) => k.kitchenId !== kitchenId)?.kitchenId}
           onLeft={onLeft}
+          onInvitePeople={admin ? () => void generate() : undefined}
         />
       </View>
       {paywall}
@@ -372,6 +375,7 @@ function MemberList({
   onChanged,
   otherKitchenId,
   onLeft,
+  onInvitePeople,
 }: {
   members: KitchenMember[];
   userId?: string;
@@ -380,6 +384,7 @@ function MemberList({
   onChanged: () => Promise<void>;
   otherKitchenId?: string;
   onLeft: (nextKitchenId?: string) => Promise<void>;
+  onInvitePeople?: () => void;
 }) {
   const t = useT();
   const theme = useTheme();
@@ -500,6 +505,52 @@ function MemberList({
             </View>
           );
         })}
+        {onInvitePeople ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t().settings.invitePeople}
+            onPress={onInvitePeople}
+            style={({ pressed }) => ({
+              padding: theme.space.lg,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: theme.space.md,
+              opacity: pressed ? 0.75 : 1,
+            })}
+          >
+            <View
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                backgroundColor: theme.colors.frequency.weekly.tint,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Ionicons
+                name="person-add-outline"
+                size={20}
+                color={theme.colors.frequency.weekly.text}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontFamily: theme.fonts.bodyBold, color: theme.colors.ink }}>
+                {t().settings.invitePeople}
+              </Text>
+              <Text
+                style={{
+                  fontFamily: theme.fonts.bodyMedium,
+                  fontSize: theme.typography.caption.fontSize,
+                  color: theme.colors.inkMuted,
+                }}
+              >
+                {t().settings.invitePeopleHint}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={theme.colors.inkSubtle} />
+          </Pressable>
+        ) : null}
       </PaperCard>
       {showLeave ? (
         <Button

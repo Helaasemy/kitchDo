@@ -1,0 +1,54 @@
+:root {
+  --bg: #fbf6ee;
+  --ink: #2b211c;
+  --muted: #7a6a5f;
+  --accent: #c4452a;
+  --line: #eadfd2;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 18px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+main {
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 4rem;
+}
+h1 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 2.25rem;
+  font-weight: 400;
+  margin: 0 0 0.5rem;
+}
+.meta, .sub { color: var(--muted); margin-bottom: 2rem; }
+h2 { font-size: 1.05rem; margin: 1.75rem 0 0.5rem; }
+p, li { color: var(--muted); margin: 0 0 0.75rem; }
+a { color: var(--accent); }
+nav {
+  margin-top: 2.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--line);
+  font-size: 0.95rem;
+}
+.home {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.home ul { list-style: none; padding: 0; margin: 0; }
+.home li { margin: 0.75rem 0; }
+.home a {
+  display: inline-block;
+  color: var(--ink);
+  text-decoration: none;
+  padding: 0.65rem 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  min-width: 12rem;
+}
+.home a:hover { border-color: var(--accent); color: var(--accent); }

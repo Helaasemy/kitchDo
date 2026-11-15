@@ -1,0 +1,6 @@
+{
+  "description": "KitchDo, ev mutfakları ve küçük ekipler için bir kontrol listesi uygulamasıdır. Listeleri bir kez oluşturun, programa göre çalıştırın ve gerçekten neyin bittiğini görün.\n\nAçılış ve kapanış, temizlik, hazırlık ve yoğunlukta unutulan işler için kullanın.\n\nMutfak başına planlar:\n• Free — 5 liste, 1 kişi\n• Light — ayda 30 kr veya yılda 300 kr — sınırsız liste, 2 kişi\n• Pro — ayda 99 kr veya yılda 990 kr — sınırsız liste, 6 kişi\n\nYıllık fiyat 10 aya denktir (iki ay ücretsiz). Mutfak sahibi öder. Katılanlar ücretsiz kalır.\n\nListeleri çevrimdışı tamamlayın; çevrimiçi olunca senkronlanır. Kısa kod veya QR ile davet edin. Şablonları kimin düzenleyeceğini, kimin yalnızca çalıştıracağını seçin.\n\nKişi sınırına ulaşılırsa planı yükseltin veya birini çıkarın. İletişim yoluyla istisna yoktur.\n\nPrivacy Policy: https://kitchdo-legal.netlify.app/privacy/\nTerms of Use: https://kitchdo-legal.netlify.app/terms/",
+  "keywords": "mutfak,liste,temizlik,açılış,kapanış,görev,ev,restoran",
+  "promotionalText": "Ev ve küçük ekipler için mutfak listeleri. Sahibi öder.",
+  "supportUrl": "https://kitchdo-legal.netlify.app/support/"
+}

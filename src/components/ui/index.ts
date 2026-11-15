@@ -17,6 +17,7 @@ export { ScreenHeader } from './ScreenHeader';
 export { SectionChip, type ChipTone } from './SectionChip';
 export { SectionLabel } from './SectionLabel';
 export { Sheet } from './Sheet';
+export { SwipeDelete } from './SwipeDelete';
 export { SyncBanner } from './SyncBanner';
 export { TextField } from './TextField';
 export { Wordmark } from './Wordmark';

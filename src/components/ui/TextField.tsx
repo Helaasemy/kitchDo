@@ -34,7 +34,7 @@ export function TextField({
   const [focused, setFocused] = useState(false);
 
   return (
-    <View style={[{ gap: theme.space.xs, width: '100%' }, containerStyle]}>
+    <View style={[{ gap: theme.space.xs, alignSelf: 'stretch' }, containerStyle]}>
       <Text
         style={{
           fontFamily: theme.fonts.label,

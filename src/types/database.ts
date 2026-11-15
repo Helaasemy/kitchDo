@@ -833,6 +833,14 @@ export type Database = {
         }
         Returns: Json
       }
+      delete_template: {
+        Args: {
+          p_expected_revision: number
+          p_mutation_id: string
+          p_template_id: string
+        }
+        Returns: Json
+      }
       cancel_run: {
         Args: {
           p_expected_revision: number

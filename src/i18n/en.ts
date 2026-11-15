@@ -25,6 +25,7 @@ export const en = {
     add: 'Add',
     optional: 'Optional',
     copied: 'Copied',
+    delete: 'Delete',
   },
   tabs: {
     today: 'Today',
@@ -237,6 +238,7 @@ export const en = {
     addSection: 'Add section',
     sectionPlaceholder: 'Section name',
     itemsTitle: 'Items',
+    swipeToDelete: 'Swipe a step left to delete it',
     addItem: 'Add item',
     itemTitlePlaceholder: 'Checklist step',
     itemInstructionsPlaceholder: 'Optional instructions',
@@ -248,6 +250,8 @@ export const en = {
     publish: 'Publish',
     duplicate: 'Duplicate',
     archive: 'Archive',
+    archiveListConfirm: 'Archive “{name}”? You’ll find it under Archived.',
+    deleteListConfirm: 'Delete “{name}”? This cannot be undone.',
     afterSaveTitle: 'Template saved',
     afterPublishTitle: 'Saved and published',
     afterPublishOpenHint:
@@ -256,6 +260,7 @@ export const en = {
     continueRun: 'Continue checklist',
     addSchedule: 'Add schedule',
     returnToList: 'Return to templates',
+    returnHome: 'Home',
     saveChanges: 'Save changes',
 
 
@@ -277,6 +282,7 @@ export const en = {
     archivedReadOnly: 'This template is archived.',
     dragItem: 'Drag to reorder',
     removeItem: 'Remove',
+    removeItemConfirm: 'Remove this step from the list?',
     removeSection: 'Remove section',
     browseTemplates: 'Browse the library',
     libraryCount: '{count} ready-made checklists',
@@ -386,6 +392,10 @@ export const en = {
     remindersPermissionDenied:
       'Notifications are off in system settings. Checklists still work.',
     version: 'Version',
+    privacy: 'Privacy Policy',
+    privacyHint: 'How KitchDo uses your data',
+    terms: 'Terms of Use',
+    termsHint: 'Subscriptions, kitchens, and your account',
     signOut: 'Sign out',
     deleteAccount: 'Delete account',
     deleteConfirmTitle: 'Delete account?',
@@ -511,6 +521,13 @@ export const en = {
     restorePurchases: 'Restore purchases',
     restoreEmpty: 'No subscription to restore on this account.',
     storeUnavailable: 'This plan isn’t in the store yet. Try again in a moment.',
+    privacy: 'Privacy Policy',
+    terms: 'Terms of Use',
+    durationMonth: '1 month',
+    durationYear: '1 year',
+    manageSubscription: 'Manage subscription',
+    autoRenew:
+      'Payment is charged to your Apple ID at confirmation of purchase. The subscription renews automatically unless you cancel at least 24 hours before the period ends. Your account is charged for renewal within 24 hours prior to the end of the current period. Manage or cancel in Settings → Apple ID → Subscriptions.',
     hintCapped: '{plan} · {lists} lists · {people} people',
     hintUnlimited: '{plan} · unlimited lists · {people} people',
   },

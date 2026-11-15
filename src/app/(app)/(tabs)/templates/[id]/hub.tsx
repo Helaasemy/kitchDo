@@ -21,6 +21,7 @@ import {
   notifyNewAssignees,
 } from '@/features/assignment';
 import { useAuth } from '@/features/auth';
+import { usePlanPaywall } from '@/features/billing';
 import { isLibraryCopy } from '@/features/catalog';
 import { listKitchenMembers, type KitchenMember } from '@/features/membership';
 import {
@@ -104,7 +105,8 @@ export default function TemplateHubScreen() {
   const theme = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const templateId = String(id);
-  const { kitchenId, user, canEditTemplates } = useAuth();
+  const { kitchenId, user, canEditTemplates, isAdmin } = useAuth();
+  const { paywall, guardPeople } = usePlanPaywall();
   const userId = user?.id;
   const copy = t().templates;
   const recurringCopy = t().recurring;
@@ -508,6 +510,14 @@ export default function TemplateHubScreen() {
               ? (detail?.items.find((i) => i.id === picker)?.assignment.userId ?? null)
               : null
         }
+        onInvitePeople={
+          isAdmin
+            ? () => {
+                if (!guardPeople(members.length)) return;
+                router.push('/(app)/invite');
+              }
+            : undefined
+        }
         onPick={(pick) => {
           if (!detail) return;
           const pickedUserId = pick.kind === 'member' ? pick.userId : undefined;
@@ -527,6 +537,7 @@ export default function TemplateHubScreen() {
           void persistAssignment(detail.assigneeUserId, nextItems);
         }}
       />
+      {paywall}
       <TickNoteModal
         visible={blockTask != null}
         note={blockNote}

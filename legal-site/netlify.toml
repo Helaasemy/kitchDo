@@ -1,0 +1,18 @@
+[build]
+  command = "echo 'static legal site'"
+  publish = "."
+
+[[redirects]]
+  from = "/privacy"
+  to = "/privacy/"
+  status = 301
+
+[[redirects]]
+  from = "/terms"
+  to = "/terms/"
+  status = 301
+
+[[redirects]]
+  from = "/support"
+  to = "/support/"
+  status = 301

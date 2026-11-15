@@ -24,6 +24,8 @@ export default function AppStackLayout() {
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="runs/[id]" options={{ title: t().runs.screenTitle }} />
       <Stack.Screen name="settings" options={{ title: t().settings.title }} />
+      <Stack.Screen name="privacy" options={{ title: t().settings.privacy }} />
+      <Stack.Screen name="terms" options={{ title: t().settings.terms }} />
       <Stack.Screen name="invite" options={{ title: t().invite.title }} />
     </Stack>
   );

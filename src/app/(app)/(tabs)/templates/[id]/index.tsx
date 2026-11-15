@@ -17,7 +17,7 @@ import DraggableFlatList, {
   type RenderItemParams,
 } from 'react-native-draggable-flatlist';
 
-import { Button, NetworkRequiredBanner, Screen, TextField } from '@/components/ui';
+import { Button, NetworkRequiredBanner, Screen, SwipeDelete, TextField } from '@/components/ui';
 import { useTheme } from '@/design';
 import {
   AssigneePicker,
@@ -37,6 +37,7 @@ import { listCategories, type Category } from '@/features/categories/api';
 import { findOpenRunForTemplate } from '@/features/runs';
 import {
   archiveTemplate,
+  deleteTemplate,
   duplicateTemplate,
   getTemplate,
   parsePastedItems,
@@ -89,8 +90,8 @@ export default function TemplateBuilderScreen() {
   const theme = useTheme();
   const { id } = useLocalSearchParams<{ id: string | string[] }>();
   const templateId = routeParam(id);
-  const { kitchenId, user, canEditTemplates } = useAuth();
-  const { paywall, openLists } = usePlanPaywall();
+  const { kitchenId, user, canEditTemplates, isAdmin } = useAuth();
+  const { paywall, openLists, guardPeople } = usePlanPaywall();
   const userId = user?.id;
   const { status: syncStatus } = useSync();
   const copy = t().templates;
@@ -426,32 +427,68 @@ export default function TemplateBuilderScreen() {
   };
 
   const onArchive = () => {
-    Alert.alert(copy.archive, undefined, [
-      { text: t().common.cancel, style: 'cancel' },
-      {
-        text: copy.archive,
-        style: 'destructive',
-        onPress: async () => {
-          if (!templateId) return;
-          setSaving(true);
-          try {
-            await archiveTemplate({
-              templateId,
-              expectedRevision: revision,
-            });
-            if (userId && kitchenId) {
-              await clearTemplateFrequencies(userId, kitchenId, templateId);
-              await forgetTemplateSource(userId, kitchenId, templateId);
+    Alert.alert(
+      copy.archive,
+      copy.archiveListConfirm.replace('{name}', title.trim() || copy.editTitle),
+      [
+        { text: t().common.cancel, style: 'cancel' },
+        {
+          text: copy.archive,
+          onPress: async () => {
+            if (!templateId) return;
+            setSaving(true);
+            try {
+              await archiveTemplate({
+                templateId,
+                expectedRevision: revision,
+              });
+              if (userId && kitchenId) {
+                await clearTemplateFrequencies(userId, kitchenId, templateId);
+                await forgetTemplateSource(userId, kitchenId, templateId);
+              }
+              router.replace('/(app)/(tabs)/templates');
+            } catch (e) {
+              setError(e instanceof Error ? e.message : t().common.errorGeneric);
+            } finally {
+              setSaving(false);
             }
-            router.replace('/(app)/(tabs)/templates');
-          } catch (e) {
-            setError(e instanceof Error ? e.message : t().common.errorGeneric);
-          } finally {
-            setSaving(false);
-          }
+          },
         },
-      },
-    ]);
+      ],
+    );
+  };
+
+  const onDeleteList = () => {
+    Alert.alert(
+      t().common.delete,
+      copy.deleteListConfirm.replace('{name}', title.trim() || copy.editTitle),
+      [
+        { text: t().common.cancel, style: 'cancel' },
+        {
+          text: t().common.delete,
+          style: 'destructive',
+          onPress: async () => {
+            if (!templateId) return;
+            setSaving(true);
+            try {
+              await deleteTemplate({
+                templateId,
+                expectedRevision: revision,
+              });
+              if (userId && kitchenId) {
+                await clearTemplateFrequencies(userId, kitchenId, templateId);
+                await forgetTemplateSource(userId, kitchenId, templateId);
+              }
+              router.replace('/(app)/(tabs)/templates');
+            } catch (e) {
+              setError(e instanceof Error ? e.message : t().common.errorGeneric);
+            } finally {
+              setSaving(false);
+            }
+          },
+        },
+      ],
+    );
   };
 
   const onAfterPrimary = () => {
@@ -487,6 +524,21 @@ export default function TemplateBuilderScreen() {
     ]);
   };
 
+  const removeDraftItem = useCallback(
+    (key: string, named: boolean) => {
+      const apply = () => setItems((prev) => prev.filter((i) => i.key !== key));
+      if (!named) {
+        apply();
+        return;
+      }
+      Alert.alert(copy.removeItem, copy.removeItemConfirm, [
+        { text: t().common.cancel, style: 'cancel' },
+        { text: copy.removeItem, style: 'destructive', onPress: apply },
+      ]);
+    },
+    [copy.removeItem, copy.removeItemConfirm, t],
+  );
+
   const applyPaste = () => {
     const lines = pastePreview;
     if (lines.length === 0) {
@@ -519,11 +571,19 @@ export default function TemplateBuilderScreen() {
   const renderItem = useCallback(
     ({ item, drag, isActive }: RenderItemParams<DraftItem>) => (
       <ScaleDecorator>
+        <View style={{ marginBottom: theme.space.sm }}>
+        <SwipeDelete
+          enabled={!readOnly && !isActive}
+          label={t().common.delete}
+          onDelete={() =>
+            removeDraftItem(item.key, item.title.trim().length > 0)
+          }
+          radius={theme.radii.sm}
+        >
         <View
           style={{
             gap: theme.space.sm,
             padding: theme.space.md,
-            marginBottom: theme.space.sm,
             borderRadius: theme.radii.sm,
             borderWidth: 1,
             borderColor: isActive ? theme.colors.primary : theme.colors.border,
@@ -534,8 +594,7 @@ export default function TemplateBuilderScreen() {
           <View
             style={{
               flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
+              alignItems: 'flex-end',
               gap: theme.space.sm,
             }}
           >
@@ -547,8 +606,8 @@ export default function TemplateBuilderScreen() {
                 delayLongPress={120}
                 hitSlop={8}
                 style={({ pressed }) => ({
-                  width: 40,
-                  height: 40,
+                  width: 44,
+                  height: 52,
                   alignItems: 'center',
                   justifyContent: 'center',
                   borderRadius: theme.radii.sm,
@@ -562,44 +621,22 @@ export default function TemplateBuilderScreen() {
                   color={theme.colors.inkMuted}
                 />
               </Pressable>
-            ) : (
-              <View style={{ width: 8 }} />
-            )}
-            {!readOnly ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={copy.removeItem}
-                onPress={() =>
-                  setItems((prev) => prev.filter((i) => i.key !== item.key))
-                }
-                hitSlop={8}
-                style={{
-                  width: 40,
-                  height: 40,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Ionicons
-                  name="trash-outline"
-                  size={20}
-                  color={theme.colors.coral}
-                />
-              </Pressable>
             ) : null}
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <TextField
+                label={copy.itemTitlePlaceholder}
+                value={item.title}
+                editable={!readOnly}
+                onChangeText={(text) =>
+                  setItems((prev) =>
+                    prev.map((i) =>
+                      i.key === item.key ? { ...i, title: text } : i,
+                    ),
+                  )
+                }
+              />
+            </View>
           </View>
-          <TextField
-            label={copy.itemTitlePlaceholder}
-            value={item.title}
-            editable={!readOnly}
-            onChangeText={(text) =>
-              setItems((prev) =>
-                prev.map((i) =>
-                  i.key === item.key ? { ...i, title: text } : i,
-                ),
-              )
-            }
-          />
           <TextField
             label={copy.itemInstructionsPlaceholder}
             value={item.instructions}
@@ -699,9 +736,21 @@ export default function TemplateBuilderScreen() {
             </ScrollView>
           ) : null}
         </View>
+        </SwipeDelete>
+        </View>
       </ScaleDecorator>
     ),
-    [copy, recurringCopy, readOnly, sections, theme, listAssigneeUserId, members],
+    [
+      copy,
+      recurringCopy,
+      readOnly,
+      removeDraftItem,
+      sections,
+      t,
+      theme,
+      listAssigneeUserId,
+      members,
+    ],
   );
 
   if (!kitchenId) {
@@ -877,36 +926,62 @@ export default function TemplateBuilderScreen() {
               backgroundColor: theme.colors.sand,
             }}
           >
-            <TextField
-              label={copy.sectionPlaceholder}
-              value={section.title}
-              editable={!readOnly}
-              onChangeText={(text) =>
-                setSections((prev) =>
-                  prev.map((s) =>
-                    s.key === section.key ? { ...s, title: text } : s,
-                  ),
-                )
-              }
-            />
-            {!readOnly ? (
-              <Button
-                label={copy.removeSection}
-                variant="ghost"
-                onPress={() => {
-                  setSections((prev) =>
-                    prev.filter((s) => s.key !== section.key),
-                  );
-                  setItems((prev) =>
-                    prev.map((i) =>
-                      i.sectionId === section.id
-                        ? { ...i, sectionId: null }
-                        : i,
-                    ),
-                  );
-                }}
-              />
-            ) : null}
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'flex-end',
+                gap: theme.space.sm,
+              }}
+            >
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <TextField
+                  label={copy.sectionPlaceholder}
+                  value={section.title}
+                  editable={!readOnly}
+                  onChangeText={(text) =>
+                    setSections((prev) =>
+                      prev.map((s) =>
+                        s.key === section.key ? { ...s, title: text } : s,
+                      ),
+                    )
+                  }
+                />
+              </View>
+              {!readOnly ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={copy.removeSection}
+                  onPress={() => {
+                    setSections((prev) =>
+                      prev.filter((s) => s.key !== section.key),
+                    );
+                    setItems((prev) =>
+                      prev.map((i) =>
+                        i.sectionId === section.id
+                          ? { ...i, sectionId: null }
+                          : i,
+                      ),
+                    );
+                  }}
+                  hitSlop={8}
+                  style={({ pressed }) => ({
+                    width: 44,
+                    height: 52,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: theme.radii.sm,
+                    backgroundColor: theme.colors.white,
+                    opacity: pressed ? 0.75 : 1,
+                  })}
+                >
+                  <Ionicons
+                    name="trash-outline"
+                    size={20}
+                    color={theme.colors.coral}
+                  />
+                </Pressable>
+              ) : null}
+            </View>
           </View>
         ))}
       </View>
@@ -920,16 +995,30 @@ export default function TemplateBuilderScreen() {
           gap: theme.space.sm,
         }}
       >
-        <Text
-          style={{
-            fontFamily: theme.fonts.displayRegular,
-            fontSize: theme.typography.heading.fontSize,
-            color: theme.colors.ink,
-          }}
-          allowFontScaling
-        >
-          {copy.itemsTitle}
-        </Text>
+        <View style={{ flex: 1, minWidth: 120, gap: 2 }}>
+          <Text
+            style={{
+              fontFamily: theme.fonts.displayRegular,
+              fontSize: theme.typography.heading.fontSize,
+              color: theme.colors.ink,
+            }}
+            allowFontScaling
+          >
+            {copy.itemsTitle}
+          </Text>
+          {!readOnly ? (
+            <Text
+              style={{
+                fontFamily: theme.fonts.body,
+                fontSize: theme.typography.caption.fontSize,
+                color: theme.colors.inkMuted,
+              }}
+              allowFontScaling
+            >
+              {copy.swipeToDelete}
+            </Text>
+          ) : null}
+        </View>
         {!readOnly ? (
           <View style={{ flexDirection: 'row', gap: theme.space.sm }}>
             <Button
@@ -948,8 +1037,18 @@ export default function TemplateBuilderScreen() {
     </View>
   );
 
-  const listFooter = (
-    <View style={{ gap: theme.space.lg, marginTop: theme.space.md }}>
+  const saveBar = !readOnly ? (
+    <View
+      style={{
+        gap: theme.space.sm,
+        paddingTop: theme.space.md,
+        paddingBottom: theme.space.sm,
+        borderTopWidth: 0.5,
+        borderTopColor: theme.colors.border,
+        backgroundColor: theme.colors.canvas,
+        boxShadow: theme.shadows.raised,
+      }}
+    >
       {error ? (
         <Text
           style={{
@@ -962,33 +1061,34 @@ export default function TemplateBuilderScreen() {
           {error}
         </Text>
       ) : null}
-
-      {!readOnly ? (
-        <View style={{ gap: theme.space.sm }}>
-          {alreadyUsed ? (
-            <Button
-              label={copy.saveChanges}
-              loading={saving}
-              onPress={() => void onSaveChanges()}
-            />
-          ) : (
-            <>
-              <Button
-                label={copy.saveDraft}
-                variant="secondary"
-                loading={saving}
-                onPress={() => void onSaveDraft()}
-              />
-              <Button
-                label={copy.publish}
-                loading={saving}
-                onPress={() => void onPublish()}
-              />
-            </>
-          )}
+      {alreadyUsed ? (
+        <Button
+          label={copy.saveChanges}
+          loading={saving}
+          onPress={() => void onSaveChanges()}
+        />
+      ) : (
+        <View style={{ flexDirection: 'row', gap: theme.space.sm }}>
+          <Button
+            label={copy.saveDraft}
+            variant="secondary"
+            loading={saving}
+            onPress={() => void onSaveDraft()}
+            style={{ flex: 1 }}
+          />
+          <Button
+            label={copy.publish}
+            loading={saving}
+            onPress={() => void onPublish()}
+            style={{ flex: 1 }}
+          />
         </View>
-      ) : null}
+      )}
+    </View>
+  ) : null;
 
+  const listFooter = (
+    <View style={{ gap: theme.space.lg, marginTop: theme.space.md }}>
       {exists ? (
         <View style={{ gap: theme.space.sm }}>
           <Button
@@ -1000,9 +1100,17 @@ export default function TemplateBuilderScreen() {
           {!readOnly ? (
             <Button
               label={copy.archive}
-              variant="danger"
+              variant="secondary"
               loading={saving}
               onPress={onArchive}
+            />
+          ) : null}
+          {canEditTemplates ? (
+            <Button
+              label={t().common.delete}
+              variant="danger"
+              loading={saving}
+              onPress={onDeleteList}
             />
           ) : null}
           {(state === 'active' || publishedRevision) && !libraryCopy ? (
@@ -1079,23 +1187,26 @@ export default function TemplateBuilderScreen() {
           {listFooter}
         </ScrollView>
       ) : (
-        <DraggableFlatList
-          style={{ flex: 1 }}
-          containerStyle={{ flex: 1 }}
-          data={items}
-          keyExtractor={(item) => item.key}
-          onDragBegin={() => {
-            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-          }}
-          onDragEnd={({ data }) => setItems(data)}
-          renderItem={renderItem}
-          ListHeaderComponent={listHeader}
-          ListFooterComponent={listFooter}
-          keyboardShouldPersistTaps="handled"
-          automaticallyAdjustKeyboardInsets
-          contentContainerStyle={{ paddingBottom: theme.space.xxl }}
-          activationDistance={12}
-        />
+        <View style={{ flex: 1 }}>
+          <DraggableFlatList
+            style={{ flex: 1 }}
+            containerStyle={{ flex: 1 }}
+            data={items}
+            keyExtractor={(item) => item.key}
+            onDragBegin={() => {
+              void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            }}
+            onDragEnd={({ data }) => setItems(data)}
+            renderItem={renderItem}
+            ListHeaderComponent={listHeader}
+            ListFooterComponent={listFooter}
+            keyboardShouldPersistTaps="handled"
+            automaticallyAdjustKeyboardInsets
+            contentContainerStyle={{ paddingBottom: theme.space.lg }}
+            activationDistance={12}
+          />
+          {saveBar}
+        </View>
       )}
 
       <Modal visible={pasteOpen} animationType="slide" transparent>
@@ -1225,7 +1336,17 @@ export default function TemplateBuilderScreen() {
               </Text>
             ) : null}
             <Button
+              label={copy.returnHome}
+              loading={saving}
+              onPress={() => {
+                setAfterAction(null);
+                setAfterOpenRunId(null);
+                router.replace('/(app)/(tabs)/today');
+              }}
+            />
+            <Button
               label={copy.returnToList}
+              variant="secondary"
               loading={saving}
               onPress={() => {
                 setAfterAction(null);
@@ -1233,9 +1354,9 @@ export default function TemplateBuilderScreen() {
                 router.replace('/(app)/(tabs)/templates');
               }}
             />
-            {afterAction === 'published' || publishedRevision ? (
+            {afterOpenRunId ? (
               <Button
-                label={afterOpenRunId ? copy.continueRun : t().tabs.today}
+                label={copy.continueRun}
                 variant="secondary"
                 onPress={onAfterPrimary}
               />
@@ -1282,6 +1403,14 @@ export default function TemplateBuilderScreen() {
             : picker
               ? (items.find((i) => i.key === picker)?.assigneeUserId ?? null)
               : null
+        }
+        onInvitePeople={
+          isAdmin
+            ? () => {
+                if (!guardPeople(members.length)) return;
+                router.push('/(app)/invite');
+              }
+            : undefined
         }
         onPick={(pick) => {
           if (picker === 'list') {

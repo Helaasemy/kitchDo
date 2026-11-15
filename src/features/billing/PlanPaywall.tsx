@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Alert, Pressable, Text, View } from 'react-native';
+import { Alert, Linking, Pressable, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import type { PurchasesPackage } from 'react-native-purchases';
 
 import { Button, PaperCard, Sheet } from '@/components/ui';
 import { useTheme } from '@/design';
 import { useAuth } from '@/features/auth';
+import { PRIVACY_URL, TERMS_URL } from '@/features/legal';
 import { errorMessage } from '@/lib/errors';
 import { useT } from '@/i18n';
 
@@ -23,6 +24,7 @@ import {
   isPurchaseCancelled,
   loadCurrentPackages,
   planFromCustomerInfo,
+  openManageSubscriptions,
   purchasePaidPlan,
   restorePaidPurchases,
   storePriceString,
@@ -225,10 +227,7 @@ export function PlanPaywall({ visible, reason, onClose, onChanged }: Props) {
     if (!kitchenId || !isAdmin || reason === 'full') return;
     setBusy(true);
     try {
-      if (plan === 'free') {
-        await applyPlan('free', null);
-        return;
-      }
+      if (plan === 'free') return;
       const info = await purchasePaidPlan(plan, interval);
       const next = planFromCustomerInfo(info);
       await applyPlan(next.plan, next.interval);
@@ -242,6 +241,21 @@ export function PlanPaywall({ visible, reason, onClose, onChanged }: Props) {
           : isPlanTooSmallError(raw)
             ? copy.downgradeBlocked
             : raw,
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const manage = async () => {
+    setBusy(true);
+    try {
+      await openManageSubscriptions();
+    } catch (e) {
+      const raw = errorMessage(e);
+      Alert.alert(
+        t().common.errorGeneric,
+        raw === 'STORE_UNAVAILABLE' ? copy.storeUnavailable : raw,
       );
     } finally {
       setBusy(false);
@@ -275,11 +289,9 @@ export function PlanPaywall({ visible, reason, onClose, onChanged }: Props) {
     plan === 'light' ? copy.light : plan === 'pro' ? copy.pro : copy.free;
 
   const plans: KitchenPlan[] =
-    reason === 'full'
+    reason === 'full' || (reason === 'people' && current !== 'free')
       ? ['pro']
-      : reason === 'manage'
-        ? ['free', 'light', 'pro']
-        : ['light', 'pro'];
+      : ['light', 'pro'];
 
   return (
     <Sheet visible={visible} title={title} onClose={onClose}>
@@ -312,6 +324,12 @@ export function PlanPaywall({ visible, reason, onClose, onChanged }: Props) {
             plan === 'free'
               ? null
               : storePriceString(packages[RC_PACKAGE_IDS[plan][interval]] ?? null);
+          const duration =
+            plan === 'free'
+              ? null
+              : interval === 'yearly'
+                ? copy.durationYear
+                : copy.durationMonth;
           const price =
             plan === 'free'
               ? copy.priceFree
@@ -357,7 +375,7 @@ export function PlanPaywall({ visible, reason, onClose, onChanged }: Props) {
                       color: theme.colors.ink,
                     }}
                   >
-                    {nameFor(plan)}
+                    {duration ? `${nameFor(plan)} · ${duration}` : nameFor(plan)}
                   </Text>
                   {selected ? (
                     <Text
@@ -406,21 +424,82 @@ export function PlanPaywall({ visible, reason, onClose, onChanged }: Props) {
         })}
       </View>
 
-      <Text
+      {isAdmin ? (
+        <Text
+          style={{
+            fontFamily: theme.fonts.body,
+            fontSize: theme.typography.caption.fontSize,
+            lineHeight: theme.typography.caption.lineHeight,
+            color: theme.colors.inkMuted,
+          }}
+        >
+          {copy.autoRenew}
+        </Text>
+      ) : (
+        <Text
+          style={{
+            fontFamily: theme.fonts.body,
+            fontSize: theme.typography.caption.fontSize,
+            color: theme.colors.inkMuted,
+          }}
+        >
+          {copy.askOwner}
+        </Text>
+      )}
+      <View
         style={{
-          fontFamily: theme.fonts.body,
-          fontSize: theme.typography.caption.fontSize,
-          color: theme.colors.inkMuted,
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          gap: theme.space.lg,
         }}
       >
-        {isAdmin ? copy.testNote : copy.askOwner}
-      </Text>
+        <Pressable
+          accessibilityRole="link"
+          accessibilityLabel={copy.privacy}
+          onPress={() => void Linking.openURL(PRIVACY_URL)}
+          style={{ minHeight: 44, justifyContent: 'center' }}
+        >
+          <Text
+            style={{
+              fontFamily: theme.fonts.bodyMedium,
+              fontSize: theme.typography.bodySmall.fontSize,
+              color: theme.colors.primary,
+            }}
+          >
+            {copy.privacy}
+          </Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="link"
+          accessibilityLabel={copy.terms}
+          onPress={() => void Linking.openURL(TERMS_URL)}
+          style={{ minHeight: 44, justifyContent: 'center' }}
+        >
+          <Text
+            style={{
+              fontFamily: theme.fonts.bodyMedium,
+              fontSize: theme.typography.bodySmall.fontSize,
+              color: theme.colors.primary,
+            }}
+          >
+            {copy.terms}
+          </Text>
+        </Pressable>
+      </View>
       {isAdmin && reason !== 'full' ? (
         <Button
           label={copy.restorePurchases}
           variant="ghost"
           disabled={busy}
           onPress={() => void restore()}
+        />
+      ) : null}
+      {isAdmin && current !== 'free' ? (
+        <Button
+          label={copy.manageSubscription}
+          variant="ghost"
+          disabled={busy}
+          onPress={() => void manage()}
         />
       ) : null}
     </Sheet>

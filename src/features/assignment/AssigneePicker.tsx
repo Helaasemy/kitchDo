@@ -22,6 +22,7 @@ export function AssigneePicker({
   inheritSelected = false,
   selectedUserId,
   onPick,
+  onInvitePeople,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -31,6 +32,7 @@ export function AssigneePicker({
   inheritSelected?: boolean;
   selectedUserId: string | null;
   onPick: (pick: AssigneePick) => void;
+  onInvitePeople?: () => void;
 }) {
   const t = useT();
   const copy = t().assignment;
@@ -71,6 +73,14 @@ export function AssigneePicker({
           onPress={() => choose({ kind: 'member', userId: member.userId })}
         />
       ))}
+      {onInvitePeople ? (
+        <InvitePeopleRow
+          onPress={() => {
+            onClose();
+            onInvitePeople();
+          }}
+        />
+      ) : null}
     </Sheet>
   );
 }
@@ -135,6 +145,66 @@ function PickerRow({
       {selected ? (
         <Ionicons name="checkmark" size={20} color={theme.colors.primary} />
       ) : null}
+    </Pressable>
+  );
+}
+
+function InvitePeopleRow({ onPress }: { onPress: () => void }) {
+  const t = useT();
+  const theme = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={t().settings.invitePeople}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: theme.space.md,
+        minHeight: 64,
+        paddingVertical: theme.space.md,
+        opacity: pressed ? 0.85 : 1,
+      })}
+    >
+      <View
+        style={{
+          width: 40,
+          height: 40,
+          borderRadius: 20,
+          backgroundColor: theme.colors.frequency.weekly.tint,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Ionicons
+          name="person-add-outline"
+          size={20}
+          color={theme.colors.frequency.weekly.text}
+        />
+      </View>
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text
+          style={{
+            fontFamily: theme.fonts.bodyBold,
+            fontSize: theme.typography.body.fontSize,
+            color: theme.colors.ink,
+          }}
+          allowFontScaling
+        >
+          {t().settings.invitePeople}
+        </Text>
+        <Text
+          style={{
+            fontFamily: theme.fonts.bodyMedium,
+            fontSize: theme.typography.caption.fontSize,
+            color: theme.colors.inkMuted,
+          }}
+          allowFontScaling
+        >
+          {t().settings.invitePeopleHint}
+        </Text>
+      </View>
+      <Ionicons name="chevron-forward" size={16} color={theme.colors.inkSubtle} />
     </Pressable>
   );
 }

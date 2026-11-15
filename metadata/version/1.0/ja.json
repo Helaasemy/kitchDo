@@ -1,0 +1,6 @@
+{
+  "description": "KitchDoは、家庭のキッチンと少人数チーム向けのチェックリストアプリです。リストを一度作り、予定どおり実行し、実際に終わったことを確認できます。\n\n開店・閉店、清掃、仕込み、忙しいときに抜けやすい作業に使えます。\n\nプランはキッチンごとです。\n• Free — リスト5件、1人\n• Light — 月30 krまたは年300 kr — リスト無制限、2人\n• Pro — 月99 krまたは年990 kr — リスト無制限、6人\n\n年額は10か月分です（2か月分が無料）。支払うのはキッチンのオーナーです。参加する人は無料のままです。\n\nオフラインでもリストを完了でき、オンラインに戻ると同期されます。短いコードまたはQRで招待できます。テンプレートを編集できる人と、実行だけできる人を分けられます。\n\n人数の上限に達したら、プランを上げるか、誰かを外してください。問い合わせによる例外はありません。\n\nPrivacy Policy: https://kitchdo-legal.netlify.app/privacy/\nTerms of Use: https://kitchdo-legal.netlify.app/terms/",
+  "keywords": "厨房,チェックリスト,掃除,開店,閉店,家事,レストラン,仕込み",
+  "promotionalText": "家庭と少人数チームの厨房リスト。支払うのはオーナーです。",
+  "supportUrl": "https://kitchdo-legal.netlify.app/support/"
+}

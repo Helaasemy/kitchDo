@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { DateTime } from 'luxon';
 import {
   Alert,
+  Linking,
   Modal,
   Pressable,
   Switch,
@@ -23,7 +24,8 @@ import {
 } from '@/components/ui';
 import { useAppearance, useTheme } from '@/design';
 import { useAuth } from '@/features/auth';
-import { PLAN_LIMITS, usePlanPaywall } from '@/features/billing';
+import { PLAN_LIMITS, openManageSubscriptions, usePlanPaywall } from '@/features/billing';
+import { PRIVACY_URL, TERMS_URL } from '@/features/legal';
 import { KitchenSwitcher } from '@/features/membership/KitchenSwitcher';
 import {
   updateKitchen,
@@ -296,6 +298,17 @@ export default function SettingsScreen() {
             }
             onPress={openManage}
           />
+          {isAdmin && plan !== 'free' ? (
+            <ListRow
+              title={billing.manageSubscription}
+              subtitle={copy.plan}
+              onPress={() => {
+                void openManageSubscriptions().catch((e) => {
+                  Alert.alert(t().common.errorGeneric, errorMessage(e));
+                });
+              }}
+            />
+          ) : null}
           <ListRow
             title={copy.invitePeople}
             subtitle={copy.invitePeopleHint}
@@ -457,6 +470,16 @@ export default function SettingsScreen() {
             onPress={() => setAppearanceOpen(true)}
           />
           <ListRow title={copy.version} subtitle={version} />
+          <ListRow
+            title={copy.privacy}
+            subtitle={copy.privacyHint}
+            onPress={() => void Linking.openURL(PRIVACY_URL)}
+          />
+          <ListRow
+            title={copy.terms}
+            subtitle={copy.termsHint}
+            onPress={() => void Linking.openURL(TERMS_URL)}
+          />
         </View>
 
         <Button

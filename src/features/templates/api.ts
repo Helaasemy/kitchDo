@@ -112,10 +112,7 @@ export async function listTemplates(
   if (error) throw new Error(rpcErrorMessage(error, 'Could not load templates.'));
   const rows = (data ?? []).map(mapSummary);
   if (opts?.state === 'archived') return rows;
-  const open: TemplateSummary[] = [];
-  const archived: TemplateSummary[] = [];
-  for (const row of rows) (row.state === 'archived' ? archived : open).push(row);
-  return open.concat(archived);
+  return rows.filter((row) => row.state !== 'archived');
 }
 
 const TEMPLATE_SELECT =
@@ -334,6 +331,18 @@ export async function archiveTemplate(input: {
     p_expected_revision: input.expectedRevision,
   });
   if (error) throw new Error(rpcErrorMessage(error, 'Could not archive template.'));
+}
+
+export async function deleteTemplate(input: {
+  templateId: string;
+  expectedRevision: number;
+}): Promise<void> {
+  const { error } = await getSupabase().rpc('delete_template', {
+    p_mutation_id: newId(),
+    p_template_id: input.templateId,
+    p_expected_revision: input.expectedRevision,
+  });
+  if (error) throw new Error(rpcErrorMessage(error, 'Could not delete template.'));
 }
 
 export async function latestPublishedRevisionId(
