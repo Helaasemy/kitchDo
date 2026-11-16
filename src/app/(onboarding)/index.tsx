@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 
-import { Button, ErrorText, Screen, TextField, Wordmark } from '@/components/ui';
+import { BackLink, Button, ErrorText, Screen, TextField, Wordmark } from '@/components/ui';
 import { useTheme } from '@/design';
 import { useAuth } from '@/features/auth';
 import { getDeviceTimeZone } from '@/lib/dates';
@@ -13,16 +14,47 @@ export default function OnboardingScreen() {
   const theme = useTheme();
   const { finishOnboarding, user } = useAuth();
   const copy = t().onboarding;
-  const [path, setPath] = useState<'create' | null>(null);
+  const [fork, setFork] = useState<'choose' | 'create'>('choose');
+  const [step, setStep] = useState<1 | 2>(1);
   const [mode, setMode] = useState<KitchenMode | null>(null);
   const [displayName, setDisplayName] = useState('');
-  const [kitchenName, setKitchenName] = useState('');
+  const [placeName, setPlaceName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const zone = useMemo(() => getDeviceTimeZone(), []);
 
-  const applyMode = (next: KitchenMode) => {
+  const openCreate = () => {
+    void Haptics.selectionAsync();
+    setError(null);
+    setFork('create');
+    setStep(1);
+  };
+
+  const backFromCreate = () => {
+    void Haptics.selectionAsync();
+    setError(null);
+    if (step === 2) {
+      setStep(1);
+      return;
+    }
+    setFork('choose');
+    setMode(null);
+  };
+
+  const pickMode = (next: KitchenMode) => {
+    void Haptics.selectionAsync();
     setMode(next);
+    setError(null);
+  };
+
+  const continueType = () => {
+    if (!mode) {
+      setError(copy.chooseMode);
+      return;
+    }
+    void Haptics.selectionAsync();
+    setError(null);
+    setStep(2);
   };
 
   const onFinish = async () => {
@@ -31,15 +63,15 @@ export default function OnboardingScreen() {
       setError(copy.chooseMode);
       return;
     }
-    if (!displayName.trim() || !kitchenName.trim()) {
-      setError(copy.namesRequired);
+    if (!displayName.trim() || !placeName.trim()) {
+      setError(mode === 'home' ? copy.namesRequiredHome : copy.namesRequiredBusiness);
       return;
     }
     setLoading(true);
     const result = await finishOnboarding({
       mode,
       displayName,
-      kitchenName,
+      kitchenName: placeName,
     });
     setLoading(false);
     if (result.error) {
@@ -50,137 +82,218 @@ export default function OnboardingScreen() {
   return (
     <Screen scroll>
       <View style={{ marginTop: theme.space.xl, gap: theme.space.xl }}>
-        <Wordmark size="md" />
+        {fork === 'create' ? (
+          <BackLink fallback="/(onboarding)" onPress={backFromCreate} />
+        ) : (
+          <Wordmark size="md" />
+        )}
 
-        <View style={{ gap: theme.space.sm }}>
-          <Text
-            style={{
-              fontFamily: theme.fonts.display,
-              fontSize: theme.typography.title.fontSize,
-              lineHeight: theme.typography.title.lineHeight,
-              color: theme.colors.ink,
-            }}
-            allowFontScaling
-          >
-            {copy.whereTitle}
-          </Text>
-          <Text
-            style={{
-              fontFamily: theme.fonts.body,
-              fontSize: theme.typography.body.fontSize,
-              lineHeight: theme.typography.body.lineHeight,
-              color: theme.colors.inkMuted,
-            }}
-            allowFontScaling
-          >
-            {copy.whereSubtitle}
-          </Text>
-        </View>
-
-        <View style={{ gap: theme.space.sm }}>
-          <ModeCard
-            selected={path === 'create'}
-            title={copy.createKitchen}
-            hint={copy.whereSubtitle}
-            onPress={() => setPath('create')}
-          />
-          <ModeCard
-            selected={false}
-            title={copy.haveCode}
-            hint={copy.joinSubtitle}
-            onPress={() => router.push('/join')}
-          />
-        </View>
-
-        {path === 'create' ? (
-        <View style={{ gap: theme.space.sm }}>
-          <ModeCard
-            selected={mode === 'home'}
-            title={copy.homeLabel}
-            hint={copy.homeHint}
-            onPress={() => applyMode('home')}
-          />
-          <ModeCard
-            selected={mode === 'business'}
-            title={copy.businessLabel}
-            hint={copy.businessHint}
-            onPress={() => applyMode('business')}
-          />
-        </View>
-        ) : null}
-
-        {path === 'create' && mode ? (
-          <View style={{ gap: theme.space.md }}>
-            <Text
-              style={{
-                fontFamily: theme.fonts.displayRegular,
-                fontSize: theme.typography.heading.fontSize,
-                color: theme.colors.ink,
-              }}
-              allowFontScaling
-            >
-              {copy.profileTitle}
-            </Text>
-            <Text
-              style={{
-                fontFamily: theme.fonts.body,
-                fontSize: theme.typography.bodySmall.fontSize,
-                color: theme.colors.inkMuted,
-              }}
-              allowFontScaling
-            >
-              {mode === 'home'
-                ? copy.profileSubtitleHome
-                : copy.profileSubtitleBusiness}
-            </Text>
-            <TextField
-              label={t().common.displayName}
-              value={displayName}
-              onChangeText={setDisplayName}
-              placeholder={
-                mode === 'home'
-                  ? copy.displayNamePlaceholderHome
-                  : copy.displayNamePlaceholderBusiness
-              }
-              autoComplete="name"
-              textContentType="name"
-            />
-            <TextField
-              label={t().common.kitchenName}
-              value={kitchenName}
-              onChangeText={setKitchenName}
-              placeholder={
-                mode === 'home'
-                  ? copy.kitchenPlaceholderHome
-                  : copy.kitchenPlaceholderBusiness
-              }
-            />
-            <Text
-              style={{
-                fontFamily: theme.fonts.labelRegular,
-                fontSize: theme.typography.label.fontSize,
-                color: theme.colors.inkSubtle,
-              }}
-              allowFontScaling
-            >
-              {copy.timezoneNote} ({zone})
-              {user?.email ? ` · ${user.email}` : ''}
-            </Text>
+        {fork === 'choose' ? (
+          <View style={{ gap: theme.space.xl }}>
+            <View style={{ gap: theme.space.sm }}>
+              <Text
+                style={{
+                  fontFamily: theme.fonts.display,
+                  fontSize: theme.typography.title.fontSize,
+                  lineHeight: theme.typography.title.lineHeight,
+                  color: theme.colors.ink,
+                }}
+                allowFontScaling
+              >
+                {copy.forkTitle}
+              </Text>
+              <Text
+                style={{
+                  fontFamily: theme.fonts.body,
+                  fontSize: theme.typography.body.fontSize,
+                  lineHeight: theme.typography.body.lineHeight,
+                  color: theme.colors.inkMuted,
+                }}
+                allowFontScaling
+              >
+                {copy.forkSubtitle}
+              </Text>
+            </View>
+            <View style={{ gap: theme.space.sm }}>
+              <ModeCard
+                selected={false}
+                title={copy.startOwn}
+                hint={copy.startOwnHint}
+                onPress={openCreate}
+              />
+              <ModeCard
+                selected={false}
+                title={copy.haveCode}
+                hint={copy.joinSubtitle}
+                onPress={() => router.push('/join')}
+              />
+            </View>
           </View>
-        ) : null}
-
-        <ErrorText message={error} boxed />
-
-        {path === 'create' ? (
-          <Button
-            label={copy.finish}
-            onPress={onFinish}
-            loading={loading}
-            disabled={!mode}
-          />
-        ) : null}
+        ) : (
+          <View style={{ gap: theme.space.xl }}>
+            <StepDots current={step} total={2} label={copy.stepOf} />
+            {step === 1 ? (
+              <View style={{ gap: theme.space.xl }}>
+                <View style={{ gap: theme.space.sm }}>
+                  <Text
+                    style={{
+                      fontFamily: theme.fonts.display,
+                      fontSize: theme.typography.title.fontSize,
+                      lineHeight: theme.typography.title.lineHeight,
+                      color: theme.colors.ink,
+                    }}
+                    allowFontScaling
+                  >
+                    {copy.typeTitle}
+                  </Text>
+                  <Text
+                    style={{
+                      fontFamily: theme.fonts.body,
+                      fontSize: theme.typography.body.fontSize,
+                      lineHeight: theme.typography.body.lineHeight,
+                      color: theme.colors.inkMuted,
+                    }}
+                    allowFontScaling
+                  >
+                    {copy.whereSubtitle}
+                  </Text>
+                </View>
+                <View style={{ gap: theme.space.sm }}>
+                  <ModeCard
+                    selected={mode === 'home'}
+                    title={copy.homeLabel}
+                    hint={copy.homeHint}
+                    onPress={() => pickMode('home')}
+                  />
+                  <ModeCard
+                    selected={mode === 'business'}
+                    title={copy.businessLabel}
+                    hint={copy.businessHint}
+                    onPress={() => pickMode('business')}
+                  />
+                </View>
+                <ErrorText message={error} boxed />
+                <Button
+                  label={t().common.continue}
+                  onPress={continueType}
+                  disabled={!mode}
+                />
+              </View>
+            ) : (
+              <View style={{ gap: theme.space.md }}>
+                <Text
+                  style={{
+                    fontFamily: theme.fonts.display,
+                    fontSize: theme.typography.title.fontSize,
+                    lineHeight: theme.typography.title.lineHeight,
+                    color: theme.colors.ink,
+                  }}
+                  allowFontScaling
+                >
+                  {mode === 'business' ? copy.namesTitleBusiness : copy.namesTitleHome}
+                </Text>
+                <Text
+                  style={{
+                    fontFamily: theme.fonts.body,
+                    fontSize: theme.typography.bodySmall.fontSize,
+                    color: theme.colors.inkMuted,
+                  }}
+                  allowFontScaling
+                >
+                  {mode === 'home'
+                    ? copy.profileSubtitleHome
+                    : copy.profileSubtitleBusiness}
+                </Text>
+                <TextField
+                  label={t().common.displayName}
+                  value={displayName}
+                  onChangeText={setDisplayName}
+                  placeholder={
+                    mode === 'home'
+                      ? copy.displayNamePlaceholderHome
+                      : copy.displayNamePlaceholderBusiness
+                  }
+                  autoComplete="name"
+                  textContentType="name"
+                />
+                <TextField
+                  label={
+                    mode === 'business' ? copy.placeNameBusiness : copy.placeNameHome
+                  }
+                  value={placeName}
+                  onChangeText={setPlaceName}
+                  placeholder={
+                    mode === 'home'
+                      ? copy.kitchenPlaceholderHome
+                      : copy.kitchenPlaceholderBusiness
+                  }
+                />
+                <Text
+                  style={{
+                    fontFamily: theme.fonts.labelRegular,
+                    fontSize: theme.typography.label.fontSize,
+                    color: theme.colors.inkSubtle,
+                  }}
+                  allowFontScaling
+                >
+                  {copy.timezoneNote} ({zone})
+                  {user?.email ? ` · ${user.email}` : ''}
+                </Text>
+                <ErrorText message={error} boxed />
+                <Button
+                  label={copy.finish}
+                  onPress={() => void onFinish()}
+                  loading={loading}
+                />
+              </View>
+            )}
+          </View>
+        )}
       </View>
     </Screen>
+  );
+}
+
+function StepDots({
+  current,
+  total,
+  label,
+}: {
+  current: number;
+  total: number;
+  label: string;
+}) {
+  const theme = useTheme();
+  const a11y = label
+    .replace('{current}', String(current))
+    .replace('{total}', String(total));
+  return (
+    <View
+      accessible
+      accessibilityRole="progressbar"
+      accessibilityLabel={a11y}
+      accessibilityValue={{ min: 1, max: total, now: current }}
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: theme.space.sm,
+      }}
+    >
+      {Array.from({ length: total }, (_, index) => {
+        const on = index < current;
+        return (
+          <View
+            key={index}
+            style={{
+              flex: 1,
+              height: 4,
+              borderRadius: theme.radii.pill,
+              backgroundColor: on ? theme.colors.primary : theme.colors.border,
+            }}
+          />
+        );
+      })}
+    </View>
   );
 }
 
@@ -203,6 +316,7 @@ function ModeCard({
       onPress={onPress}
       style={{
         padding: theme.space.lg,
+        minHeight: 44,
         borderRadius: theme.radii.lg,
         borderWidth: 1.5,
         borderColor: selected ? theme.colors.primary : theme.colors.border,

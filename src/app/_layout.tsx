@@ -1,6 +1,6 @@
 import { memo, useEffect, useMemo } from 'react';
 import { Platform, View } from 'react-native';
-import { LocaleProvider, Stack } from 'expo-router';
+import { LocaleProvider, Stack, router, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useFonts } from 'expo-font';
 import {
@@ -29,6 +29,10 @@ export { ErrorBoundary } from 'expo-router';
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
+export const unstable_settings = {
+  anchor: 'index',
+};
+
 const SplashController = memo(function SplashController() {
   const { status } = useAuth();
   const ready = status !== 'loading';
@@ -42,8 +46,49 @@ const SplashController = memo(function SplashController() {
   return null;
 });
 
+/**
+ * Signup/login live inside a Protected group. When the session appears that
+ * group unmounts; Expo does not always land on onboarding/app, which shows a
+ * blank screen until the next cold start. Drive the handoff from here so it
+ * still runs after (auth) is gone.
+ */
+const AuthRouteSync = memo(function AuthRouteSync() {
+  const { status, recoveryPending, pendingJoinCode, completingJoin } = useAuth();
+  const root = useSegments()[0];
+
+  useEffect(() => {
+    if (recoveryPending || completingJoin) return;
+    if (status === 'loading' || status === 'misconfigured') return;
+
+    const inAuth = root === '(auth)';
+    const inOnboarding = root === '(onboarding)';
+    const inApp = root === '(app)';
+    const inJoin = root === 'join';
+    const inCallback = root === 'auth';
+
+    if (status === 'unauthenticated') {
+      if (!inAuth && !inJoin && !inCallback) router.replace('/(auth)/login');
+      return;
+    }
+    if (status === 'offline_unknown') {
+      if (root) router.replace('/');
+      return;
+    }
+    if (status === 'needs_onboarding') {
+      if (inJoin || inOnboarding) return;
+      router.replace(pendingJoinCode ? '/join' : '/(onboarding)');
+      return;
+    }
+    if (status === 'authenticated' && !inApp && !inJoin) {
+      router.replace('/(app)/(tabs)/today');
+    }
+  }, [status, recoveryPending, pendingJoinCode, completingJoin, root]);
+
+  return null;
+});
+
 const RootNavigator = memo(function RootNavigator() {
-  const { status, recoveryPending } = useAuth();
+  const { status, recoveryPending, pendingJoinCode } = useAuth();
   const { direction } = useI18n();
   const theme = useTheme();
 
@@ -65,11 +110,20 @@ const RootNavigator = memo(function RootNavigator() {
     recoveryPending;
   const showOnboarding = status === 'needs_onboarding' && !recoveryPending;
   const showApp = status === 'authenticated' && !recoveryPending;
+  const afterAuthHref =
+    status === 'offline_unknown'
+      ? '/'
+      : showOnboarding
+        ? pendingJoinCode
+          ? '/join'
+          : '/(onboarding)'
+        : '/(app)/(tabs)/today';
 
   return (
     <LocaleProvider direction={direction}>
+      <AuthRouteSync />
       <View
-        style={{ flex: 1 }}
+        style={{ flex: 1, backgroundColor: theme.colors.canvas }}
         {...(Platform.OS === 'web'
           ? ({ dir: direction } as { dir: 'ltr' | 'rtl' })
           : null)}
@@ -78,15 +132,18 @@ const RootNavigator = memo(function RootNavigator() {
           <Stack.Screen name="index" />
           <Stack.Screen name="join" options={{ animation: 'none' }} />
 
-          <Stack.Protected guard={showAuth}>
+          <Stack.Protected guard={showAuth} redirectTo={afterAuthHref}>
             <Stack.Screen name="(auth)" />
           </Stack.Protected>
 
-          <Stack.Protected guard={showOnboarding}>
+          <Stack.Protected
+            guard={showOnboarding}
+            redirectTo={showApp ? '/(app)/(tabs)/today' : '/(auth)/login'}
+          >
             <Stack.Screen name="(onboarding)" />
           </Stack.Protected>
 
-          <Stack.Protected guard={showApp}>
+          <Stack.Protected guard={showApp} redirectTo="/(auth)/login">
             <Stack.Screen name="(app)" />
           </Stack.Protected>
 
