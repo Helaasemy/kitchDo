@@ -2,5 +2,6 @@
   "description": "KitchDo 是面向家庭厨房和小团队的清单应用。把清单建一次，按计划执行，并看清真正完成了什么。\n\n用于开档和收档、清洁、备料，以及忙碌时容易漏掉的工作。\n\n可离线完成清单，恢复联网后同步。用短码或二维码邀请。可设定谁能编辑模板、谁只能执行。",
   "keywords": "厨房,清单,清洁,开档,收档,家务,餐厅,备料",
   "promotionalText": "家庭与小团队的厨房清单。所有者付费，加入者免费。",
-  "supportUrl": "https://kitchdo-legal.netlify.app/support/"
+  "supportUrl": "https://kitchdo-legal.netlify.app/support/",
+  "whatsNew": "确认邮箱后会直接进入 KitchDo，不再停在空白页。\n\n两步即可开始家庭或商用，也可用代码加入。创建清单更清楚，还可滑动删除。\n\n被分配的任务在手机锁屏时仍会提醒。隐私政策和使用条款在设置中。"
 }

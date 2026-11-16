@@ -2,5 +2,6 @@
   "description": "KitchDo ಮನೆಯ ಅಡುಗೆಮನೆ ಮತ್ತು ಸಣ್ಣ ತಂಡಗಳಿಗೆ ಚೆಕ್‌ಲಿಸ್ಟ್ ಅಪ್ಲಿಕೇಶನ್. ಪಟ್ಟಿಗಳನ್ನು ಒಮ್ಮೆ ರಚಿಸಿ, ವೇಳಾಪಟ್ಟಿಯಲ್ಲಿ ನಡೆಸಿ, ಏನು ಮುಗಿಯಿತು ನೋಡಿ.",
   "keywords": "ಅಡುಗೆಮನೆ,ಪಟ್ಟಿ,ಸ್ವಚ್ಛತೆ,ತೆರೆಯುವುದು,ಮುಚ್ಚುವುದು,ಕೆಲಸ,ಮನೆ",
   "promotionalText": "ಅಡುಗೆಮನೆ ಪಟ್ಟಿಗಳು ಮುಗಿಯುತ್ತವೆ",
-  "supportUrl": "https://kitchdo-legal.netlify.app/support/"
+  "supportUrl": "https://kitchdo-legal.netlify.app/support/",
+  "whatsNew": "After you confirm your email, you go straight into KitchDo — no more blank screen.\n\nStart a household or a business in two steps, or join with a code. Creating a list is clearer, and you can swipe to delete one.\n\nAssigned tasks still ping a closed phone. Privacy Policy and Terms of Use are in Settings."
 }

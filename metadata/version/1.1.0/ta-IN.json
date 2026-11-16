@@ -2,5 +2,6 @@
   "description": "KitchDo வீட்டு சமையலறை மற்றும் சிறிய குழுக்களுக்கான சரிபார்ப்புப் பட்டியல் செயலி. பட்டியல்களை ஒரு முறை உருவாக்கி, அட்டவணையில் இயக்கி, என்ன முடிந்தது எனப் பாருங்கள்.",
   "keywords": "சமையலறை,பட்டியல்,சுத்தம்,திறப்பு,மூடல்,வேலை,வீடு",
   "promotionalText": "சமையலறைப் பட்டியல்கள் முடியும்",
-  "supportUrl": "https://kitchdo-legal.netlify.app/support/"
+  "supportUrl": "https://kitchdo-legal.netlify.app/support/",
+  "whatsNew": "After you confirm your email, you go straight into KitchDo — no more blank screen.\n\nStart a household or a business in two steps, or join with a code. Creating a list is clearer, and you can swipe to delete one.\n\nAssigned tasks still ping a closed phone. Privacy Policy and Terms of Use are in Settings."
 }

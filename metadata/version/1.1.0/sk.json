@@ -2,5 +2,6 @@
   "description": "KitchDo je checklist pre domáce kuchyne a malé tímy. Zoznamy vytvorte raz, spúšťajte ich podľa plánu a sledujte, čo bolo hotové.",
   "keywords": "kuchyňa,zoznam,upratovanie,otvorenie,zatvorenie,úlohy,domov",
   "promotionalText": "Kuchynské zoznamy hotové",
-  "supportUrl": "https://kitchdo-legal.netlify.app/support/"
+  "supportUrl": "https://kitchdo-legal.netlify.app/support/",
+  "whatsNew": "After you confirm your email, you go straight into KitchDo — no more blank screen.\n\nStart a household or a business in two steps, or join with a code. Creating a list is clearer, and you can swipe to delete one.\n\nAssigned tasks still ping a closed phone. Privacy Policy and Terms of Use are in Settings."
 }

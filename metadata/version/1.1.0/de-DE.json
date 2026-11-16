@@ -2,5 +2,6 @@
   "description": "KitchDo ist eine Checklisten-App für private Küchen und kleine Teams. Listen einmal anlegen, nach Plan ausführen und sehen, was wirklich erledigt wurde.\n\nNutzen Sie sie für Öffnung und Schließung, Reinigung, Vorbereitung und die Aufgaben, die im Trubel untergehen.\n\nListen offline abschließen; sie werden synchronisiert, sobald Sie wieder online sind. Einladen per Kurzcode oder QR. Legen Sie fest, wer Vorlagen bearbeiten und wer sie nur ausführen darf.",
   "keywords": "küche,checkliste,putzen,öffnung,schließung,aufgaben,home,restaurant",
   "promotionalText": "Küchen-Checklisten für Zuhause und kleine Teams. Die Inhaber zahlen.",
-  "supportUrl": "https://kitchdo-legal.netlify.app/support/"
+  "supportUrl": "https://kitchdo-legal.netlify.app/support/",
+  "whatsNew": "Nach der E-Mail-Bestätigung landest du direkt in KitchDo — kein leerer Bildschirm mehr.\n\nStarte einen Haushalt oder Betrieb in zwei Schritten, oder tritt mit einem Code bei. Listen anlegen ist klarer, und du kannst eine Liste wegwischen.\n\nZugewiesene Aufgaben erreichen weiterhin ein gesperrtes Telefon. Datenschutz und Nutzungsbedingungen findest du in den Einstellungen."
 }

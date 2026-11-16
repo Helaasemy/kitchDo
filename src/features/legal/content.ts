@@ -55,7 +55,7 @@ export const PRIVACY_SECTIONS: LegalSection[] = [
   {
     title: 'Your choices',
     paragraphs: [
-      'You can edit your name and kitchen in Settings, turn reminders off, leave a kitchen, or delete your account. You can also email us at the address above.',
+      'You can edit your name and place in Settings, turn reminders off, leave, or delete your account. You can also email us at the address above.',
       'KitchDo is not directed at children under 13.',
     ],
   },

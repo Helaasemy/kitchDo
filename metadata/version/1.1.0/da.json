@@ -2,5 +2,6 @@
   "description": "KitchDo er en tjekliste til hjemmekøkkener og små teams. Byg lister én gang, kør dem efter plan, og se hvad der faktisk blev gjort.",
   "keywords": "køkken,tjekliste,rengøring,åbning,lukning,opgaver,hjem,restaurant",
   "promotionalText": "Tjeklister der bliver gjort",
-  "supportUrl": "https://kitchdo-legal.netlify.app/support/"
+  "supportUrl": "https://kitchdo-legal.netlify.app/support/",
+  "whatsNew": "After you confirm your email, you go straight into KitchDo — no more blank screen.\n\nStart a household or a business in two steps, or join with a code. Creating a list is clearer, and you can swipe to delete one.\n\nAssigned tasks still ping a closed phone. Privacy Policy and Terms of Use are in Settings."
 }

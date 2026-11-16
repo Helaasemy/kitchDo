@@ -265,22 +265,18 @@ export default function SettingsScreen() {
             onPress={() => setProfileOpen(true)}
           />
           <ListRow
-            title={copy.kitchen}
-            subtitle={
-              onboarding
-                ? `${onboarding.kitchenName} · ${
-                    kitchenMode === 'business'
-                      ? t().onboarding.businessLabel
-                      : t().onboarding.homeLabel
-                  }`
-                : ''
+            title={
+              kitchenMode === 'business'
+                ? t().onboarding.businessLabel
+                : t().onboarding.homeLabel
             }
+            subtitle={onboarding?.kitchenName ?? ''}
             onPress={() => setSwitcherOpen(true)}
           />
           {isAdmin ? (
             <ListRow
               title={copy.editKitchen}
-              subtitle={copy.kitchen}
+              subtitle={onboarding?.kitchenName ?? ''}
               onPress={() => setKitchenOpen(true)}
             />
           ) : null}
@@ -702,7 +698,11 @@ export default function SettingsScreen() {
               {copy.editKitchen}
             </Text>
             <TextField
-              label={t().common.kitchenName}
+              label={
+                kind === 'business'
+                  ? t().onboarding.placeNameBusiness
+                  : t().onboarding.placeNameHome
+              }
               value={kitchenName}
               onChangeText={setKitchenName}
             />

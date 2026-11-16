@@ -2,5 +2,6 @@
   "description": "KitchDo 是給家庭廚房與小團隊的清單 App。把清單建一次，依行程執行，並看清真正完成了什麼。\n\n用於開檔與收檔、清潔、備料，以及忙碌時容易漏掉的工作。\n\n可離線完成清單，恢復連線後同步。用短碼或 QR 邀請。可設定誰能編輯範本、誰只能執行。",
   "keywords": "廚房,清單,清潔,開檔,收檔,家務,餐廳,備料",
   "promotionalText": "家庭與小團隊的廚房清單。擁有者付費，加入者免費。",
-  "supportUrl": "https://kitchdo-legal.netlify.app/support/"
+  "supportUrl": "https://kitchdo-legal.netlify.app/support/",
+  "whatsNew": "確認電子郵件後會直接進入 KitchDo，不再停在空白頁。\n\n兩步即可開始家庭或商用，也可用代碼加入。建立清單更清楚，還可滑動刪除。\n\n被指派的任務在手機鎖定時仍會提醒。隱私權政策與使用條款在設定中。"
 }

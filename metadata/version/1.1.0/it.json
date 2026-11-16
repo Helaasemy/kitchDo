@@ -2,5 +2,6 @@
   "description": "KitchDo è un’app di liste per cucine domestiche e piccoli team. Crea le liste una volta, eseguile in programma e vedi cosa è stato davvero fatto.\n\nUsala per apertura e chiusura, pulizie, prep e i lavori che sfuggono quando la sala è piena.\n\nCompleta le liste offline; si sincronizzano al ritorno online. Invita con un codice breve o un QR. Scegli chi può modificare i modelli e chi può solo eseguirli.",
   "keywords": "cucina,lista,pulizie,apertura,chiusura,compiti,casa,ristorante",
   "promotionalText": "Liste cucina per casa e piccoli team. Paga il titolare.",
-  "supportUrl": "https://kitchdo-legal.netlify.app/support/"
+  "supportUrl": "https://kitchdo-legal.netlify.app/support/",
+  "whatsNew": "Dopo la conferma dell’e-mail entri subito in KitchDo — niente più schermata bianca.\n\nAvvia una casa o un’attività in due passi, oppure entra con un codice. Creare una lista è più chiaro e puoi scorrere per eliminarne una.\n\nI compiti assegnati raggiungono ancora un telefono spento. Informativa sulla privacy e termini sono in Impostazioni."
 }

@@ -2,5 +2,6 @@
   "description": "KitchDo — приложение-чеклист для домашних кухонь и небольших команд. Создайте списки один раз, запускайте по расписанию и смотрите, что сделано.",
   "keywords": "кухня,чеклист,уборка,открытие,закрытие,задачи,дом,ресторан",
   "promotionalText": "Кухонные списки до конца",
-  "supportUrl": "https://kitchdo-legal.netlify.app/support/"
+  "supportUrl": "https://kitchdo-legal.netlify.app/support/",
+  "whatsNew": "After you confirm your email, you go straight into KitchDo — no more blank screen.\n\nStart a household or a business in two steps, or join with a code. Creating a list is clearer, and you can swipe to delete one.\n\nAssigned tasks still ping a closed phone. Privacy Policy and Terms of Use are in Settings."
 }

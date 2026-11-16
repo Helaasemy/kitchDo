@@ -2,5 +2,6 @@
   "description": "KitchDo הוא יישום רשימות למטבחי בית ולצוותים קטנים. בנו רשימות פעם אחת, הפעילו לפי לוח זמנים וראו מה באמת הסתיים.",
   "keywords": "מטבח,רשימה,ניקיון,פתיחה,סגירה,משימות,בית,מסעדה",
   "promotionalText": "רשימות מטבח שמסתיימות",
-  "supportUrl": "https://kitchdo-legal.netlify.app/support/"
+  "supportUrl": "https://kitchdo-legal.netlify.app/support/",
+  "whatsNew": "After you confirm your email, you go straight into KitchDo — no more blank screen.\n\nStart a household or a business in two steps, or join with a code. Creating a list is clearer, and you can swipe to delete one.\n\nAssigned tasks still ping a closed phone. Privacy Policy and Terms of Use are in Settings."
 }

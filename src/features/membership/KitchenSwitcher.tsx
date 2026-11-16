@@ -73,7 +73,11 @@ export function KitchenSwitcher({ visible, onClose }: Props) {
       {creating ? (
         <View style={{ gap: theme.space.md }}>
           <TextField
-            label={t().common.kitchenName}
+            label={
+              kind === 'business'
+                ? t().onboarding.placeNameBusiness
+                : t().onboarding.placeNameHome
+            }
             value={name}
             onChangeText={setName}
             placeholder={

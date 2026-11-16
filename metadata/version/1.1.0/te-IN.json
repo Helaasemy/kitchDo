@@ -2,5 +2,6 @@
   "description": "KitchDo ఇంటి వంటగదులు మరియు చిన్న బృందాల కోసం చెక్‌లిస్ట్ యాప్. జాబితాలు ఒకసారి తయారుచేసి, షెడ్యూల్‌లో నడిపి, ఏమి పూర్తయిందో చూడండి.",
   "keywords": "వంటగది,జాబితా,శుభ్రం,తెరవడం,మూసివేత,పని,ఇల్లు",
   "promotionalText": "వంటగది జాబితాలు పూర్తి",
-  "supportUrl": "https://kitchdo-legal.netlify.app/support/"
+  "supportUrl": "https://kitchdo-legal.netlify.app/support/",
+  "whatsNew": "After you confirm your email, you go straight into KitchDo — no more blank screen.\n\nStart a household or a business in two steps, or join with a code. Creating a list is clearer, and you can swipe to delete one.\n\nAssigned tasks still ping a closed phone. Privacy Policy and Terms of Use are in Settings."
 }
