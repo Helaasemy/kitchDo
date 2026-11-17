@@ -1,5 +1,5 @@
 {
-  "description": "KitchDo, ev mutfakları ve küçük ekipler için bir kontrol listesi uygulamasıdır. Listeleri bir kez oluşturun, programa göre çalıştırın ve gerçekten neyin bittiğini görün.\n\nAçılış ve kapanış, temizlik, hazırlık ve yoğunlukta unutulan işler için kullanın.\n\nListeleri çevrimdışı tamamlayın; çevrimiçi olunca senkronlanır. Kısa kod veya QR ile davet edin. Şablonları kimin düzenleyeceğini, kimin yalnızca çalıştıracağını seçin.",
+  "description": "KitchDo, ev mutfakları ve küçük ekipler için bir kontrol listesi uygulamasıdır. Listeleri bir kez oluşturun, programa göre çalıştırın ve gerçekten neyin bittiğini görün.\n\nAçılış ve kapanış, temizlik, hazırlık ve yoğunlukta unutulan işler için kullanın.\n\nListeleri çevrimdışı tamamlayın; çevrimiçi olunca senkronlanır. Kısa kod veya QR ile davet edin. Şablonları kimin düzenleyeceğini, kimin yalnızca çalıştıracağını seçin.\n\nPrivacy Policy: https://kitchdo-legal.netlify.app/privacy/\nTerms of Use: https://kitchdo-legal.netlify.app/terms/",
   "keywords": "mutfak,liste,temizlik,açılış,kapanış,görev,ev,restoran",
   "promotionalText": "Ev ve küçük ekipler için mutfak listeleri. Sahibi öder.",
   "supportUrl": "https://kitchdo-legal.netlify.app/support/",
